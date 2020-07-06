@@ -32,6 +32,13 @@ if TORCH_MAJOR == 0 and TORCH_MINOR < 4:
       raise RuntimeError("Apex requires Pytorch 0.4 or newer.\n" +
                          "The latest stable release can be obtained from https://pytorch.org/")
 
+def is_hip_clang():
+  try:
+    hip_path = os.getenv('HIP_PATH', '/opt/rocm/hip')
+    return 'HIP_COMPILER=clang' in open(hip_path + '/lib/.hipInfo').read()
+  except IOError:
+    return False
+
 cmdclass = {}
 ext_modules = []
 
@@ -141,7 +148,7 @@ if "--cuda_ext" in sys.argv:
             import shutil
             with hipify_python.GeneratedFileCleaner(keep_intermediates=True) as clean_ctx:
                 hipify_python.hipify(project_directory=this_dir, output_directory=this_dir, includes="csrc/*",
-                                        show_detailed=True, is_pytorch_extension=True, clean_ctx=clean_ctx)
+                                        show_detailed=True, is_pytorch_extension=True, clean_ctx=clean_ctx, hip_clang_launch=is_hip_clang())
             shutil.copy("csrc/compat.h", "csrc/hip/compat.h")
             shutil.copy("csrc/type_shim.h", "csrc/hip/type_shim.h")
 
