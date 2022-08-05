@@ -81,23 +81,6 @@ class TestFusedOptimizer(unittest.TestCase):
             ref_optim.step()
             tst_optim.step()
             max_abs_diff, max_rel_diff = self.get_max_diff(ref_param, tst_param)
-            torch.set_printoptions(profile="full")
-            print(i, " --> tst_param = ", tst_param[0])
-            #print(len(tst_param))
-            #print(len(ref_param))
-            #print(torch.isnan(torch.Tensor(tst_param)).any())
-            #print(torch.isnan(tst_param[1]).any())
-            #print(torch.isnan(ref_param[0]).any())
-            #print(tst_param[0].shape)
-            #print(i, " --> tst_param = ", tst_param, "  ==> nan ? ", torch.isnan(tst_param).any())
-            print(i, " --> ref_param = ", ref_param[0])
-            
-            ########## The following two assertions will not capture NaN. Why??? ###############
-            assert not torch.isnan(ref_param[0]).any()
-            assert not torch.isnan(tst_param[0]).any()
-
-            print("max_abs_diff = ", max_abs_diff, "; max_rel_diff = ", max_rel_diff)
-            print("=================================")
             self.assertLessEqual(max_abs_diff, self.max_abs_diff)
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
 
@@ -111,22 +94,21 @@ class TestFusedAdam(TestFusedOptimizer):
         self.ref_optim = torch.optim.Adam
         self.fused_optim = apex.optimizers.FusedAdam
 
-    #def test_float(self):
-    #    self.gen_single_type_test(param_type=torch.float)
+    @unittest.skip("Skipped the test since a regression introduced from PyTorch upstream: due to https://github.com/pytorch/pytorch/issues/80809#issuecomment-1175211598. Please also refer to https://github.com/ROCmSoftwarePlatform/apex/issues/82")
+    def test_float(self):
+        self.gen_single_type_test(param_type=torch.float)
     
-    #@unittest.skip("NaN issue observed on ROCm as of 12/1/2021. The failing unit test is introduced by a PyTorch commit sometime in between rocm/pytorch:rocm4.3.1_ubuntu18.04_py3.6_pytorch_1.9.0 and 2021/12/01. Please refer to https://github.com/ROCmSoftwarePlatform/apex/issues/63")
+    @unittest.skip("NaN issue observed on ROCm as of 12/1/2021. The failing unit test is introduced by a PyTorch commit sometime in between rocm/pytorch:rocm4.3.1_ubuntu18.04_py3.6_pytorch_1.9.0 and 2021/12/01. Please refer to https://github.com/ROCmSoftwarePlatform/apex/issues/63")
     def test_half(self):
-        print("~~~~~"*10)
         self.gen_single_type_test(param_type=torch.float16)
 
-    """
+    @unittest.skip("Skipped the test since a regression introduced from PyTorch upstream: due to https://github.com/pytorch/pytorch/issues/80809#issuecomment-1175211598. Please also refer to https://github.com/ROCmSoftwarePlatform/apex/issues/82")
     @unittest.skipIf(torch.cuda.device_count()<2, "more than 1 GPU required")
     def test_multi_device(self):
         devices = ("cuda:0", "cuda:1")
         for current_dev, tensor_dev in product(devices, devices):
             with torch.cuda.device(current_dev):
                 self.gen_single_type_test(param_type=torch.float, device=tensor_dev)
-    """
 
     @unittest.skip('Disable until 8/1/2019 adam/adamw upstream picked')
     def test_multi_params(self):
@@ -187,7 +169,7 @@ class TestFusedAdam(TestFusedOptimizer):
             self.assertLessEqual(max_abs_diff, self.max_abs_diff)
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
 
-    """
+    @unittest.skip("Skipped the test since a regression introduced from PyTorch upstream: due to https://github.com/pytorch/pytorch/issues/80809#issuecomment-1175211598. Please also refer to https://github.com/ROCmSoftwarePlatform/apex/issues/82")
     def test_adam_option(self):
         nelem = 1
         adam_option = {'lr':0.01, 'betas':(0.6, 0.9), 'eps':3e-06,
@@ -205,7 +187,6 @@ class TestFusedAdam(TestFusedOptimizer):
 
             self.assertLessEqual(max_abs_diff, self.max_abs_diff)
             self.assertLessEqual(max_rel_diff, self.max_rel_diff)
-    """
 
 
 class TestFusedAdagrad(TestFusedOptimizer):
