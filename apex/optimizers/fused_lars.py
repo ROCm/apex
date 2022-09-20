@@ -18,7 +18,7 @@ class Fused_LARS(Optimizer):
             raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
 
         defaults = dict(lr=lr, momentum=momentum, dampening=dampening,
-                        weight_decay=weight_decay, nesterov=nesterov, trust_coefficient=trust_coefficient, eps=eps)
+                        weight_decay=weight_decay, nesterov=nesterov, trust_coefficient=trust_coefficient, eps=eps, is_skipped=False)
         if nesterov and (momentum <= 0 or dampening != 0):
             raise ValueError("Nesterov momentum requires a momentum and zero dampening")
         super(Fused_LARS, self).__init__(params, defaults)
@@ -88,6 +88,7 @@ class Fused_LARS(Optimizer):
 
         explicit_master_params = (hasattr(self, "_amp_stash") and
                                   hasattr(self._amp_stash, "fp32_from_fp16_groups"))
+        explicit_master_params = False
 
         for gid, group in enumerate(self.param_groups):
             weight_decay = group['weight_decay']
@@ -108,17 +109,6 @@ class Fused_LARS(Optimizer):
 
             n = len(fused_larc_grads)
 
-            # Compute L2 norms
-            w_norms = multi_tensor_applier(
-                    self.multi_tensor_l2norm,
-                    self._dummy_overflow_buf,
-                    [fused_larc_params],
-                    True)[1]
-            g_norms = multi_tensor_applier(
-                    self.multi_tensor_l2norm,
-                    self._dummy_overflow_buf,
-                    [fused_larc_grads],
-                    True)[1]
             
             # For each group, there are 3 possible combinations we need to consider:
             # grad_type, param_to_update_type, momentum_type, requires_fp16_model_copy
@@ -127,6 +117,9 @@ class Fused_LARS(Optimizer):
             # 3. fp16, fp32, fp32, Yes
 
             first_runs = [True, True]
+            g_norms_grp = []
+            w_norms_grp = []
+
 
             # I think a bit of code divergence in exchange for naming clarity is worthwhile
             if explicit_master_params:
@@ -160,20 +153,70 @@ class Fused_LARS(Optimizer):
 
             else:
                 fp16_params = [p for p in group['params'] if (p.dtype == torch.float16 and p.grad is not None)]
-                fp16_grads = [p.grad for p in group['params'] if (p.dtype == torch.float16 and p.grad is not None)]
+                #fp16_grads = [p.grad for p in group['params'] if (p.dtype == torch.float16 and p.grad is not None)]
+                fp16_grads = []
+                for p in fp16_params:
+                    if p.is_contiguous():
+                        fp16_grads.append(p.grad)
+                    else:
+                        fp16_grads.append(p.grad.to(memory_format=torch.channels_last))
                 fp16_momentums, first_runs[0] = self.get_momentums(fp16_params)
+                # Compute L2 norms
+                if len(fp16_params) > 0:
+                    w_norms = multi_tensor_applier(
+                            self.multi_tensor_l2norm,
+                            self._dummy_overflow_buf,
+                            [[p.data for p in fp16_params]],
+                            True)[1]
+                    g_norms = multi_tensor_applier(
+                            self.multi_tensor_l2norm,
+                            self._dummy_overflow_buf,
+                            [[p.data for p in fp16_grads]],
+                            True)[1]
+                else:
+                    w_norms = []
+                    g_norms = []
+                w_norms_grp.append(w_norms)
+                g_norms_grp.append(g_norms)
 
                 fp32_params = [p for p in group['params'] if (p.dtype == torch.float32 and p.grad is not None)]
-                fp32_grads = [p.grad for p in group['params'] if (p.dtype == torch.float32 and p.grad is not None)]
+                #fp32_grads = [p.grad for p in group['params'] if (p.dtype == torch.float32 and p.grad is not None)]
+                fp32_grads = []
+                for p in fp32_params:
+                    if p.is_contiguous():
+                        fp32_grads.append(p.grad)
+                    else:
+                        fp32_grads.append(p.grad.to(memory_format=torch.channels_last))
                 fp32_momentums, first_runs[1] = self.get_momentums(fp32_params)
+                # Compute L2 norms
+                if len(fp32_params) > 0:
+                    w_norms = multi_tensor_applier(
+                            self.multi_tensor_l2norm,
+                            self._dummy_overflow_buf,
+                            [[p.data for p in fp32_params]],
+                            True)[1]
+                    g_norms = multi_tensor_applier(
+                            self.multi_tensor_l2norm,
+                            self._dummy_overflow_buf,
+                            [[p.data for p in fp32_grads]],
+                            True)[1]
+                else:
+                    w_norms = []
+                    g_norms = []
+                w_norms_grp.append(w_norms)
+                g_norms_grp.append(g_norms)
 
                 launch_sets = [[fp16_grads, fp16_params, fp16_momentums],
                                [fp32_grads, fp32_params, fp32_momentums]]
 
-            for s, (launch_set, first_run) in enumerate(zip(launch_sets, first_runs)):
+            for s, (launch_set, first_run, g_norms, w_norms) in enumerate(zip(launch_sets, first_runs, g_norms_grp, w_norms_grp)):
                 assert len(launch_set[0]) == len(launch_set[1])
                 assert len(launch_set[0]) == len(launch_set[2])
                 if len(launch_set[0]) > 0:
+                    #for j, (p, mom) in enumerate(zip(launch_set[1], launch_set[2])):
+                    #    print('Weight ID (%d, %d) : ' % (gid, j), str(p.data))
+                    #    print('Mom ID (%d, %d) : ' % (gid, j), str(mom.data))
+                    #    print('Grad ID (%d, %d) : ' % (gid, j), str(p.grad.data))
                     multi_tensor_applier(
                         self.multi_tensor_lars,
                         self._dummy_overflow_buf,

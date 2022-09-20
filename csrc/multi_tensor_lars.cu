@@ -82,11 +82,11 @@ struct LARSFunctor
     }
     else {
       int tensor_offset = tl.start_tensor_this_launch + tensor_loc;
-      float g_norm = grad_norms[tensor_offset];
       float p_norm = param_norms[tensor_offset];
       float trust_ratio = 1.0;
+      float g_norm = grad_norms[tensor_offset];
       if (g_norm > 0.0f && p_norm > 0.0f) {
-        trust_ratio = trust_coefficient * p_norm / (g_norm + p_norm * weight_decay + epsilon);
+        trust_ratio = trust_coefficient * p_norm / (g_norm + p_norm * weight_decay);// + epsilon);
       }
       scaled_lr = lr * trust_ratio;
     }
@@ -108,7 +108,7 @@ struct LARSFunctor
         int i = i_start + threadIdx.x + ii*blockDim.x;
         if(i < n && i < chunk_size)
         {
-          incoming_grads[ii] = static_cast<float>(grad_in[i])*scale;
+          incoming_grads[ii] = static_cast<float>(grad_in[i]);//*scale;
           incoming_weights[ii] = static_cast<float>(weight_in[i]);
           incoming_moms[ii] = static_cast<float>(mom_in[i]);
         }
@@ -126,39 +126,21 @@ struct LARSFunctor
         if(i < n && i < chunk_size)
         {
 
-          // apply weight decay before momentum if necessary
-          if(weight_decay != 0.f && !wd_after_momentum)
-            incoming_grads[ii] += weight_decay * incoming_weights[ii];
+          incoming_grads[ii] += weight_decay * incoming_weights[ii];
+          // apply weight decay before momentum
+          incoming_moms[ii] = incoming_moms[ii] * momentum - scaled_lr * incoming_grads[ii];
 
-          if(momentum != 0.f)
-          {
-            //if(!first_run)
-              incoming_moms[ii] = incoming_moms[ii] * momentum + (-1 * scaled_lr * incoming_grads[ii]);
-            //else // initialize momentums to current incoming grads
-            //  incoming_moms[ii] = incoming_grads[ii];
-
-            /*
-            if(nesterov)
-              incoming_grads[ii] += momentum * incoming_moms[ii] + (-incoming_grads[ii]);
-            else
-              incoming_grads[ii] = incoming_moms[ii];
-              */
-          }
-
-          // Apply WD after momentum if desired
-          if(weight_decay != 0.f && wd_after_momentum)
-            incoming_grads[ii] += weight_decay * incoming_weights[ii];
-
-	  // adjust the weight and write out
-          weight_in[i] += incoming_moms[ii];//(-scaled_lr * incoming_grads[ii]);
-
+          // adjust the weight and write out
+          incoming_weights[ii] += incoming_moms[ii];//(-scaled_lr * incoming_grads[ii]);
+          weight_in[i] = static_cast<T_weight>(incoming_weights[ii]);
+          
           // if necessary, write out an fp16 copy of the weights
           if(N == 4)
             model_weights_out[i] = static_cast<at::Half>(weight_in[i]);
 
           // also write out the new momentum
-          if(momentum != 0.f)
-            mom_in[i] = incoming_moms[ii];
+          //if(momentum != 0.f)
+            mom_in[i] = static_cast<T_weight>(incoming_moms[ii]);
         }
       }
     }
