@@ -184,7 +184,11 @@ __device__ void checked_signal(
 	// flush all writes to global memory
 	__threadfence_system();
 	// wait for top or bottom neighbor to clear signal
+#if __cplusplus < 201703L
 	register int r1, r2, r3, r4;
+#else
+	int r1, r2, r3, r4;
+#endif
 	if (!(top_zero || btm_zero)) {
 	    bool top_zeroed=false, top_done=false;
 	    bool btm_zeroed=false, btm_done=false;
@@ -308,7 +312,11 @@ __device__ void wait_for(
 {
     bool is_main_thread = (blockIdx.x == 0 && threadIdx.x == 0) ? true : false;
     if (is_main_thread) {
+#if __cplusplus < 201703L
     	register int r1, r2, r3, r4;
+#else
+	int r1, r2, r3, r4;
+#endif
 	// wait for senders to signal their output is read
 	do {
 #ifdef __HIP_PLATFORM_HCC__
@@ -332,7 +340,11 @@ __device__ void clear_flag(
     cg::this_grid().sync();  // wait for all threads in kernel to finish
     bool is_main_thread = (blockIdx.x == 0 && threadIdx.x == 0) ? true : false;
     if (is_main_thread) {
+#if __cplusplus < 201703L
 	register int r1, r2, r3, r4;
+#else
+	int r1, r2, r3, r4;
+#endif
 	r1 = 0;  r2 = 0;  r3 = 0;  r4 = 0;
 #ifdef __HIP_PLATFORM_HCC__
 	__builtin_nontemporal_store(r1, wait_flag);
