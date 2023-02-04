@@ -255,10 +255,10 @@ class NhwcBatchNormAddRelu {
 
   typedef uint16_t StorageType;
   // increasing this to 6 causes spills in fwd kernel!
-  static const int PIXELS_PER_THREAD_IN_REGISTERS_FWD = 5;
-  static const int PIXELS_PER_THREAD_IN_REGISTERS_BWD = 3;
-  static const int PIXELS_PER_THREAD_IN_SMEM_FWD = 10;
-  static const int PIXELS_PER_THREAD_IN_SMEM_BWD = 5;
+  static const int PIXELS_PER_THREAD_IN_REGISTERS_FWD = 1;
+  static const int PIXELS_PER_THREAD_IN_REGISTERS_BWD = 1;
+  static const int PIXELS_PER_THREAD_IN_SMEM_FWD = 1;
+  static const int PIXELS_PER_THREAD_IN_SMEM_BWD = 1;
 
   static const int PIXELS_PER_THREAD_FWD = PIXELS_PER_THREAD_IN_REGISTERS_FWD + \
       PIXELS_PER_THREAD_IN_SMEM_FWD;
