@@ -36,7 +36,7 @@
 
 #ifdef __HIP_PLATFORM_HCC__
 using bitmask_t = uint64_t;
-#define BITMASK_OFFSET 1
+#define BITMASK_OFFSET 2
 #define ONE_BITMASK 1UL
 #else
 using bitmask_t = unsigned int;
@@ -1497,7 +1497,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA, DESIRED_OCCUPANCY)
 
         bitmask_t *const gmem_relu_bitmask = params.gmem_relu_bitmask +
 #ifdef __HIP_PLATFORM_HCC__
-                                     ((params.nhw + 3) & ~3) * c_blk_index;
+                                     ((params.nhw + 3) & ~3) * 2 * c_blk_index;
 #else
                                      ((params.nhw + 31) & ~31) * 2 * c_blk_index;
 #endif
@@ -2655,7 +2655,7 @@ __global__ __launch_bounds__(THREADS_PER_CTA, DESIRED_OCCUPANCY)
 
         const bitmask_t *const gmem_relu_bitmask = params.gmem_relu_bitmask +
 #ifdef __HIP_PLATFORM_HCC__
-                                      ((params.nhw + 3) & ~3) * c_blk_index;
+                                      ((params.nhw + 3) & ~3) * 2 * c_blk_index;
 #else
                                       ((params.nhw + 31) & ~31) * 2 * c_blk_index;
 #endif

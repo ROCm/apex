@@ -248,8 +248,8 @@ class NhwcBatchNormAddRelu {
   // Kernel params
   static const int USE_ONLINE_APPROACH = 1;
   static const int THREADS_PER_CTA = 512;
-  static const int THREADS_PER_PIXEL = 16;
-  static const int C_ELEMENTS_PER_CTA = 64;
+  static const int THREADS_PER_PIXEL = 32;
+  static const int C_ELEMENTS_PER_CTA = 128;
   static const int ELEMENTS_PER_LDG = C_ELEMENTS_PER_CTA / THREADS_PER_PIXEL;
   static const int MAX_SMEM_WITHOUT_OPT_IN = 48 * 1024;
 
@@ -257,8 +257,8 @@ class NhwcBatchNormAddRelu {
   // increasing this to 6 causes spills in fwd kernel!
   static const int PIXELS_PER_THREAD_IN_REGISTERS_FWD = 1;
   static const int PIXELS_PER_THREAD_IN_REGISTERS_BWD = 1;
-  static const int PIXELS_PER_THREAD_IN_SMEM_FWD = 1;
-  static const int PIXELS_PER_THREAD_IN_SMEM_BWD = 1;
+  static const int PIXELS_PER_THREAD_IN_SMEM_FWD = 0;
+  static const int PIXELS_PER_THREAD_IN_SMEM_BWD = 0;
 
   static const int PIXELS_PER_THREAD_FWD = PIXELS_PER_THREAD_IN_REGISTERS_FWD + \
       PIXELS_PER_THREAD_IN_SMEM_FWD;
@@ -559,7 +559,7 @@ const std::vector<size_t> NhwcBatchNormAddRelu::numWorkspaceBytes() const {
   const size_t num_variance_bytes = num_mean_bytes;
 
 #ifdef __HIP_PLATFORM_HCC__
-  int elems_per_group = ((m_ + 3) & ~3);
+  int elems_per_group = ((m_ + 3) & ~3) * 2;
 #else
   int elems_per_group = ((m_ + 31) & ~31) * 2;
 #endif
