@@ -4,7 +4,7 @@ from torch import nn
 from torch.nn.parameter import Parameter
 from apex.multi_tensor_apply import multi_tensor_applier
 
-class Fused_LARS(Optimizer):
+class FusedLARS(Optimizer):
     def __init__(self, params, lr=required, momentum=0, dampening=0,
                  weight_decay=0, trust_coefficient=0.001, eps=0.0,
                  nesterov=False, wd_after_momentum=False,
@@ -21,7 +21,7 @@ class Fused_LARS(Optimizer):
                         weight_decay=weight_decay, nesterov=nesterov, trust_coefficient=trust_coefficient, eps=eps, is_skipped=False)
         if nesterov and (momentum <= 0 or dampening != 0):
             raise ValueError("Nesterov momentum requires a momentum and zero dampening")
-        super(Fused_LARS, self).__init__(params, defaults)
+        super(FusedLARS, self).__init__(params, defaults)
 
         self.wd_after_momentum = wd_after_momentum
         self.materialize_master_grads = materialize_master_grads
@@ -39,10 +39,10 @@ class Fused_LARS(Optimizer):
             self.multi_tensor_lars = amp_C.multi_tensor_lars
             self._dummy_overflow_buf = torch.cuda.IntTensor(1).zero_()
         else:
-            raise RuntimeError('apex.optimizers.Fused_LARS requires cuda extensions')
+            raise RuntimeError('apex.optimizers.FusedLARS requires cuda extensions')
         
     def __setstate__(self, state):
-        super(Fused_LARS, self).__setstate__(state)
+        super(FusedLARS, self).__setstate__(state)
         for group in self.param_groups:
             group.setdefault('nesterov', False)
 
@@ -52,7 +52,7 @@ class Fused_LARS(Optimizer):
                 for p in group['params']:
                     p.grad = None
         else:
-            super(Fused_LARS, self).zero_grad()
+            super(FusedLARS, self).zero_grad()
 
     def get_momentums(self, params):
         momentums = []
@@ -97,18 +97,6 @@ class Fused_LARS(Optimizer):
             nesterov = group['nesterov']
             lr = group['lr']
             is_skipped = group['is_skipped']
-            
-            fused_larc_params = []
-            fused_larc_grads = []
-            for p in group['params']:
-                if p.grad is None:
-                    continue
-    
-                fused_larc_grads.append(p.grad.data)
-                fused_larc_params.append(p.data)
-
-            n = len(fused_larc_grads)
-
             
             # For each group, there are 3 possible combinations we need to consider:
             # grad_type, param_to_update_type, momentum_type, requires_fp16_model_copy
@@ -158,7 +146,7 @@ class Fused_LARS(Optimizer):
                 for p in fp16_params:
                     if p.is_contiguous():
                         fp16_grads.append(p.grad)
-                    else:
+                    elif p.is_contiguous(memory_format=torch.channels_last):
                         fp16_grads.append(p.grad.to(memory_format=torch.channels_last))
                 fp16_momentums, first_runs[0] = self.get_momentums(fp16_params)
                 # Compute L2 norms
@@ -180,12 +168,11 @@ class Fused_LARS(Optimizer):
                 g_norms_grp.append(g_norms)
 
                 fp32_params = [p for p in group['params'] if (p.dtype == torch.float32 and p.grad is not None)]
-                #fp32_grads = [p.grad for p in group['params'] if (p.dtype == torch.float32 and p.grad is not None)]
                 fp32_grads = []
                 for p in fp32_params:
                     if p.is_contiguous():
                         fp32_grads.append(p.grad)
-                    else:
+                    elif p.is_contiguous(memory_format=torch.channels_last):
                         fp32_grads.append(p.grad.to(memory_format=torch.channels_last))
                 fp32_momentums, first_runs[1] = self.get_momentums(fp32_params)
                 # Compute L2 norms
@@ -213,10 +200,6 @@ class Fused_LARS(Optimizer):
                 assert len(launch_set[0]) == len(launch_set[1])
                 assert len(launch_set[0]) == len(launch_set[2])
                 if len(launch_set[0]) > 0:
-                    #for j, (p, mom) in enumerate(zip(launch_set[1], launch_set[2])):
-                    #    print('Weight ID (%d, %d) : ' % (gid, j), str(p.data))
-                    #    print('Mom ID (%d, %d) : ' % (gid, j), str(mom.data))
-                    #    print('Grad ID (%d, %d) : ' % (gid, j), str(p.grad.data))
                     multi_tensor_applier(
                         self.multi_tensor_lars,
                         self._dummy_overflow_buf,

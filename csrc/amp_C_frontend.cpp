@@ -190,5 +190,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("multi_tensor_lamb_mp", &multi_tensor_lamb_mp_cuda,
         "Computes and apply update for LAMB optimizer");
   m.def("multi_tensor_lars", &multi_tensor_lars_cuda,
-        "Computes new gradients using LARS");
+        "Fused LARS optimizer for list of contiguous tensors");
 }

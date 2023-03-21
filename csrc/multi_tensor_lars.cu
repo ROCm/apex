@@ -86,7 +86,7 @@ struct LARSFunctor
       float trust_ratio = 1.0;
       float g_norm = grad_norms[tensor_offset];
       if (g_norm > 0.0f && p_norm > 0.0f) {
-        trust_ratio = trust_coefficient * p_norm / (g_norm + p_norm * weight_decay);// + epsilon);
+        trust_ratio = trust_coefficient * p_norm / (g_norm + p_norm * weight_decay + epsilon);
       }
       scaled_lr = lr * trust_ratio;
     }
@@ -108,7 +108,7 @@ struct LARSFunctor
         int i = i_start + threadIdx.x + ii*blockDim.x;
         if(i < n && i < chunk_size)
         {
-          incoming_grads[ii] = static_cast<float>(grad_in[i]);//*scale;
+          incoming_grads[ii] = static_cast<float>(grad_in[i]);
           incoming_weights[ii] = static_cast<float>(weight_in[i]);
           incoming_moms[ii] = static_cast<float>(mom_in[i]);
         }
@@ -125,13 +125,17 @@ struct LARSFunctor
         int i = i_start + threadIdx.x + ii*blockDim.x;
         if(i < n && i < chunk_size)
         {
-
-          incoming_grads[ii] += weight_decay * incoming_weights[ii];
           // apply weight decay before momentum
+          incoming_grads[ii] += weight_decay * incoming_weights[ii];
           incoming_moms[ii] = incoming_moms[ii] * momentum - scaled_lr * incoming_grads[ii];
 
           // adjust the weight and write out
-          incoming_weights[ii] += incoming_moms[ii];//(-scaled_lr * incoming_grads[ii]);
+          if (nesterov) {
+            incoming_weights[ii] += incoming_moms[ii] * momentum - scaled_lr * incoming_grads[ii];
+          } else {
+            incoming_weights[ii] += incoming_moms[ii];
+          }
+
           weight_in[i] = static_cast<T_weight>(incoming_weights[ii]);
           
           // if necessary, write out an fp16 copy of the weights
