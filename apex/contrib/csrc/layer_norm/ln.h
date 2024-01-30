@@ -1,8 +1,13 @@
 #pragma once
 
+#include <functional>
 #include <unordered_map>
 #include <cuda_fp16.h>
+#ifdef USE_ROCM
+#include <hip/hip_bfloat16.h>
+#else
 #include <cuda_bf16.h>
+#endif
 
 namespace layer_norm {
 
@@ -121,7 +126,11 @@ extern BwdRegistry BWD_FUNCS;
 
 using fp32 = float;
 using fp16 = half;
+#ifdef USE_ROCM
+using bf16 = hip_bfloat16;
+#else
 using bf16 = nv_bfloat16;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

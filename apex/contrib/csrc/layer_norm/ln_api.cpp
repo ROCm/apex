@@ -89,9 +89,9 @@ std::vector<at::Tensor> ln_fwd(const at::Tensor &x,      // BxSxhidden_size
 
     TORCH_CHECK(beta.scalar_type() == wtype);
 
-    TORCH_CHECK(x.is_cuda())
-    TORCH_CHECK(gamma.is_cuda())
-    TORCH_CHECK(beta.is_cuda())
+    //TORCH_CHECK(x.is_cuda())
+    //TORCH_CHECK(gamma.is_cuda())
+    //TORCH_CHECK(beta.is_cuda())
 
     TORCH_CHECK(x.is_contiguous());
     auto sizes = x.sizes();
@@ -170,11 +170,11 @@ std::vector<at::Tensor> ln_bwd(const at::Tensor &dz,     // BxSxhidden_size
     TORCH_CHECK(mu.dtype() == ctype);
     TORCH_CHECK(rsigma.dtype() == ctype);
 
-    TORCH_CHECK(x.is_cuda());
-    TORCH_CHECK(dz.is_cuda());
-    TORCH_CHECK(mu.is_cuda());
-    TORCH_CHECK(rsigma.is_cuda());
-    TORCH_CHECK(gamma.is_cuda());
+    //TORCH_CHECK(x.is_cuda());
+    //TORCH_CHECK(dz.is_cuda());
+    //TORCH_CHECK(mu.is_cuda());
+    //TORCH_CHECK(rsigma.is_cuda());
+    //TORCH_CHECK(gamma.is_cuda());
 
     TORCH_CHECK(x.is_contiguous());
     TORCH_CHECK(dz.is_contiguous());

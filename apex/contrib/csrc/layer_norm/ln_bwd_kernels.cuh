@@ -18,6 +18,7 @@ void ln_bwd_kernel(layer_norm::BwdParams params) {
     enum { CTAS_PER_ROW = Ktraits::CTAS_PER_ROW };
 
     using compute_t = typename Ktraits::compute_t;
+    using input_t = typename Ktraits::input_t;
     using index_t = typename Ktraits::index_t;
     using Ivec = typename Ktraits::Ivec;
     using Ovec = typename Ktraits::Ovec;
@@ -40,7 +41,7 @@ void ln_bwd_kernel(layer_norm::BwdParams params) {
     const index_t r = bidm * Ktraits::ROWS_PER_CTA + warp_m;
     const index_t c = bidn * THREADS_PER_ROW + warp_n * THREADS_PER_WARP + lane;
 
-    static_assert(COLS == THREADS_PER_ROW * LDGS * NUM_ELTS * CTAS_PER_ROW);
+    static_assert(COLS == THREADS_PER_ROW * LDGS * NUM_ELTS * CTAS_PER_ROW, "LDGS needs to be a whole number. See ln_kernel_traits.h and update kernel parameters in REGISTER_BWD_LAUNCHER.");
 
     Cvec dzy_sum[LDGS];
     Cvec dz_sum[LDGS];
@@ -119,7 +120,7 @@ void ln_bwd_kernel(layer_norm::BwdParams params) {
                 compute_t dy_tmp = dy[it * NUM_ELTS + jt];
                 compute_t y_tmp = y[it * NUM_ELTS + jt];
                 compute_t dx_tmp = rs_r * (dy_tmp - (mdyy_local * y_tmp + mdy_local));
-                dx[it].data.elt[jt] = dx_tmp;
+                dx[it].data.elt[jt] = input_t(dx_tmp);
             }
             dx[it].store_to(params.dx, idx);
             idx += Ktraits::VEC_COLS_PER_LDG;
@@ -142,7 +143,7 @@ void ln_bwd_kernel(layer_norm::BwdParams params) {
 
         // Assumption: blockSize divides hidden size.
         enum { NUM_RES = COLS / Ktraits::THREADS_PER_CTA };
-        static_assert(NUM_RES * Ktraits::THREADS_PER_CTA == COLS, "");
+        static_assert(NUM_RES * Ktraits::THREADS_PER_CTA == COLS, "NUM_RES needs to be a whole number. See ln_kernel_traits.h and update kernel parameters in REGISTER_BWD_LAUNCHER.");
 
         idx = warp_m * Ktraits::VEC_COLS + tid_r;
         #pragma unroll

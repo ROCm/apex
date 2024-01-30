@@ -22,7 +22,11 @@ struct Kernel_traits_base {
 
     enum { HIDDEN_SIZE = HIDDEN_SIZE_ };
     enum { THREADS_PER_CTA = THREADS_PER_CTA_ };
+#ifdef USE_ROCM
+    enum { THREADS_PER_WARP = 64 };
+#else
     enum { THREADS_PER_WARP = 32 };
+#endif
 
 };
 
@@ -47,7 +51,7 @@ template<
 >
 struct Kernel_traits_finalize : public Base {
     enum { ROWS_PER_CTA = Base::THREADS_PER_CTA / Base::THREADS_PER_WARP };
-    static_assert((int) ROWS_PER_CTA <= (int) Base::THREADS_PER_WARP);
+    static_assert((int) ROWS_PER_CTA <= (int) Base::THREADS_PER_WARP, "ROWS_PER_CTA (WARP_M) needs to be less than warpsize.");
     // Bytes per global load from the input. 
     enum { BYTES_PER_LDG = BYTES_PER_LDG_ };
     // Number of elements fetched by a global load.
@@ -58,7 +62,7 @@ struct Kernel_traits_finalize : public Base {
     static_assert(Base::THREADS_PER_CTA == ROWS_PER_CTA * Base::THREADS_PER_WARP, "We assume one warp per row!");
     // The total number of BYTES_PER_LDG-wide words in a hidden vector.
     enum { COLS = HIDDEN_SIZE_ * sizeof(compute_t_) / BYTES_PER_LDG };
-    static_assert(COLS * BYTES_PER_LDG == HIDDEN_SIZE_ * sizeof(compute_t_));
+    static_assert(COLS * BYTES_PER_LDG == HIDDEN_SIZE_ * sizeof(compute_t_), "HIDDEN_SIZE needs to be a multiple of elements per ldg (BYTES_PER_LDG / sizeof(ctype)) in REGISTER_BWD_LAUNCHER.");
 
     // Shared memory size to transpose the CTA result.
     enum { SMEM_BYTES_TRANSPOSE = Base::THREADS_PER_CTA * BYTES_PER_LDG };
@@ -71,7 +75,7 @@ struct Kernel_traits_finalize : public Base {
     using Reducer = layer_norm::Reducer<compute_t_, 1, 1, 1>;
 
     // Condition for the whole CTA to participate in syncthreads.
-    static_assert(COLS % Base::THREADS_PER_WARP == 0);
+    static_assert(COLS % Base::THREADS_PER_WARP == 0, "HIDDEN_SIZE needs to be a multiple of BYTES_PER_LDG * warpSize in REGISTER_BWD_LAUNCHER");
     enum { CTAS = COLS / Base::THREADS_PER_WARP };
 }; 
 
@@ -84,10 +88,10 @@ template<
     typename output_t_,
     typename compute_t_,
     typename index_t_,
-    uint32_t HIDDEN_SIZE_, 
-    uint32_t CTAS_PER_ROW_, 
-    uint32_t WARPS_M_, 
-    uint32_t WARPS_N_, 
+    uint32_t HIDDEN_SIZE_,
+    uint32_t CTAS_PER_ROW_,
+    uint32_t WARPS_M_,
+    uint32_t WARPS_N_,
     uint32_t BYTES_PER_LDG_ = 16,
     typename Base = Kernel_traits_base<
         HIDDEN_SIZE_,
@@ -123,7 +127,7 @@ struct Kernel_traits : public Base {
     enum { BYTES_PER_ROW_PER_CTA = THREADS_PER_ROW * BYTES_PER_LDG };
     // Multi-row per CTA not supported for multi-CTA => no smem for WGRAD needed
     enum { SMEM_BYTES_WGRAD = CTAS_PER_ROW > 1 ? 0 : ROWS_PER_CTA * COLS * sizeof(compute_t) };
-    static_assert(WARPS_M == 1 || CTAS_PER_ROW == 1);
+    static_assert(WARPS_M == 1 || CTAS_PER_ROW == 1, "Multiple rows per CTA not supported for Multi-CTA.");
 
     using reduce_t = typename layer_norm::TypeToVec2<compute_t>::Type;
     using Reducer = layer_norm::Reducer<reduce_t, CTAS_PER_ROW, WARPS_M, WARPS_N>; 
@@ -135,18 +139,19 @@ struct Kernel_traits : public Base {
     using Ovec = layer_norm::Vec<output_t, NUM_ELTS>;
     using Wvec = layer_norm::Vec<weight_t, NUM_ELTS>;
     using Cvec = layer_norm::Vec<compute_t, NUM_ELTS>;
+    //using Tvec = layer_norm::Vec<int64, 1>;
     enum { ELTS_PER_LDG = BYTES_PER_LDG / sizeof(input_t) };
 
     // Assume that each thread can handle the same number of elements in the output and weights as in the input.
-    static_assert(sizeof(input_t) >= sizeof(output_t));
-    static_assert(sizeof(input_t) >= sizeof(weight_t));
+    static_assert(sizeof(input_t) >= sizeof(output_t), "input_t size should be >= output_t size.");
+    static_assert(sizeof(input_t) >= sizeof(weight_t), "input_t size should be >= weight_t size.");
     // The number of columns fetched per load from input: one per thread.
     enum { VEC_COLS_PER_LDG =  CTAS_PER_ROW * THREADS_PER_ROW };
     // The total number of vectorized loads/stores per hidden vector.
     enum { VEC_COLS = COLS / ELTS_PER_LDG };
     // The number of loads per thread for the input.
     enum { LDGS = VEC_COLS / VEC_COLS_PER_LDG };
-    static_assert(LDGS * VEC_COLS_PER_LDG  == VEC_COLS);
+    static_assert(LDGS * VEC_COLS_PER_LDG  == VEC_COLS, "LDGS needs to be a whole number. Check ln_kernel_trails.h for LDGS definition and update kernel params in REGISTER_BWD_LAUNCHER.");
     //static_assert(LDGS * BYTES_PER_ROW_PER_CTA * CTAS_PER_ROW == BYTES_PER_ROW, "");
 
     using Stats = layer_norm::Stats<compute_t, CTAS_PER_ROW, WARPS_M, WARPS_N>;
