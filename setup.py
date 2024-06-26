@@ -351,6 +351,13 @@ if "--cuda_ext" in sys.argv:
                           extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
                                               'nvcc':nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer}))
         ext_modules.append(
+            CUDAExtension(name='generic_scaled_masked_softmax_cuda',
+                          sources=['csrc/megatron/generic_scaled_masked_softmax.cpp',
+                                   'csrc/megatron/generic_scaled_masked_softmax_cuda.cu'],
+                          include_dirs=[os.path.join(this_dir, "csrc")],
+                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                                              'nvcc':nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer}))
+        ext_modules.append(
             CUDAExtension(name='scaled_masked_softmax_cuda',
                           sources=['csrc/megatron/scaled_masked_softmax.cpp',
                                    'csrc/megatron/scaled_masked_softmax_cuda.cu'],
@@ -358,6 +365,38 @@ if "--cuda_ext" in sys.argv:
                                         os.path.join(this_dir, 'csrc/megatron')],
                           extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
                                               'nvcc':nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer}))
+        ext_modules.append(
+            CUDAExtension(name='scaled_softmax_cuda',
+                          sources=['csrc/megatron/scaled_softmax.cpp',
+                                   'csrc/megatron/scaled_softmax_cuda.cu'],
+                          include_dirs=[os.path.join(this_dir, 'csrc'),
+                                        os.path.join(this_dir, 'csrc/megatron')],
+                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                                              'nvcc':nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer}))
+        if not IS_ROCM_PYTORCH:
+            if bare_metal_version >= Version("11.0"):
+                cc_flag = []
+                cc_flag.append("-gencode")
+                cc_flag.append("arch=compute_70,code=sm_70")
+                cc_flag.append("-gencode")
+                cc_flag.append("arch=compute_80,code=sm_80")
+                if bare_metal_version >= Version("11.1"):
+                    cc_flag.append("-gencode")
+                    cc_flag.append("arch=compute_86,code=sm_86")
+                if bare_metal_version >= Version("11.8"):
+                    cc_flag.append("-gencode")
+                    cc_flag.append("arch=compute_90,code=sm_90")
+
+        ext_modules.append(
+        CUDAExtension(name='fused_weight_gradient_mlp_cuda',
+                        sources=['csrc/megatron/fused_weight_gradient_dense.cpp',
+                                'csrc/megatron/fused_weight_gradient_dense_cuda.cu',
+                                'csrc/megatron/fused_weight_gradient_dense_16bit_prec_cuda.cu'],
+                        include_dirs=[os.path.join(this_dir, 'csrc'),
+                                    os.path.join(this_dir, 'csrc/megatron')],
+                        extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
+                                            'nvcc':append_nvcc_threads(nvcc_args_transformer + ['--use_fast_math'] + cc_flag) 
+                                            if not IS_ROCM_PYTORCH else hipcc_args_transformer}))
 
 
 if "--bnp" in sys.argv or "--cuda_ext" in sys.argv:
@@ -613,7 +652,7 @@ if "--fast_multihead_attn" in sys.argv or "--cuda_ext" in sys.argv:
 if "--transducer" in sys.argv or "--cuda_ext" in sys.argv:
     if "--transducer" in sys.argv:
         sys.argv.remove("--transducer")
-    
+
     if not IS_ROCM_PYTORCH:
         raise_if_cuda_home_none("--transducer")
 

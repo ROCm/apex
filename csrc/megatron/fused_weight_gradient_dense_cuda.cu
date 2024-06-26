@@ -30,6 +30,34 @@ void gemmex_wrapper(
     const float* beta,
     float* C,
     int ldc) {
+#ifdef __HIP_PLATFORM_HCC__
+  rocblas_int flags = 0;
+  TORCH_CUDABLAS_CHECK(rocblas_gemm_ex(
+      handle,
+      transa,
+      transb,
+      m,
+      n,
+      k,
+      alpha,
+      A,
+      rocblas_datatype_f16_r,
+      lda,
+      B,
+      rocblas_datatype_f16_r,
+      ldb,
+      beta,
+      C,
+      rocblas_datatype_f32_r,
+      ldc,
+      C,
+      rocblas_datatype_f32_r,
+      ldc,
+      rocblas_datatype_f32_r,
+      rocblas_gemm_algo_standard,
+      0 /*solution_index*/,
+      flags));
+#else
   TORCH_CUDABLAS_CHECK(cublasGemmEx(
       handle,
       transa,
@@ -50,6 +78,7 @@ void gemmex_wrapper(
       ldc,
       CUDA_R_32F,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+#endif
 }
 
 // FP16 Tensor core wrapper around cublas GEMMEx
@@ -68,6 +97,34 @@ void gemmex_wrapper(
     const float* beta,
     float* C,
     int ldc) {
+#ifdef __HIP_PLATFORM_HCC__
+  rocblas_int flags = 0;
+  TORCH_CUDABLAS_CHECK(rocblas_gemm_ex(
+      handle,
+      transa,
+      transb,
+      m,
+      n,
+      k,
+      alpha,
+      A,
+      rocblas_datatype_f16_r,
+      lda,
+      B,
+      rocblas_datatype_f16_r,
+      ldb,
+      beta,
+      C,
+      rocblas_datatype_f32_r,
+      ldc,
+      C,
+      rocblas_datatype_f32_r,
+      ldc,
+      rocblas_datatype_f32_r,
+      rocblas_gemm_algo_standard,
+      0 /*solution_index*/,
+      flags));
+#else
   TORCH_CUDABLAS_CHECK(cublasGemmEx(
       handle,
       transa,
@@ -88,6 +145,7 @@ void gemmex_wrapper(
       ldc,
       CUDA_R_32F,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+#endif
 }
 
 // FP32 wrapper around cublas GEMMEx
@@ -106,6 +164,34 @@ void gemmex_wrapper(
     const float *beta,
     float *C,
     int ldc) {
+#ifdef __HIP_PLATFORM_HCC__
+  rocblas_int flags = 0;
+  TORCH_CUDABLAS_CHECK(rocblas_gemm_ex(
+      handle,
+      transa,
+      transb,
+      m,
+      n,
+      k,
+      alpha,
+      A,
+      rocblas_datatype_f32_r,
+      lda,
+      B,
+      rocblas_datatype_f32_r,
+      ldb,
+      beta,
+      C,
+      rocblas_datatype_f32_r,
+      ldc,
+      C,
+      rocblas_datatype_f32_r,
+      ldc,
+      rocblas_datatype_f32_r,
+      rocblas_gemm_algo_standard,
+      0 /*solution_index*/,
+      flags));
+#else
   TORCH_CUDABLAS_CHECK(cublasGemmEx(
       handle,
       transa,
@@ -126,6 +212,7 @@ void gemmex_wrapper(
       ldc,
       CUDA_R_32F,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+#endif
 }
 
 template <typename T>

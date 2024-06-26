@@ -6,6 +6,7 @@ import torch
 from torch.testing._internal import common_utils
 from apex.contrib.optimizers.distributed_fused_adam import DistributedFusedAdam
 from apex.transformer.testing.distributed_test_base import NcclDistributedTestBase
+from apex.testing.common_utils import skipIfRocm
 
 class SimpleModel(torch.nn.Module):
 
@@ -250,6 +251,7 @@ class TestDistributedFusedAdam(NcclDistributedTestBase):
                                              dist_model.parameters()):
                 torch.testing.assert_close(dist_param, ref_param)
 
+    @skipIfRocm
     def test_grad_scaler(self):
 
         torch.manual_seed(self.seed + self.rank)

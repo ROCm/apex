@@ -18,7 +18,9 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_fp16.h>
-//#include <cuda_profiler_api.h>
+#ifndef __HIP_PLATFORM_HCC__
+#include <cuda_profiler_api.h>
+#endif
 #include <ATen/cuda/CUDAContext.h>
 #include <torch/extension.h>
 #include "scaled_masked_softmax.h"
@@ -44,7 +46,7 @@ torch::Tensor fwd_cuda(
   const int attn_heads = input.size(1);
   const int query_seq_len = input.size(2);
   const int key_seq_len = input.size(3);
-  TORCH_INTERNAL_ASSERT(key_seq_len <= 2048);
+  TORCH_INTERNAL_ASSERT(key_seq_len <= 4096);
   TORCH_INTERNAL_ASSERT(query_seq_len > 1);
   TORCH_INTERNAL_ASSERT(pad_batches == 1 || pad_batches == batches);
   TORCH_INTERNAL_ASSERT(mask.size(1) == 1);

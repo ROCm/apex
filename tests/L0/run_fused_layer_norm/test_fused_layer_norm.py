@@ -3,8 +3,12 @@ import unittest
 
 import torch
 
-import apex
 from apex.testing.common_utils import skipFlakyTest
+from apex.normalization import FusedLayerNorm
+from apex.normalization import FusedRMSNorm
+from apex.normalization import MixedFusedLayerNorm
+from apex.normalization import MixedFusedRMSNorm
+
 
 class TestFusedLayerNorm(unittest.TestCase):
     dtype = torch.float
@@ -18,15 +22,15 @@ class TestFusedLayerNorm(unittest.TestCase):
     def setUp(self):
         # bias and weight are set to 0 and 1 respectively, so no need to copy parameters from cpu module to the gpu one
         if not self.mixed_fused:
-            self.module_cpu_ = apex.normalization.FusedLayerNorm(
+            self.module_cpu_ = FusedLayerNorm(
                 normalized_shape=self.normalized_shape, elementwise_affine=self.elementwise_affine).cpu()
-            self.module_cuda_ = apex.normalization.FusedLayerNorm(
+            self.module_cuda_ = FusedLayerNorm(
                 normalized_shape=self.normalized_shape, elementwise_affine=self.elementwise_affine).to(device="cuda", dtype=self.dtype)
         else:
             assert self.elementwise_affine
-            self.module_cpu_ = apex.normalization.MixedFusedLayerNorm(
+            self.module_cpu_ = MixedFusedLayerNorm(
                 normalized_shape=self.normalized_shape).cpu()
-            self.module_cuda_ = apex.normalization.MixedFusedLayerNorm(
+            self.module_cuda_ = MixedFusedLayerNorm(
                 normalized_shape=self.normalized_shape).to(device="cuda", dtype=self.dtype)
 
 
@@ -65,8 +69,7 @@ class TestFusedLayerNorm(unittest.TestCase):
 
     def _test_same_output(self, batch_size):
         for contiguous in (True, False):
-            with self.subTest(contiguous=contiguous):
-                self._check_same_output(batch_size, contiguous)
+            self._check_same_output(batch_size, contiguous)
 
     def test_layer_norm(self):
         self._test_same_output(16)
@@ -87,15 +90,15 @@ class TestFusedRMSNorm(unittest.TestCase):
     def setUp(self):
         # bias and weight are set to 0 and 1 respectively, so no need to copy parameters from cpu module to the gpu one
         if not self.mixed_fused:
-            self.module_cpu_ = apex.normalization.FusedRMSNorm(
+            self.module_cpu_ = FusedRMSNorm(
                 normalized_shape=self.normalized_shape, elementwise_affine=self.elementwise_affine).cpu()
-            self.module_cuda_ = apex.normalization.FusedRMSNorm(
+            self.module_cuda_ = FusedRMSNorm(
                 normalized_shape=self.normalized_shape, elementwise_affine=self.elementwise_affine).to(device="cuda", dtype=self.dtype)
         else:
             assert self.elementwise_affine
-            self.module_cpu_ = apex.normalization.MixedFusedRMSNorm(
+            self.module_cpu_ = MixedFusedRMSNorm(
                 normalized_shape=self.normalized_shape).cpu()
-            self.module_cuda_ = apex.normalization.MixedFusedRMSNorm(
+            self.module_cuda_ = MixedFusedRMSNorm(
                 normalized_shape=self.normalized_shape).to(device="cuda", dtype=self.dtype)
 
     def _check_same_output(self, batch_size, contiguous):
@@ -136,8 +139,7 @@ class TestFusedRMSNorm(unittest.TestCase):
 
     def _test_same_output(self, batch_size):
         for contiguous in (True, False):
-            with self.subTest(contiguous=contiguous):
-                self._check_same_output(batch_size, contiguous)
+            self._check_same_output(batch_size, contiguous)
 
     def test_layer_norm(self):
         self._test_same_output(16)
@@ -206,17 +208,17 @@ def _prep_layers(normalized_shape, elementwise_affine, dtype):
     native = torch.nn.LayerNorm(
         normalized_shape=normalized_shape, elementwise_affine=elementwise_affine
     ).to(device="cuda", dtype=dtype)
-    fused = apex.normalization.FusedLayerNorm(
+    fused = FusedLayerNorm(
         normalized_shape=normalized_shape, elementwise_affine=elementwise_affine
     ).cuda()
     return native, fused
 
 
 def _prep_rms_layers(normalized_shape, elementwise_affine, dtype):
-    native = apex.normalization.FusedRMSNorm(
+    native = FusedRMSNorm(
         normalized_shape=normalized_shape, elementwise_affine=elementwise_affine
     )
-    fused = apex.normalization.FusedRMSNorm(
+    fused = FusedRMSNorm(
         normalized_shape=normalized_shape, elementwise_affine=elementwise_affine
     ).cuda()
     return native, fused
@@ -261,8 +263,7 @@ class TestAutocastFusedLayerNorm(unittest.TestCase):
 
     def test_autocast(self):
         for (dtype, elementwise_affine) in itertools.product(autocast_dtypes, (True, False)):
-            with self.subTest(f"{dtype}-{elementwise_affine}"):
-                self._run_test(dtype, elementwise_affine)
+            self._run_test(dtype, elementwise_affine)
 
 @unittest.skip("Skipped on ROCm5.2 due to the failure of reproducing the issue locally. (Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!) Please refer to https://github.com/ROCmSoftwarePlatform/apex/pull/78")
 class TestAutocastFusedRMSNorm(unittest.TestCase):
@@ -294,5 +295,8 @@ class TestAutocastFusedRMSNorm(unittest.TestCase):
 
     def test_autocast(self):
         for (dtype, elementwise_affine) in itertools.product(autocast_dtypes, (True, False)):
-            with self.subTest(f"{dtype}-{elementwise_affine}"):
-                self._run_test(dtype, elementwise_affine)
+            self._run_test(dtype, elementwise_affine)
+
+
+if __name__ == "__main__":
+    unittest.main()
