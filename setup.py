@@ -224,7 +224,7 @@ if "--cpp_ext" in sys.argv:
     sys.argv.remove("--cpp_ext")
     ext_modules.append(CppExtension("apex_C", ["csrc/flatten_unflatten.cpp"]))
 
-if "--distributed_adam" in sys.argv:
+if "--distributed_adam" in sys.argv or "--cuda_ext" in sys.argv:
     sys.argv.remove("--distributed_adam")
     raise_if_home_none("--distributed_adam")
     nvcc_args_adam = ['-O3', '--use_fast_math'] + version_dependent_macros
@@ -247,7 +247,7 @@ if "--distributed_adam" in sys.argv:
         )
     )
 
-if "--distributed_lamb" in sys.argv:
+if "--distributed_lamb" in sys.argv or "--cuda_ext" in sys.argv:
     sys.argv.remove("--distributed_lamb")
     raise_if_home_none("--distributed_adam")
 
