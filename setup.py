@@ -25,11 +25,15 @@ torch_dir = torch.__path__[0]
 
 def hipBLASlt_supported():
     supported_arch = ['gfx942']
-    device_props = torch.cuda.get_device_properties(0); 
-    if device_props.gcnArchName.split(":",1)[0] in supported_arch: 
+    arch_param = os.environ.get("PYTORCH_ROCM_ARCH", None)
+    if arch_param in supported_arch:
         return True
-    else:
-        return False
+    #torch.cuda.get_device_properties might fail if env does not have visible GPUs.
+    if torch.cuda.is_available():
+        device_props = torch.cuda.get_device_properties(0);
+        if device_props.gcnArchName.split(":",1)[0] in supported_arch:
+            return True
+    return False
 
 # https://github.com/pytorch/pytorch/pull/71881
 # For the extensions which have rocblas_gemm_flags_fp16_alt_impl we need to make sure if at::BackwardPassGuard exists.
@@ -164,6 +168,7 @@ def check_if_rocm_pytorch():
 
 IS_ROCM_PYTORCH = check_if_rocm_pytorch()
 IS_HIPBLASLT_SUPPORTED = hipBLASlt_supported()
+print(f"INFO: IS_HIPBLASLT_SUPPORTED value is {IS_HIPBLASLT_SUPPORTED}")
 
 if not torch.cuda.is_available() and not IS_ROCM_PYTORCH:
     # https://github.com/NVIDIA/apex/issues/486
