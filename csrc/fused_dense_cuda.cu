@@ -30,7 +30,6 @@
             __FILE__,                         \
             __LINE__);                        \
     exit(EXIT_FAILURE);                       \
-
   }
 #endif
 
