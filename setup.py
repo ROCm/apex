@@ -25,6 +25,9 @@ torch_dir = torch.__path__[0]
 
 def hipBLASlt_supported():
     supported_arch = ['gfx942']
+    arch_param = os.environ.get("PYTORCH_ROCM_ARCH", None)
+    if arch_param in supported_arch:
+        return True
     #torch.cuda.get_device_properties might fail if env does not have visible GPUs.
     if torch.cuda.is_available():
         device_props = torch.cuda.get_device_properties(0);
@@ -165,6 +168,7 @@ def check_if_rocm_pytorch():
 
 IS_ROCM_PYTORCH = check_if_rocm_pytorch()
 IS_HIPBLASLT_SUPPORTED = hipBLASlt_supported()
+print(f"INFO: IS_HIPBLASLT_SUPPORTED value is {IS_HIPBLASLT_SUPPORTED}")
 
 if not torch.cuda.is_available() and not IS_ROCM_PYTORCH:
     # https://github.com/NVIDIA/apex/issues/486
