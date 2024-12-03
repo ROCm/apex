@@ -400,7 +400,7 @@ at::Tensor linear_bias_forward(at::Tensor input, at::Tensor weight, at::Tensor b
 
 #else 
   DISPATCH_TYPES(input.scalar_type(), "linear_bias_forward", [&] {
-    auto result = gemm_bias<compute_t, compute_datatype_t, scalar_t, datatype_t>(
+    auto result = gemm_bias<compute_t, scalar_t, datatype_t>(
                             HIPBLAS_OP_T, HIPBLAS_OP_N, out_features, batch_size, in_features, 
                             &alpha, &beta, weight.data_ptr<scalar_t>(), input.data_ptr<scalar_t>(), output.data_ptr<scalar_t>());
     if (result != 0) { fprintf(stderr, "INVALID RESULT for linear_bias_forward\n"); }
@@ -451,15 +451,15 @@ std::vector<at::Tensor> linear_bias_backward(at::Tensor input, at::Tensor weight
 #else
 
   DISPATCH_TYPES(input.scalar_type(), "linear_bias_forward", [&] {
-    auto result = gemm_bias<compute_t, compute_datatype_t, scalar_t, datatype_t>(
+    auto result = gemm_bias<compute_t, scalar_t, datatype_t>(
                             HIPBLAS_OP_N, HIPBLAS_OP_T, in_features, out_features, batch_size, 
                             &alpha, &beta, input.data_ptr<scalar_t>(), output.data_ptr<scalar_t>(), grad_weight.data_ptr<scalar_t>());
     if (result != 0) { fprintf(stderr, "INVALID RESULT for linear_bias_forward\n"); }
   });
 
     DISPATCH_TYPES(input.scalar_type(), "linear_bias_forward", [&] {
-    auto result = gemm_bias<compute_t, compute_datatype_t, scalar_t, datatype_t>(
-                            HIPBLAS_OP_N, HIPBLAS_OP_N, in_features, batch_size,, out_features,
+    auto result = gemm_bias<compute_t, scalar_t, datatype_t>(
+                            HIPBLAS_OP_N, HIPBLAS_OP_N, in_features, batch_size, out_features,
                             &alpha, &beta, weight.data_ptr<scalar_t>(), output.data_ptr<scalar_t>(), grad_input.data_ptr<scalar_t>());
     if (result != 0) { fprintf(stderr, "INVALID RESULT for linear_bias_forward\n"); }
   });
