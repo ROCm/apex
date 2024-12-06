@@ -25,9 +25,6 @@ torch_dir = torch.__path__[0]
 
 def hipBLASlt_supported():
     supported_arch = ['gfx942']
-    arch_param = os.environ.get("PYTORCH_ROCM_ARCH", None)
-    if arch_param in supported_arch:
-        return True
     #torch.cuda.get_device_properties might fail if env does not have visible GPUs.
     if torch.cuda.is_available():
         device_props = torch.cuda.get_device_properties(0);
