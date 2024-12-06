@@ -152,10 +152,6 @@ Note that using --cuda_ext flag to install Apex will also enable all the extensi
 ### Enable hipblasLT on ROCm
 hipblasLT is supported only on mi300 (gfx942) only.  
 python setup.py automatically builds apex with hipblasLT support only if GPU device id is gfx942  
-If you are building apex with no access to GPU (example during docker build) ; to enable hipblasLT support pass the environment variable PYTORCH_ROCM_ARCH in the build command.  
-```
-PYTORCH_ROCM_ARCH="gfx942" python3 setup.py install --cpp_ext --cuda_ext
-```
 To verify if hipblasLT support is enabled, check the build logs  
 INFO: IS_HIPBLASLT_SUPPORTED value is True  ==> indicates apex is built with hipblasLT support  
 INFO: IS_HIPBLASLT_SUPPORTED value is False  
