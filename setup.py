@@ -164,7 +164,14 @@ def check_if_rocm_pytorch():
     return is_rocm_pytorch
 
 IS_ROCM_PYTORCH = check_if_rocm_pytorch()
-IS_HIPBLASLT_SUPPORTED = hipBLASlt_supported()
+
+#ToDo: remove hipBLASlt_supported(), determine in run time
+#if device is gfx942 and call hipblasLT functions.
+#Remove IS_HIPBLASLT_SUPPORTED and HIPBLASLT
+#For now, IS_HIPBLASLT_SUPPORTED is True always
+
+#IS_HIPBLASLT_SUPPORTED = hipBLASlt_supported()
+IS_HIPBLASLT_SUPPORTED = True
 print(f"INFO: IS_HIPBLASLT_SUPPORTED value is {IS_HIPBLASLT_SUPPORTED}")
 
 if not torch.cuda.is_available() and not IS_ROCM_PYTORCH:
