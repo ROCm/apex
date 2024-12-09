@@ -145,7 +145,9 @@ int gemm_lt(
   hipblasHandle_t handle = at::cuda::getCurrentCUDABlasHandle();
   hipblasGetStream(handle, &stream);
 
+#if DEBUG
   std::cout << "gemm_lt " << std::endl;
+#endif
   if ((trans_a == HIPBLAS_OP_T) && (trans_b == HIPBLAS_OP_T))
   {
     std::cout << "Both Transose is not supported";
@@ -371,7 +373,9 @@ hipblasStatus_t gemm_bias( hipblasOperation_t transa, hipblasOperation_t transb,
   int64_t ldb = k;
   int64_t ldc = m;
 
+#if DEBUG
   std::cout << "gemm_bias " << std::endl;
+#endif
   return hipblasGemmEx(handle, transa, transb, m,  n,   k,  alpha,  A,  DataType,   lda,  B,  DataType,  
                        ldb,  beta,  C,  DataType,  ldc,  ComputeType,  CUBLAS_GEMM_DEFAULT);
 }
@@ -394,7 +398,9 @@ at::Tensor linear_bias_forward(at::Tensor input, at::Tensor weight, at::Tensor b
   // output[batch_size, out_features] = input[batch_size, in_features] * weight[out_features,in_features] + bias[out_features]
   // **********************************************************************************
   auto output = at::zeros({batch_size, out_features}, torch::device(torch::kCUDA).dtype(input.scalar_type()));
+#if DEBUG
   std::cout << "linear_bias_forward " << std::endl;
+#endif
   if (at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt) {
     CHECK_HIPBLASLT_ERROR(gemm_lt(HIPBLAS_OP_T, HIPBLAS_OP_N, &alpha, &beta, weight, input, output, bias, dummy_gelu, true, false, false));
   } else {
@@ -429,7 +435,9 @@ std::vector<at::Tensor> linear_bias_backward(at::Tensor input, at::Tensor weight
   auto grad_weight = at::zeros({out_features,in_features}, torch::device(torch::kCUDA).dtype(input.scalar_type()));
   auto grad_input = at::zeros({batch_size, in_features}, torch::device(torch::kCUDA).dtype(input.scalar_type()));
   
+#if DEBUG
   std::cout << "linear_bias_backward " << std::endl;
+#endif
   if (at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt) {
   // **********************************************************************************
   // Gradient of Input  :
@@ -513,7 +521,9 @@ std::vector<at::Tensor> linear_gelu_linear_forward(at::Tensor input,   at::Tenso
   // **********************************************************************************
   at::Tensor output2 = at::zeros({batch_size,out_features}, torch::device(torch::kCUDA).dtype(input.scalar_type())); // output2[batch_size,out_features]
 
+#if DEBUG
   std::cout << "linear_gelu_linear_forward " << std::endl;
+#endif
   if (at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt) {
     CHECK_HIPBLASLT_ERROR(gemm_lt(HIPBLAS_OP_T, HIPBLAS_OP_N, &alpha, &beta, weight, input, output, bias, gelu, true, false, true));
     CHECK_HIPBLASLT_ERROR(gemm_lt(HIPBLAS_OP_T, HIPBLAS_OP_N, &alpha, &beta, weight2, output, output2, bias2, dummy_gelu, true, false, false));
@@ -556,7 +566,9 @@ std::vector<at::Tensor> linear_gelu_linear_backward(at::Tensor input, at::Tensor
   at::Tensor grad_output  = at::zeros({batch_size, hidden_features},   torch::device(torch::kCUDA).dtype(input.scalar_type()));
 
   at::Tensor dummy_gelu = at::empty({0}, torch::device(torch::kCUDA).dtype(input.scalar_type()));
+#if DEBUG
   std::cout << "linear_gelu_linear_backward " << std::endl;
+#endif
   if (at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt) {
   // **********************************************************************************
   // Gradient For second gemm  :
