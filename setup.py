@@ -483,6 +483,26 @@ if "--cuda_ext" in sys.argv:
             )
         )
 
+#***********  fused_weight_gradient_mlp_cuda   ****************
+    
+    ext_modules.append(
+        CUDAExtension(
+            name="fused_weight_gradient_mlp_cuda",
+            include_dirs=[os.path.join(this_dir, "csrc")],
+            sources=[
+                "csrc/megatron/fused_weight_gradient_dense.cpp",
+                "csrc/megatron/fused_weight_gradient_dense_cuda.cu",
+                "csrc/megatron/fused_weight_gradient_dense_16bit_prec_cuda.cu",
+            ],
+            define_macros = [("USE_ROCM", "1"),
+                             ("ROCM_VERSION", "60200")],
+
+            extra_compile_args={
+                "cxx": ["-O3"] + version_dependent_macros,
+                "nvcc":nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer,
+                }
+        )
+    )
 
 if "--bnp" in sys.argv or "--cuda_ext" in sys.argv:
     if "--bnp" in sys.argv:
