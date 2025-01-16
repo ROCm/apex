@@ -256,6 +256,8 @@ void wgrad_gemm_accum_fp16_cuda(T *input, T *d_output, T *d_weight,int in_dim, i
         d_workspace,
         max_workspace_size,
         stream);
+    if(max_workspace_size > 0)
+        hipFree(d_workspace);
 
 } 
 
