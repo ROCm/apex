@@ -34,7 +34,7 @@ if os.path.exists(context_file):
     found_ROCmBackward_Pass_Guard = False
     for line in lines:
         if "BackwardPassGuard" in line:
-            # BackwardPassGuard has been red to ROCmBackwardPassGuard
+            # BackwardPassGuard has been renamed to ROCmBackwardPassGuard
             # https://github.com/pytorch/pytorch/pull/71881/commits/4b82f5a67a35406ffb5691c69e6b4c9086316a43
             if "ROCmBackwardPassGuard" in line:
                 found_ROCmBackward_Pass_Guard = True
