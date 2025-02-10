@@ -34,7 +34,7 @@ if os.path.exists(context_file):
     found_ROCmBackward_Pass_Guard = False
     for line in lines:
         if "BackwardPassGuard" in line:
-            # BackwardPassGuard has been renamed to ROCmBackwardPassGuard
+            # BackwardPassGuard has been red to ROCmBackwardPassGuard
             # https://github.com/pytorch/pytorch/pull/71881/commits/4b82f5a67a35406ffb5691c69e6b4c9086316a43
             if "ROCmBackwardPassGuard" in line:
                 found_ROCmBackward_Pass_Guard = True
@@ -117,8 +117,8 @@ def get_apex_version():
             apex_version = f.read().strip()
     else:
         raise RuntimeError("version.txt file is missing")
-    if os.getenv("DESIRED_CUDA"):
-        apex_version += "+" + os.getenv("DESIRED_CUDA")
+    if os.getenv("DESIRED_CUDA") and os.getenv("APEX_COMMIT"):
+        apex_version += "+" + os.getenv("DESIRED_CUDA")+".git"+os.getenv("APEX_COMMIT")
     return apex_version
 
 def append_nvcc_threads(nvcc_extra_args):
