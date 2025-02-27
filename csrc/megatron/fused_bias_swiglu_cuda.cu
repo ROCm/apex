@@ -66,7 +66,7 @@ __global__ void fused_bias_swiglu_backward_kernel(
 torch::Tensor fused_bias_swiglu_forward(torch::Tensor input, torch::Tensor bias) {
     int batch_size = input.size(0);
     int hidden_dim = input.size(1);
-
+    int half_dim = hidden_dim / 2;
     TORCH_CHECK(hidden_dim % 2 == 0, "Hidden dimension must be divisible by 2 for SwiGLU");
     TORCH_CHECK(input.is_cuda(), "Input must be on CUDA device");
     TORCH_CHECK(bias.is_cuda(), "Bias must be on CUDA device");
@@ -76,10 +76,12 @@ torch::Tensor fused_bias_swiglu_forward(torch::Tensor input, torch::Tensor bias)
 
     auto output = torch::zeros({batch_size, hidden_dim / 2}, input.options());
 
-    int threads = 256;
-    int blocks = (batch_size * (hidden_dim / 2) + threads - 1) / threads;
-    blocks = min(blocks, 65535);
-    int half_dim = hidden_dim / 2;
+    hipDeviceProp_t prop;
+    hipGetDeviceProperties(&prop, 0);
+    int threads = prop.maxThreadsPerBlock;
+    int blocks = (batch_size * half_dim + threads - 1) / threads;
+    blocks = min(blocks, prop.maxGridSize[0]);
+    
 
     AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.scalar_type(), "fused_bias_swiglu_forward", [&] {
         fused_bias_swiglu_kernel<scalar_t><<<blocks, threads>>>(
@@ -115,7 +117,7 @@ torch::Tensor fused_bias_swiglu_backward(
     hipDeviceProp_t prop;
     hipGetDeviceProperties(&prop, 0);
     int threads = prop.maxThreadsPerBlock;
-    int blocks = (batch_size * (hidden_dim / 2) + threads - 1) / threads;
+    int blocks = (batch_size * half_dim + threads - 1) / threads;
     blocks = min(blocks, prop.maxGridSize[0]);
 
     AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.scalar_type(), "fused_bias_swiglu_backward", [&] {
