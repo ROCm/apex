@@ -1,5 +1,4 @@
 #include <torch/extension.h>
-#include <hip/hip_runtime.h>
 #include <c10/cuda/CUDAMathCompat.h>
 
 // Swish (SiLU) activation function: SiLU(x) = x * sigmoid(x)
@@ -76,8 +75,8 @@ torch::Tensor fused_bias_swiglu_forward(torch::Tensor input, torch::Tensor bias)
 
     auto output = torch::zeros({batch_size, hidden_dim / 2}, input.options());
 
-    hipDeviceProp_t prop;
-    hipGetDeviceProperties(&prop, 0);
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
     int threads = prop.maxThreadsPerBlock;
     int blocks = (batch_size * half_dim + threads - 1) / threads;
     blocks = min(blocks, prop.maxGridSize[0]);
@@ -114,8 +113,8 @@ torch::Tensor fused_bias_swiglu_backward(
 
     auto grad_input = torch::zeros_like(input);
 
-    hipDeviceProp_t prop;
-    hipGetDeviceProperties(&prop, 0);
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
     int threads = prop.maxThreadsPerBlock;
     int blocks = (batch_size * half_dim + threads - 1) / threads;
     blocks = min(blocks, prop.maxGridSize[0]);
