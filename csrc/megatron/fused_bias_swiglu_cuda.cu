@@ -112,9 +112,11 @@ torch::Tensor fused_bias_swiglu_backward(
 
     auto grad_input = torch::zeros_like(input);
 
-    int threads = 256;
-    int blocks = (batch_size * half_dim + threads - 1) / threads;
-    blocks = min(blocks, 65535);
+    hipDeviceProp_t prop;
+    hipGetDeviceProperties(&prop, 0);
+    int threads = prop.maxThreadsPerBlock;
+    int blocks = (batch_size * (hidden_dim / 2) + threads - 1) / threads;
+    blocks = min(blocks, prop.maxGridSize[0]);
 
     AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.scalar_type(), "fused_bias_swiglu_backward", [&] {
         fused_bias_swiglu_backward_kernel<scalar_t><<<blocks, threads>>>(
