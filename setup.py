@@ -48,7 +48,7 @@ if os.path.exists(os.path.join(torch_dir, "include", "ATen", "Atomic.cuh")):
     found_aten_atomic_header = True
 
 def raise_if_cuda_home_none(global_option: str) -> None:
-    if CUDA_HOME is not None:
+    if CUDA_HOME is not None or ROCM_HOME is not None:
         return
     raise RuntimeError(
         f"{global_option} was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  "
@@ -937,6 +937,7 @@ if "--fused_conv_bias_relu" in sys.argv:
             )
         )
 
+
 if "--cuda_ext" in sys.argv:
     sys.argv.remove("--cuda_ext")
 
@@ -951,3 +952,4 @@ setup(
     cmdclass={'build_ext': BuildExtension} if ext_modules else {},
     extras_require=extras,
 )
+
