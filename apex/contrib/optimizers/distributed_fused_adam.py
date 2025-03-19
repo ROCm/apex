@@ -580,8 +580,8 @@ class DistributedFusedAdam(torch.optim.Optimizer):
                 "whether there's gradient Inf/NaN, build APEX with "
                 "`--deprecated_fused_adam` is essential.")
         
-        if nccl_ub or capturable:
-            raise Exception("Distributed fused adam does not support nccl_ub on ROCm")
+        if capturable:
+            raise Exception("Distributed fused adam does not support cudagraph on ROCm")
         
         # If capturable for CUDA graph
         self.capturable: bool = capturable

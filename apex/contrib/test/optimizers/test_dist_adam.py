@@ -391,7 +391,6 @@ class TestDistributedFusedAdam(NcclDistributedTestBase):
             with_scaled_states=True,
         )
 
-    @skipIfRocm(msg="Unsupported on ROCM yet")
     def test_matches_pytorch_nccl_ub(self):
         self.test_matches_pytorch(
             contiguous_buffers=True,
