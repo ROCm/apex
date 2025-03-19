@@ -7,6 +7,8 @@ from contextlib import nullcontext
 
 import torch
 from torch.testing._internal import common_utils
+from torch.testing._internal.common_utils import skipIfRocm
+
 
 SKIP_TEST = None
 try:
@@ -387,6 +389,13 @@ class TestDistributedFusedAdam(NcclDistributedTestBase):
             param_sync_dtype=torch.int,
             store_params=True,
             with_scaled_states=True,
+        )
+
+    @skipIfRocm(msg="Unsupported on ROCM yet")
+    def test_matches_pytorch_nccl_ub(self):
+        self.test_matches_pytorch(
+            contiguous_buffers=True,
+            nccl_ub=True,
         )
 
 
@@ -846,6 +855,22 @@ class TestDistributedFusedAdam(NcclDistributedTestBase):
             )
             for w in warns:
                 self.assertNotRegex(str(w.message), ".*Consider decreasing the bucket_cap_mb argument.")
+
+
+    def test_cuda_graph(self):
+        """Test distributed adam with CUDA graph"""
+        if self.world_size < 8:
+            self.skipTest(f"{self.world_size=} is expected to be >= 8")
+        self.test_matches_pytorch(
+            rtol=5e-3,
+            atol=1e-5,
+            num_steps=15,
+            micro_batch_steps=1,
+            model_dtype=torch.float16,
+            optim_dtype=torch.float16,
+            contiguous_buffers=True,
+            with_cuda_graph=True,
+        )
 
 
 if __name__ == "__main__":
