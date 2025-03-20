@@ -937,7 +937,7 @@ if "--fused_conv_bias_relu" in sys.argv:
             )
         )
 
-if "--nccl_allocator" in sys.argv:
+if "--nccl_allocator" in sys.argv or "--cuda_ext" in sys.argv:
     sys.argv.remove("--nccl_allocator")
     raise_if_cuda_home_none("--nccl_allocator")
     _nccl_version_getter = load(
