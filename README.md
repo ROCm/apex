@@ -183,3 +183,13 @@ A Python-only build omits:
 `pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" .` may work if you were able to build Pytorch from source
 on your system. A Python-only build via `pip install -v --no-cache-dir .` is more likely to work.  
 If you installed Pytorch in a Conda environment, make sure to install Apex in that same environment.
+
+
+# Release notes
+
+## release/1.7.0
+
+Unit test related
+- Include running transformer tests in L0/run_test.py
+- Fix transformer unit tests
+
