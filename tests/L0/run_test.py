@@ -20,24 +20,24 @@ TEST_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 #the tests that are allowed
 TEST_DIRS = [
-    "run_amp",
+    "run_transformer",   
+    "run_mlp",
     "run_fp16util",
     "run_optimizers",
     "run_fused_layer_norm",
-    "run_mlp",
     "run_fused_dense",
-    "run_transformer",       
+    "run_amp",    
 ]
 
 #the tests that are run by default
 DEFAULT_TEST_DIRS = [
-    "run_amp",
+    "run_transformer",   
+    "run_mlp",
     "run_fp16util",
     "run_optimizers",
     "run_fused_layer_norm",
-    "run_mlp",
     "run_fused_dense",
-    "run_transformer",
+    "run_amp",
 ]
 
 
