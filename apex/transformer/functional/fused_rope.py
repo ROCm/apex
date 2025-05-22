@@ -14,6 +14,14 @@
 # limitations under the License.
 from typing import Tuple, Union
 import torch
+import os
+
+# a flag to switch between the native apex kernel and native aiter kernel
+AITER_ROPE_BACKEND = int(os.environ.get("AITER_ROPE_BACKEND", 0)) == 1
+'''
+False - native kernel in apex repo
+True - aiter native kernel
+'''
 
 
 class FusedRoPEFunc(torch.autograd.Function):
@@ -32,11 +40,28 @@ class FusedRoPEFunc(torch.autograd.Function):
         freqs: torch.Tensor,
         transpose_output_memory: bool = False,
     ) -> torch.Tensor:
-        import fused_rotary_positional_embedding
+        if not AITER_ROPE_BACKEND:
+            import fused_rotary_positional_embedding
 
-        output = fused_rotary_positional_embedding.forward(
-            t, freqs, transpose_output_memory
-        )
+            output = fused_rotary_positional_embedding.forward(
+                t, freqs, transpose_output_memory
+            )
+        else:
+            import aiter
+            s = t.shape[0]
+            b = t.shape[1]
+            h = t.shape[2]
+            d = t.shape[3]
+            # t is of shape [s, b, h, d]
+            # freqs is of shape [s, 1, 1, d]    
+
+            act_options = {'dtype': t.dtype, 'device': t.device, 'requires_grad': False}
+            if transpose_output_memory:
+                output = torch.empty((b, s, h, d), **act_options).transpose(0, 1)
+            else:
+                output = torch.empty((s, b, h, d), **act_options)
+            aiter.rope_fwd_impl(output, t, freqs, 0, False, False)
+
         ctx.save_for_backward(freqs)
         ctx.transpose_output_memory = transpose_output_memory
 
@@ -46,12 +71,27 @@ class FusedRoPEFunc(torch.autograd.Function):
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        import fused_rotary_positional_embedding
-
         (freqs,) = ctx.saved_tensors
-        grad_input = fused_rotary_positional_embedding.backward(
-            grad_output, freqs, ctx.transpose_output_memory
-        )
+
+        if not AITER_ROPE_BACKEND:
+            import fused_rotary_positional_embedding
+            
+            grad_input = fused_rotary_positional_embedding.backward(
+                grad_output, freqs, ctx.transpose_output_memory
+            )
+        else:
+            import aiter
+            s = grad_output.shape[0]
+            b = grad_output.shape[1]
+            h = grad_output.shape[2]
+            d = grad_output.shape[3]
+            
+            act_options = {'dtype': grad_output.dtype, 'device': grad_output.device, 'requires_grad': False}
+            if ctx.transpose_output_memory:
+                grad_input = torch.empty((b, s, h, d), **act_options).transpose(0, 1)
+            else:
+                grad_input = torch.empty((s, b, h, d), **act_options)
+            aiter.rope_bwd_impl(grad_input, grad_output, freqs, 0, False, False)
 
         return grad_input, None, None
 
@@ -98,11 +138,28 @@ class FusedRoPECachedFunc(torch.autograd.Function):
         sin_: torch.Tensor,
         transpose_output_memory: bool = False,
     ) -> torch.Tensor:
-        import fused_rotary_positional_embedding
+        if not AITER_ROPE_BACKEND:
+            import fused_rotary_positional_embedding
 
-        output = fused_rotary_positional_embedding.forward_cached(
-            t, cos_, sin_, transpose_output_memory
-        )
+            output = fused_rotary_positional_embedding.forward_cached(
+                t, cos_, sin_, transpose_output_memory
+            )
+        else:
+            import aiter
+            s = t.shape[0]
+            b = t.shape[1]
+            h = t.shape[2]
+            d = t.shape[3]
+            # t is of shape [s, b, h, d]
+            # freqs is of shape [s, 1, 1, d]    
+
+            act_options = {'dtype': t.dtype, 'device': t.device, 'requires_grad': False}
+            if transpose_output_memory:
+                output = torch.empty((b, s, h, d), **act_options).transpose(0, 1)
+            else:
+                output = torch.empty((s, b, h, d), **act_options)
+            aiter.rope_cached_fwd_impl(output, t, cos_, sin_, 0, False, False)
+
         ctx.save_for_backward(cos_, sin_)
         ctx.transpose_output_memory = transpose_output_memory
 
@@ -112,13 +169,27 @@ class FusedRoPECachedFunc(torch.autograd.Function):
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        import fused_rotary_positional_embedding
-
         cos_, sin_ = ctx.saved_tensors
-        grad_input = fused_rotary_positional_embedding.backward_cached(
-            grad_output, cos_, sin_, ctx.transpose_output_memory
-        )
 
+        if not AITER_ROPE_BACKEND:
+            import fused_rotary_positional_embedding
+
+            grad_input = fused_rotary_positional_embedding.backward_cached(
+                grad_output, cos_, sin_, ctx.transpose_output_memory
+            )
+        else:
+            import aiter
+            s = grad_output.shape[0]
+            b = grad_output.shape[1]
+            h = grad_output.shape[2]
+            d = grad_output.shape[3]
+            
+            act_options = {'dtype': grad_output.dtype, 'device': grad_output.device, 'requires_grad': False}
+            if ctx.transpose_output_memory:
+                grad_input = torch.empty((b, s, h, d), **act_options).transpose(0, 1)
+            else:
+                grad_input = torch.empty((s, b, h, d), **act_options)
+            aiter.rope_cached_bwd_impl(grad_input, grad_output, cos_, sin_, 0, False, False)
         return grad_input, None, None, None
 
 
@@ -165,11 +236,23 @@ class FusedRoPETHDFunc(torch.autograd.Function):
         cu_seqlens: torch.Tensor,
         freqs: torch.Tensor,
     ) -> torch.Tensor:
-        import fused_rotary_positional_embedding
+        if not AITER_ROPE_BACKEND:
+            import fused_rotary_positional_embedding
 
-        output = fused_rotary_positional_embedding.forward_thd(
-            t, cu_seqlens, freqs
-        )
+            output = fused_rotary_positional_embedding.forward_thd(
+                t, cu_seqlens, freqs
+            )
+        else:
+            import aiter
+            t1 = t.shape[0]
+            h = t.shape[1]
+            d = t.shape[2]
+            # t is of shape [t, h, d]
+
+            act_options = {'dtype': t.dtype, 'device': t.device, 'requires_grad': False}
+            output = torch.empty((t1, h, d), **act_options)
+            aiter.rope_thd_fwd_impl(output, t, cu_seqlens, freqs, 0, False, False)
+
         ctx.save_for_backward(cu_seqlens, freqs)
 
         return output
@@ -178,12 +261,24 @@ class FusedRoPETHDFunc(torch.autograd.Function):
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        import fused_rotary_positional_embedding
-
         cu_seqlens, freqs = ctx.saved_tensors
-        grad_input = fused_rotary_positional_embedding.backward_thd(
-            grad_output, cu_seqlens, freqs
-        )
+
+        if not AITER_ROPE_BACKEND:
+            import fused_rotary_positional_embedding
+
+            grad_input = fused_rotary_positional_embedding.backward_thd(
+                grad_output, cu_seqlens, freqs
+            )
+        else:
+            import aiter
+            t = grad_output.shape[0]
+            h = grad_output.shape[1]
+            d = grad_output.shape[2]
+            # t is of shape [t, h, d]
+            
+            act_options = {'dtype': grad_output.dtype, 'device': grad_output.device, 'requires_grad': False}
+            grad_input = torch.empty((t, h, d), **act_options)
+            aiter.rope_thd_bwd_impl(grad_input, grad_output, cu_seqlens, freqs, 0, False, False)
 
         return grad_input, None, None
 
@@ -227,12 +322,23 @@ class FusedRoPE2DFunc(torch.autograd.Function):
         cos_w: torch.Tensor,
         sin_w: torch.Tensor,
     ) -> torch.Tensor:
-        import fused_rotary_positional_embedding
+        if not AITER_ROPE_BACKEND:
+            import fused_rotary_positional_embedding
 
-        t = t.view(t.shape[0], img_h, img_w, t.shape[2], t.shape[3])
-        output = fused_rotary_positional_embedding.forward_2d(
-            t, cos_h, sin_h, cos_w, sin_w
-        )
+            t = t.view(t.shape[0], img_h, img_w, t.shape[2], t.shape[3])
+            output = fused_rotary_positional_embedding.forward_2d(
+                t, cos_h, sin_h, cos_w, sin_w
+            )
+        else:
+            import aiter
+            s = t.shape[0]
+            h = t.shape[2]
+            d = t.shape[3]
+            # t is of shape [s, ih*iw, h, d]
+
+            act_options = {'dtype': t.dtype, 'device': t.device, 'requires_grad': False}
+            output = torch.empty((s, img_h * img_w, h, d), **act_options)
+            aiter.rope_2d_fwd_impl(output, t, cos_h, sin_h, cos_w, sin_w, img_h, img_w, 0, False, False)
         ctx.save_for_backward(cos_h, sin_h, cos_w, sin_w)
         ctx.img_h = img_h
         ctx.img_w = img_w
@@ -243,19 +349,32 @@ class FusedRoPE2DFunc(torch.autograd.Function):
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        import fused_rotary_positional_embedding
 
-        grad_output = grad_output.view(
-            grad_output.shape[0],
-            ctx.img_h,
-            ctx.img_w,
-            grad_output.shape[2],
-            grad_output.shape[3],
-        )
         cos_h, sin_h, cos_w, sin_w = ctx.saved_tensors
-        grad_input = fused_rotary_positional_embedding.backward_2d(
-            grad_output, cos_h, sin_h, cos_w, sin_w
-        )
+
+        if not AITER_ROPE_BACKEND:
+            import fused_rotary_positional_embedding
+
+            grad_output = grad_output.view(
+                grad_output.shape[0],
+                ctx.img_h,
+                ctx.img_w,
+                grad_output.shape[2],
+                grad_output.shape[3],
+            )
+            grad_input = fused_rotary_positional_embedding.backward_2d(
+                grad_output, cos_h, sin_h, cos_w, sin_w
+            )
+        else:
+            import aiter
+            s = grad_output.shape[0]
+            h = grad_output.shape[2]
+            d = grad_output.shape[3]
+            # t is of shape [s, ih* iw, h, d]
+            
+            act_options = {'dtype': grad_output.dtype, 'device': grad_output.device, 'requires_grad': False}
+            grad_input = torch.empty((s, ctx.img_h * ctx.img_w, h, d), **act_options)
+            aiter.rope_2d_bwd_impl(grad_input, grad_output, cos_h, sin_h, cos_w, sin_w, ctx.img_h, ctx.img_w, 0, False, False)
 
         return grad_input, None, None, None, None, None, None
 
