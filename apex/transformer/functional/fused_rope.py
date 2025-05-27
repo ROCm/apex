@@ -16,12 +16,23 @@ from typing import Tuple, Union
 import torch
 import os
 
+
+from torch.utils.cpp_extension import ROCM_HOME
+
 # a flag to switch between the native apex kernel and native aiter kernel
-AITER_ROPE_BACKEND = int(os.environ.get("AITER_ROPE_BACKEND", 0)) == 1
+AITER_ROPE_BACKEND = False
 '''
 False - native kernel in apex repo
 True - aiter native kernel
 '''
+
+#switch on aiter backend if it is rocm and aiter is installed
+if ROCM_HOME:
+    try:
+        import aiter
+        AITER_ROPE_BACKEND = True
+    except ImportError:
+        print("Aiter is not found, using the native apex kernel for RoPE. ")
 
 
 class FusedRoPEFunc(torch.autograd.Function):
