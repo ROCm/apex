@@ -523,8 +523,8 @@ if "--cuda_ext" in sys.argv:
         )
 
 #***********  fused_rotary_positional_embedding   ****************
-    if ROCM_HOME:
-        subprocess.run(["python3", "setup.py", "develop"], cwd = "third_party/aiter")
+    if IS_ROCM_PYTORCH:
+        subprocess.run(["pip", "install", "-e", "."], cwd = "third_party/aiter")
 
     ext_modules.append(
         CUDAExtension(
