@@ -16,6 +16,7 @@ from typing import Tuple, Union
 import torch
 import os
 from torch.utils.cpp_extension import ROCM_HOME
+import warnings
 
 TORCH_MAJOR = int(torch.__version__.split('.')[0])
 TORCH_MINOR = int(torch.__version__.split('.')[1])
@@ -45,12 +46,12 @@ if IS_ROCM_PYTORCH and USE_ROCM_AITER_ROPE_BACKEND:
     try:
         import aiter
         AITER_ROPE_BACKEND = True
-        print("Aiter backend is selected for fused RoPE. This has lower precision. To disable aiter, export AITER_ROPE_BACKEND_ENABLE=0")
+        warnings.warn("Aiter backend is selected for fused RoPE. This has lower precision. To disable aiter, export AITER_ROPE_BACKEND_ENABLE=0", UserWarning)
     except ImportError:
         AITER_ROPE_BACKEND = False
 if not AITER_ROPE_BACKEND:
     import fused_rotary_positional_embedding
-    print("Using the native apex kernel for RoPE.")
+    warnings.warn("Using the native apex kernel for RoPE.", UserWarning)
 
 
 class FusedRoPEFunc(torch.autograd.Function):
