@@ -3,9 +3,9 @@ from .builder import CUDAOpBuilder
 import sys
 
 
-class FusedDenseBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_FUSED_DENSE'
-    NAME = "fused_dense_cuda"
+class FusedRopeBuilder(CUDAOpBuilder):
+    BUILD_VAR = 'DS_BUILD_FUSED_ROPE'
+    NAME = "fused_rotary_positional_embedding"
 
     def __init__(self):
         super().__init__(name=self.NAME)
@@ -14,7 +14,8 @@ class FusedDenseBuilder(CUDAOpBuilder):
         return f'apex.{self.NAME}'
 
     def sources(self):
-        return ['csrc/fused_dense_base.cpp', 'csrc/fused_dense_cuda.cu']
+        return ["csrc/megatron/fused_rotary_positional_embedding.cpp",
+                "csrc/megatron/fused_rotary_positional_embedding_cuda.cu"]
 
     def include_paths(self):
         return ['csrc']

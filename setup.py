@@ -409,9 +409,6 @@ setup(
     ext_modules=ext_modules2,
     cmdclass={'build_ext': BuildExtension} if ext_modules2 else {},
     extras_require=extras,
-    install_requires=required,
-    package_data={
-        "apex": ["csrc/**/*", "csrc/*"],  # include all files in csrc/
-    },
+    install_requires=required
 )
 
