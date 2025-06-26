@@ -14,7 +14,9 @@
 # limitations under the License.
 from typing import Tuple, Union
 import torch
+from apex.op_builder import FusedRopeBuilder
 
+fused_rotary_positional_embedding = FusedRopeBuilder().load()
 
 class FusedRoPEFunc(torch.autograd.Function):
     """
@@ -32,7 +34,6 @@ class FusedRoPEFunc(torch.autograd.Function):
         freqs: torch.Tensor,
         transpose_output_memory: bool = False,
     ) -> torch.Tensor:
-        import fused_rotary_positional_embedding
 
         output = fused_rotary_positional_embedding.forward(
             t, freqs, transpose_output_memory
@@ -46,8 +47,6 @@ class FusedRoPEFunc(torch.autograd.Function):
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        import fused_rotary_positional_embedding
-
         (freqs,) = ctx.saved_tensors
         grad_input = fused_rotary_positional_embedding.backward(
             grad_output, freqs, ctx.transpose_output_memory
@@ -98,8 +97,6 @@ class FusedRoPECachedFunc(torch.autograd.Function):
         sin_: torch.Tensor,
         transpose_output_memory: bool = False,
     ) -> torch.Tensor:
-        import fused_rotary_positional_embedding
-
         output = fused_rotary_positional_embedding.forward_cached(
             t, cos_, sin_, transpose_output_memory
         )
@@ -112,8 +109,6 @@ class FusedRoPECachedFunc(torch.autograd.Function):
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        import fused_rotary_positional_embedding
-
         cos_, sin_ = ctx.saved_tensors
         grad_input = fused_rotary_positional_embedding.backward_cached(
             grad_output, cos_, sin_, ctx.transpose_output_memory
@@ -165,8 +160,6 @@ class FusedRoPETHDFunc(torch.autograd.Function):
         cu_seqlens: torch.Tensor,
         freqs: torch.Tensor,
     ) -> torch.Tensor:
-        import fused_rotary_positional_embedding
-
         output = fused_rotary_positional_embedding.forward_thd(
             t, cu_seqlens, freqs
         )
@@ -178,8 +171,6 @@ class FusedRoPETHDFunc(torch.autograd.Function):
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        import fused_rotary_positional_embedding
-
         cu_seqlens, freqs = ctx.saved_tensors
         grad_input = fused_rotary_positional_embedding.backward_thd(
             grad_output, cu_seqlens, freqs
@@ -227,8 +218,6 @@ class FusedRoPE2DFunc(torch.autograd.Function):
         cos_w: torch.Tensor,
         sin_w: torch.Tensor,
     ) -> torch.Tensor:
-        import fused_rotary_positional_embedding
-
         t = t.view(t.shape[0], img_h, img_w, t.shape[2], t.shape[3])
         output = fused_rotary_positional_embedding.forward_2d(
             t, cos_h, sin_h, cos_w, sin_w
@@ -243,8 +232,6 @@ class FusedRoPE2DFunc(torch.autograd.Function):
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        import fused_rotary_positional_embedding
-
         grad_output = grad_output.view(
             grad_output.shape[0],
             ctx.img_h,
