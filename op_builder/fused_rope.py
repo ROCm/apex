@@ -18,7 +18,7 @@ class FusedRopeBuilder(CUDAOpBuilder):
                 "csrc/megatron/fused_rotary_positional_embedding_cuda.cu"]
 
     def include_paths(self):
-        return ['csrc']
+        return ['csrc', 'csrc/megatron']
 
     def cxx_args(self):
         args = super().cxx_args()
