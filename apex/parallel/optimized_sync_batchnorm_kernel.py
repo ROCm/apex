@@ -4,12 +4,13 @@ from torch.autograd.function import Function
 from apex.op_builder import SyncBnBuilder
 from apex.parallel import ReduceOp
 
-syncbn = SyncBnBuilder().load()
-
 class SyncBatchnormFunction(Function):
 
     @staticmethod
     def forward(ctx, input, z, weight, bias, running_mean, running_variance, eps, track_running_stats = True, momentum = 1.0, process_group = None, channel_last = False, fuse_relu = False):
+        
+        syncbn = SyncBnBuilder().load()
+        
         input = input.contiguous()
         world_size = 0
 
@@ -75,6 +76,8 @@ class SyncBatchnormFunction(Function):
 
     @staticmethod
     def backward(ctx, grad_output):
+        syncbn = SyncBnBuilder().load()
+
         grad_output = grad_output.contiguous()
         # mini batch mean & var are calculated by forward path.
         # mu = 1./N*np.sum(h, axis = 0)
