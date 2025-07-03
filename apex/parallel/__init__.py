@@ -12,8 +12,6 @@ from .distributed import DistributedDataParallel, Reducer
 # for both the cuda-enabled and python-fallback versions, and I don't want
 # to suppress the error information.
 try:
-    from apex.op_builder import SyncBnBuilder
-    syncbn = SyncBnBuilder().load()
     from .optimized_sync_batchnorm import SyncBatchNorm
 except ImportError as err:
     from .sync_batchnorm import SyncBatchNorm
