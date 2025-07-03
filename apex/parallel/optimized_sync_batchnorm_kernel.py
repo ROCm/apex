@@ -1,8 +1,10 @@
 import torch
 from torch.autograd.function import Function
 
-import syncbn
+from apex.op_builder import SyncBnBuilder
 from apex.parallel import ReduceOp
+
+syncbn = SyncBnBuilder().load()
 
 class SyncBatchnormFunction(Function):
 

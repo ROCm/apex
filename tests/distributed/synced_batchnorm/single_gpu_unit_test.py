@@ -3,7 +3,8 @@ import numpy as np
 import apex
 if True:
     print("using setup tools")
-    import syncbn
+    from apex.op_builder import SyncBnBuilder
+    syncbn = SyncBnBuilder().load()
 else:
     print("using jit")
     from torch.utils.cpp_extension import load
@@ -30,7 +31,7 @@ batch_size = 5
 error = 1e-5
 
 np.random.seed(1)
-dtype = np.float32
+dtype = np.float64
 inp = (np.random.randn(batch_size, feature_size, space_size, space_size)).astype(dtype)
 grad = (np.random.randn(batch_size, feature_size, space_size, space_size)).astype(dtype)
 weight = (np.random.randn(feature_size)).astype(dtype)
