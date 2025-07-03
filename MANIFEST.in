@@ -1,0 +1,2 @@
+recursive-include contrib/csrc *
+recursive-include csrc *
