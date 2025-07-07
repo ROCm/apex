@@ -220,7 +220,7 @@ class FusedRoPECachedFuncApex(FusedRoPECachedFunc):
         ctx.transpose_output_memory = transpose_output_memory
 
         return output
-    
+
     @staticmethod
     def backward(
         ctx, grad_output: torch.Tensor
