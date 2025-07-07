@@ -174,10 +174,8 @@ def fused_apply_rotary_pos_emb(
     Returns:
         Tensor: The input tensor after applying RoPE
     """
-    if not AITER_ROPE_BACKEND:
-        return FusedRoPEFuncApex.apply(t, freqs, transpose_output_memory)
-    else:
-        return FusedRoPEFuncAiter.apply(t, freqs, transpose_output_memory)
+    FusedRoPEFunc = FusedRoPEFuncAiter if AITER_ROPE_BACKEND else FusedRoPEFuncApex
+    return FusedRoPEFunc.apply(t, freqs, transpose_output_memory)
 
 class FusedRoPECachedFunc(torch.autograd.Function):
     """
@@ -303,10 +301,8 @@ def fused_apply_rotary_pos_emb_cached(
     Returns:
         Tensor: The input tensor after applying RoPE
     """
-    if not AITER_ROPE_BACKEND:
-        return FusedRoPECachedFuncApex.apply(t, cos_, sin_, transpose_output_memory)
-    else:
-        return FusedRoPECachedFuncAiter.apply(t, cos_, sin_, transpose_output_memory)
+    FusedRoPEFunc = FusedRoPECachedFuncAiter if AITER_ROPE_BACKEND else FusedRoPECachedFuncApex
+    return FusedRoPEFunc.apply(t, cos_, sin_, transpose_output_memory)
 
 class FusedRoPETHDFunc(torch.autograd.Function):
     """
@@ -414,11 +410,8 @@ def fused_apply_rotary_pos_emb_thd(
     Returns:
         Tensor: The input tensor after applying RoPE
     """
-    if not AITER_ROPE_BACKEND:
-        return FusedRoPETHDFuncApex.apply(t, cu_seqlens, freqs)
-    else:
-        return FusedRoPETHDFuncAiter.apply(t, cu_seqlens, freqs)
-
+    FusedRoPEFunc = FusedRoPETHDFuncAiter if AITER_ROPE_BACKEND else FusedRoPETHDFuncApex
+    return FusedRoPEFunc.apply(t, cu_seqlens, freqs)
 
 class FusedRoPE2DFunc(torch.autograd.Function):
     """
@@ -568,7 +561,5 @@ def fused_apply_rotary_pos_emb_2d(
     assert (
         cos_w.size() == sin_w.size()
     ), "The shape of cos_w and sin_w should be the same"
-    if not AITER_ROPE_BACKEND:
-        return FusedRoPE2DFuncApex.apply(t, img_h, img_w, cos_h, sin_h, cos_w, sin_w)
-    else:
-        return FusedRoPE2DFuncAiter.apply(t, img_h, img_w, cos_h, sin_h, cos_w, sin_w)
+    FusedRoPEFunc = FusedRoPE2DFuncAiter if AITER_ROPE_BACKEND else FusedRoPE2DFuncApex
+    return FusedRoPEFunc.apply(t, img_h, img_w, cos_h, sin_h, cos_w, sin_w)
