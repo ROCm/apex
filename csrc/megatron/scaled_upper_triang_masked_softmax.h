@@ -22,6 +22,10 @@
 #include <limits>
 #include <stdint.h>
 #include <c10/macros/Macros.h>
+<<<<<<< HEAD
+=======
+#include <ATen/cuda/CUDAContext.h>
+>>>>>>> 7d9b032 (Fixing the C10_warpsize issue. replacing the macros with at::cuda::warp_size() (#237))
 
 namespace {
 
@@ -350,7 +354,11 @@ void dispatch_scaled_upper_triang_masked_softmax_forward(
         int batch_count = attn_batches * seq_len;
 
         // This value must match the WARP_SIZE constexpr value computed inside softmax_warp_forward.
+<<<<<<< HEAD
         int warp_size = (next_power_of_two < C10_WARP_SIZE) ? next_power_of_two : C10_WARP_SIZE;
+=======
+        int warp_size = (next_power_of_two < at::cuda::warp_size()) ? next_power_of_two : at::cuda::warp_size();
+>>>>>>> 7d9b032 (Fixing the C10_warpsize issue. replacing the macros with at::cuda::warp_size() (#237))
 
         // This value must match the WARP_BATCH constexpr value computed inside softmax_warp_forward.
         int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
@@ -441,7 +449,11 @@ void dispatch_scaled_upper_triang_masked_softmax_backward(
         int batch_count = attn_batches * seq_len;
 
         // This value must match the WARP_SIZE constexpr value computed inside softmax_warp_backward.
+<<<<<<< HEAD
         int warp_size = (next_power_of_two < C10_WARP_SIZE) ? next_power_of_two : C10_WARP_SIZE;
+=======
+        int warp_size = (next_power_of_two < at::cuda::warp_size()) ? next_power_of_two : at::cuda::warp_size();
+>>>>>>> 7d9b032 (Fixing the C10_warpsize issue. replacing the macros with at::cuda::warp_size() (#237))
 
         // This value must match the WARP_BATCH constexpr value computed inside softmax_warp_backward.
         int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
