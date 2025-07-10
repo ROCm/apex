@@ -20,6 +20,7 @@ TEST_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 #the tests that are allowed
 TEST_DIRS = [
+    "run_basic",
     "run_amp",
     "run_fp16util",
     "run_optimizers",
@@ -31,6 +32,7 @@ TEST_DIRS = [
 
 #the tests that are run by default
 DEFAULT_TEST_DIRS = [
+    "run_basic",
     "run_amp",
     "run_fp16util",
     "run_optimizers",
