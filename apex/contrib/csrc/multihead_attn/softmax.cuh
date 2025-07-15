@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <cuda_fp16.h>
 #include <cmath>
+#include <ATen/cuda/CUDAContext.h>
  
 #ifdef USE_ROCM
 #define APEX_WARP_SHFL_XOR(mask, value, offset, width) __shfl_xor(value, offset, width)
@@ -1741,7 +1742,7 @@ void dispatch_masked_scale_softmax_backward_masked_out(
     // This value must match the WARP_SIZE constexpr value computed inside
     // softmax_warp_backward.
     int warp_size =
-        (next_power_of_two < C10_WARP_SIZE) ? next_power_of_two : C10_WARP_SIZE;
+        (next_power_of_two < at::cuda::warp_size()) ? next_power_of_two : at::cuda::warp_size();
 
     // This value must match the WARP_BATCH constexpr value computed inside
     // softmax_warp_backward.
@@ -1855,7 +1856,8 @@ void dispatch_masked_scale_softmax_backward_masked_out_stream(
     // This value must match the WARP_SIZE constexpr value computed inside
     // softmax_warp_backward.
     int warp_size =
-        (next_power_of_two < C10_WARP_SIZE) ? next_power_of_two : C10_WARP_SIZE;
+        (next_power_of_two < at::cuda::warp_size()) ? next_power_of_two : at::cuda::warp_size();
+
     // This value must match the WARP_BATCH constexpr value computed inside
     // softmax_warp_backward.
     int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
@@ -2392,7 +2394,8 @@ void dispatch_masked_scale_softmax_backward_stream(
     // This value must match the WARP_SIZE constexpr value computed inside
     // softmax_warp_backward.
     int warp_size =
-        (next_power_of_two < C10_WARP_SIZE) ? next_power_of_two : C10_WARP_SIZE;
+        (next_power_of_two < at::cuda::warp_size()) ? next_power_of_two : at::cuda::warp_size();
+
     // This value must match the WARP_BATCH constexpr value computed inside
     // softmax_warp_backward.
     int batches_per_warp = (next_power_of_two <= 128) ? 2 : 1;
@@ -2593,7 +2596,7 @@ void dispatch_softmax_backward_fused_native(
     // This value must match the WARP_SIZE constexpr value computed inside
     // softmax_warp_backward.
     int warp_size =
-        (next_power_of_two < C10_WARP_SIZE) ? next_power_of_two : C10_WARP_SIZE;
+        (next_power_of_two < at::cuda::warp_size()) ? next_power_of_two : at::cuda::warp_size();
 
     // This value must match the WARP_BATCH constexpr value computed inside
     // softmax_warp_backward.
