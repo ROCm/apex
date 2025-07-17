@@ -1,6 +1,7 @@
 import os
 import torch
-import _apex_nccl_allocator
+from apex.op_builder import NCCLAllocatorBuilder
+_apex_nccl_allocator = NCCLAllocatorBuilder().load()
 
 from contextlib import nullcontext
 

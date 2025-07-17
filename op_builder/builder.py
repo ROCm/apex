@@ -854,6 +854,11 @@ class CUDAOpBuilder(OpBuilder):
             return ["--threads", "4"]
         return []
 
+    def nccl_args(self):
+        nccl_library = ["-lnccl"]
+        if self.is_rocm_pytorch():
+            nccl_library = ["-lrccl"]
+        return nccl_library
 
 class TorchCPUOpBuilder(CUDAOpBuilder):
 
