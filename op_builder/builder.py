@@ -834,6 +834,12 @@ class CUDAOpBuilder(OpBuilder):
             backward_pass_guard_args += ['-DBACKWARD_PASS_GUARD'] + ['-DBACKWARD_PASS_GUARD_CLASS=ROCmBackwardPassGuard']
         return backward_pass_guard_args
 
+    def aten_atomic_args(self):
+        torch_dir = torch.__path__[0]
+        if os.path.exists(os.path.join(torch_dir, "include", "ATen", "Atomic.cuh")):
+            return ['-DATEN_ATOMIC_HEADER']
+        else:
+            return []
 
 class TorchCPUOpBuilder(CUDAOpBuilder):
 
