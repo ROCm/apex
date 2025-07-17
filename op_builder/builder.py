@@ -841,6 +841,14 @@ class CUDAOpBuilder(OpBuilder):
         else:
             return []
 
+    def generator_args(self):
+        generator_flag = []
+        torch_dir = torch.__path__[0]
+        if os.path.exists(os.path.join(torch_dir, "include", "ATen", "CUDAGeneratorImpl.h")):
+            generator_flag = ["-DOLD_GENERATOR_PATH"]
+        return generator_flag
+
+
 class TorchCPUOpBuilder(CUDAOpBuilder):
 
     def get_cuda_lib64_path(self):
