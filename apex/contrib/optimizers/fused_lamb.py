@@ -73,10 +73,12 @@ class FusedLAMB(torch.optim.Optimizer):
                         max_grad_norm=max_grad_norm)
         super(FusedLAMB, self).__init__(params, defaults)
         if multi_tensor_applier.available:
-            import amp_C
+            from apex.op_builder import AmpCBuilder
+            amp_C = AmpCBuilder().load()
             self.multi_tensor_l2norm=amp_C.multi_tensor_l2norm
             self._dummy_overflow_buf = torch.cuda.IntTensor([0])
-            fused_lamb_cuda = importlib.import_module("fused_lamb_cuda")
+            from apex.op_builder import FusedLambBuilder
+            fused_lamb_cuda = FusedLambBuilder().load()
             self.multi_tensor_lamb = fused_lamb_cuda.lamb
         else:
             raise RuntimeError('apex.contrib.optimizers.FusedLAMB requires cuda extensions')
