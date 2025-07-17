@@ -14,11 +14,12 @@ class FusedAdamBuilder(CUDAOpBuilder):
         return f'apex.{self.NAME}'
 
     def sources(self):
-        return ['apex/contrib/csrc/optimizers/fused_adam_cuda.cpp',
-                'apex/contrib/csrc/optimizers/fused_adam_cuda_kernel.cu']
+        return ['contrib/csrc/optimizers/fused_adam_cuda.cpp',
+                'contrib/csrc/optimizers/fused_adam_cuda_kernel.cu']
 
     def include_paths(self):
-        return ['contrib/csrc/']
+        return ['contrib/csrc/',
+                'csrc']
         
     def cxx_args(self):
         args = super().cxx_args()
