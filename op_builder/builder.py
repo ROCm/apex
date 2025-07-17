@@ -848,6 +848,21 @@ class CUDAOpBuilder(OpBuilder):
             generator_flag = ["-DOLD_GENERATOR_PATH"]
         return generator_flag
 
+    def get_cuda_bare_metal_version(cuda_dir):
+        raw_output = subprocess.check_output([cuda_dir + "/bin/nvcc", "-V"], universal_newlines=True)
+        output = raw_output.split()
+        release_idx = output.index("release") + 1
+        release = output[release_idx].split(".")
+        bare_metal_major = release[0]
+        bare_metal_minor = release[1][0]
+        return raw_output, bare_metal_major, bare_metal_minor
+
+    def nvcc_threads_args(self):
+        cuda_major, cuda_minor = installed_cuda_version(name)
+        if cuda_major >= 11 and cuda_minor >= 2:
+            return ["--threads", "4"]
+        return []
+
 
 class TorchCPUOpBuilder(CUDAOpBuilder):
 
