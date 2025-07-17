@@ -811,6 +811,29 @@ class CUDAOpBuilder(OpBuilder):
         else:
             return []
 
+    def backward_pass_guard_args(self):
+        torch_dir = torch.__path__[0]
+        context_file = os.path.join(torch_dir, "include", "ATen", "Context.h")
+        if os.path.exists(context_file):
+            lines = open(context_file, 'r').readlines()
+            found_Backward_Pass_Guard = False
+            found_ROCmBackward_Pass_Guard = False
+            for line in lines:
+                if "BackwardPassGuard" in line:
+                    # BackwardPassGuard has been renamed to ROCmBackwardPassGuard
+                    # https://github.com/pytorch/pytorch/pull/71881/commits/4b82f5a67a35406ffb5691c69e6b4c9086316a43
+                    if "ROCmBackwardPassGuard" in line:
+                        found_ROCmBackward_Pass_Guard = True
+                    else:
+                        found_Backward_Pass_Guard = True
+                    break
+        backward_pass_guard_args = []
+        if found_Backward_Pass_Guard:
+            backward_pass_guard_args += ['-DBACKWARD_PASS_GUARD'] + ['-DBACKWARD_PASS_GUARD_CLASS=BackwardPassGuard']
+        if found_ROCmBackward_Pass_Guard:
+            backward_pass_guard_args += ['-DBACKWARD_PASS_GUARD'] + ['-DBACKWARD_PASS_GUARD_CLASS=ROCmBackwardPassGuard']
+        return backward_pass_guard_args
+
 
 class TorchCPUOpBuilder(CUDAOpBuilder):
 
