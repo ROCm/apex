@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# DeepSpeed Team
+# Taken from DeepSpeed
 
 from .abstract_accelerator import ApexAccelerator
 
@@ -72,7 +72,7 @@ class CPU_Accelerator(ApexAccelerator):
         if device_count > 0:
             return device_count
         else:
-            from deepspeed.utils.numa import get_numa_cores
+            from apex.utils.numa import get_numa_cores
             # Count NUMA node for number of cpu accelerators. On machine with HBM
             # In flat mode, HBM is in separate NUMA node with no cores on this node.
             # Ignore these NUMA nodes with no cores.
@@ -120,7 +120,7 @@ class CPU_Accelerator(ApexAccelerator):
         return None
 
     def stream(self, stream):
-        from deepspeed.runtime.utils import noop_context
+        from apex.runtime.utils import noop_context
         return noop_context()
 
     def current_stream(self, device_index=None):
@@ -246,7 +246,7 @@ class CPU_Accelerator(ApexAccelerator):
         return None
 
     def capture_to_graph(self, graph, pool=None, stream=None):
-        from deepspeed.runtime.utils import noop_context
+        from apex.runtime.utils import noop_context
         return noop_context()
 
     def replay_graph(self, graph):
@@ -289,7 +289,7 @@ class CPU_Accelerator(ApexAccelerator):
 
     def op_builder_dir(self):
         try:
-            # is op_builder from deepspeed or a 3p version? this should only succeed if it's deepspeed
+            # is op_builder from apex or a 3p version? this should only succeed if it's apex
             # if successful this also means we're doing a local install and not JIT compile path
             from op_builder import __apex__  # noqa: F401 # type: ignore
             return "op_builder.cpu"
@@ -313,12 +313,12 @@ class CPU_Accelerator(ApexAccelerator):
     # return an op builder class, name specified by class_name
     def get_op_builder(self, class_name):
         try:
-            # is op_builder from deepspeed or a 3p version? this should only succeed if it's deepspeed
+            # is op_builder from apex or a 3p version? this should only succeed if it's apex
             # if successful this also means we're doing a local install and not JIT compile path
-            from op_builder import __deepspeed__  # noqa: F401 # type: ignore
+            from op_builder import __apex__  # noqa: F401 # type: ignore
             from op_builder.cpu import AsyncIOBuilder, CCLCommBuilder, ShareMemCommBuilder, FusedAdamBuilder, CPUAdamBuilder, NotImplementedBuilder
         except ImportError:
-            from deepspeed.ops.op_builder.cpu import AsyncIOBuilder, CCLCommBuilder, ShareMemCommBuilder, FusedAdamBuilder, CPUAdamBuilder, NotImplementedBuilder
+            from apex.ops.op_builder.cpu import AsyncIOBuilder, CCLCommBuilder, ShareMemCommBuilder, FusedAdamBuilder, CPUAdamBuilder, NotImplementedBuilder
 
         if class_name == "CCLCommBuilder":
             return CCLCommBuilder

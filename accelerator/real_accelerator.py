@@ -1,13 +1,13 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# DeepSpeed Team
+# Taken from DeepSpeed
 import os
 
 try:
     # Importing logger currently requires that torch is installed, hence the try...except
     # TODO: Remove logger dependency on torch.
-    from deepspeed.utils import logger as accel_logger
+    from apex.utils import logger as accel_logger
 except ImportError as e:
     accel_logger = None
 
@@ -28,13 +28,13 @@ ds_accelerator = None
 def _validate_accelerator(accel_obj):
     # because abstract_accelerator has different path during
     # build time (accelerator.abstract_accelerator)
-    # and run time (deepspeed.accelerator.abstract_accelerator)
+    # and run time (apex.accelerator.abstract_accelerator)
     # and extension would import the
-    # run time abstract_accelerator/DeepSpeedAccelerator as its base
+    # run time abstract_accelerator/apex as its base
     # class, so we need to compare accel_obj with both base class.
-    # if accel_obj is instance of DeepSpeedAccelerator in one of
+    # if accel_obj is instance of ApexAccelerator in one of
     # accelerator.abstractor_accelerator
-    # or deepspeed.accelerator.abstract_accelerator, consider accel_obj
+    # or apex.accelerator.abstract_accelerator, consider accel_obj
     # is a conforming object
     if not ((dsa1 is not None and isinstance(accel_obj, dsa1)) or (dsa2 is not None and isinstance(accel_obj, dsa2))):
         raise AssertionError(f"{accel_obj.__class__.__name__} accelerator is not subclass of ApexAccelerator")
@@ -55,13 +55,13 @@ def get_accelerator():
 
     accelerator_name = None
     ds_set_method = None
-    # 1. Detect whether there is override of DeepSpeed accelerators from environment variable.
-    if "DS_ACCELERATOR" in os.environ.keys():
-        accelerator_name = os.environ["DS_ACCELERATOR"]
+    # 1. Detect whether there is override of apex accelerators from environment variable.
+    if "APEX_ACCELERATOR" in os.environ.keys():
+        accelerator_name = os.environ["APEX_ACCELERATOR"]
         if accelerator_name == "cpu":
             pass 
         elif accelerator_name not in SUPPORTED_ACCELERATOR_LIST:
-            raise ValueError(f'DS_ACCELERATOR must be one of {SUPPORTED_ACCELERATOR_LIST}. '
+            raise ValueError(f'APEX_ACCELERATOR must be one of {SUPPORTED_ACCELERATOR_LIST}. '
                              f'Value "{accelerator_name}" is not supported')
         ds_set_method = "override"
 
@@ -114,7 +114,7 @@ def get_accelerator():
         ds_accelerator = CPU_Accelerator()
     _validate_accelerator(ds_accelerator)
     if accel_logger is not None:
-        accel_logger.info(f"Setting ds_accelerator to {ds_accelerator._name} ({ds_set_method})")
+        accel_logger.info(f"Setting apex_accelerator to {ds_accelerator._name} ({ds_set_method})")
     return ds_accelerator
 
 
@@ -122,50 +122,5 @@ def set_accelerator(accel_obj):
     global ds_accelerator
     _validate_accelerator(accel_obj)
     if accel_logger is not None:
-        accel_logger.info(f"Setting ds_accelerator to {accel_obj._name} (model specified)")
+        accel_logger.info(f"Setting apex_accelerator to {accel_obj._name} (model specified)")
     ds_accelerator = accel_obj
-
-
-"""
------------[code] test_get.py -----------
-from deepspeed.accelerator import get_accelerator
-my_accelerator = get_accelerator()
-logger.info(f'{my_accelerator._name=}')
-logger.info(f'{my_accelerator._communication_backend=}')
-logger.info(f'{my_accelerator.HalfTensor().device=}')
-logger.info(f'{my_accelerator.total_memory()=}')
------------[code] test_get.py -----------
-
----[output] python test_get.py---------
-my_accelerator.name()='cuda'
-my_accelerator.communication_backend='nccl'
-my_accelerator.HalfTensor().device=device(type='cuda', index=0)
-my_accelerator.total_memory()=34089730048
----[output] python test_get.py---------
-
-**************************************************************************
------------[code] test_set.py -----------
-from deepspeed.accelerator.cuda_accelerator import CUDA_Accelerator
-cu_accel = CUDA_Accelerator()
-logger.info(f'{id(cu_accel)=}')
-from deepspeed.accelerator import set_accelerator, get_accelerator
-set_accelerator(cu_accel)
-
-my_accelerator = get_accelerator()
-logger.info(f'{id(my_accelerator)=}')
-logger.info(f'{my_accelerator._name=}')
-logger.info(f'{my_accelerator._communication_backend=}')
-logger.info(f'{my_accelerator.HalfTensor().device=}')
-logger.info(f'{my_accelerator.total_memory()=}')
------------[code] test_set.py -----------
-
-
----[output] python test_set.py---------
-id(cu_accel)=139648165478304
-my_accelerator=<deepspeed.accelerator.cuda_accelerator.CUDA_Accelerator object at 0x7f025f4bffa0>
-my_accelerator.name='cuda'
-my_accelerator.communication_backend='nccl'
-my_accelerator.HalfTensor().device=device(type='cuda', index=0)
-my_accelerator.total_memory()=34089730048
----[output] python test_set.py---------
-"""

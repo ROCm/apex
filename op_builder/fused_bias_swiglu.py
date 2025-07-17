@@ -3,7 +3,7 @@ import sys
 import os
 
 class FusedBiasSwiGLUBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_FUSED_BIAS_SWIGLU'
+    BUILD_VAR = 'APEX_BUILD_FUSED_BIAS_SWIGLU'
     NAME = "fused_bias_swiglu"
 
     def __init__(self):

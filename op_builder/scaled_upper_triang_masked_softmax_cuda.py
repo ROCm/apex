@@ -1,7 +1,7 @@
 from .builder import CUDAOpBuilder
 
 class ScaledUpperTriangMaskedSoftmaxCudaBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_SCALED_UPPER_TRIANG_MASKED_SOFTMAX_CUDA'
+    BUILD_VAR = 'APEX_BUILD_SCALED_UPPER_TRIANG_MASKED_SOFTMAX_CUDA'
     NAME = "scaled_upper_triang_masked_softmax_cuda"
 
     def __init__(self):

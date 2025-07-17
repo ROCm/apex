@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# DeepSpeed Team
+# Taken from DeepSpeed
 
 import os
 import re
@@ -30,7 +30,7 @@ DEFAULT_COMPUTE_CAPABILITIES = "6.0;6.1;7.0"
 try:
     import torch
 except ImportError:
-    print(f"{WARNING} unable to import torch, please install it if you want to pre-compile any deepspeed ops.")
+    print(f"{WARNING} unable to import torch, please install it if you want to pre-compile any apex ops.")
 else:
     TORCH_MAJOR = int(torch.__version__.split('.')[0])
     TORCH_MINOR = int(torch.__version__.split('.')[1])
@@ -79,7 +79,7 @@ def get_default_compute_capabilities():
 
 
 # list compatible minor CUDA versions - so that for example pytorch built with cuda-11.0 can be used
-# to build deepspeed and system-wide installed cuda 11.2
+# to build apex and system-wide installed cuda 11.2
 cuda_minor_mismatch_ok = {
     10: ["10.0", "10.1", "10.2"],
     11: ["11.0", "11.1", "11.2", "11.3", "11.4", "11.5", "11.6", "11.7", "11.8"],
@@ -100,15 +100,15 @@ def assert_no_cuda_mismatch(name=""):
                   f"version torch was compiled with {torch.version.cuda} "
                   "but since the APIs are compatible, accepting this combination")
             return True
-        elif os.getenv("DS_SKIP_CUDA_CHECK", "0") == "1":
+        elif os.getenv("APEX_SKIP_CUDA_CHECK", "0") == "1":
             print(
-                f"{WARNING} DeepSpeed Op Builder: Installed CUDA version {sys_cuda_version} does not match the "
+                f"{WARNING} Apex Op Builder: Installed CUDA version {sys_cuda_version} does not match the "
                 f"version torch was compiled with {torch.version.cuda}."
-                "Detected `DS_SKIP_CUDA_CHECK=1`: Allowing this combination of CUDA, but it may result in unexpected behavior."
+                "Detected `APEX_SKIP_CUDA_CHECK=1`: Allowing this combination of CUDA, but it may result in unexpected behavior."
             )
             return True
         raise CUDAMismatchException(
-            f">- DeepSpeed Op Builder: Installed CUDA version {sys_cuda_version} does not match the "
+            f">- Apex Op Builder: Installed CUDA version {sys_cuda_version} does not match the "
             f"version torch was compiled with {torch.version.cuda}, unable to compile "
             "cuda/cpp extensions without a matching cuda version.")
     return True
@@ -132,15 +132,15 @@ class OpBuilder(ABC):
     @abstractmethod
     def absolute_name(self):
         '''
-        Returns absolute build path for cases where the op is pre-installed, e.g., deepspeed.ops.adam.cpu_adam
-        will be installed as something like: deepspeed/ops/adam/cpu_adam.so
+        Returns absolute build path for cases where the op is pre-installed, e.g., apex.ops.adam.cpu_adam
+        will be installed as something like: apex/ops/adam/cpu_adam.so
         '''
         pass
 
     @abstractmethod
     def sources(self):
         '''
-        Returns list of source files for your op, relative to root of deepspeed package (i.e., DeepSpeed/deepspeed)
+        Returns list of source files for your op, relative to root of apex package
         '''
         pass
 
@@ -155,9 +155,9 @@ class OpBuilder(ABC):
         install_torch_version = torch_info['version']
         current_torch_version = ".".join(torch.__version__.split('.')[:2])
         if install_torch_version != current_torch_version:
-            raise RuntimeError("PyTorch version mismatch! DeepSpeed ops were compiled and installed "
+            raise RuntimeError("PyTorch version mismatch! apex ops were compiled and installed "
                                "with a different version than what is being used at runtime. "
-                               f"Please re-install DeepSpeed or switch torch versions. "
+                               f"Please re-install apex or switch torch versions. "
                                f"Install torch version={install_torch_version}, "
                                f"Runtime torch version={current_torch_version}")
 
@@ -167,18 +167,18 @@ class OpBuilder(ABC):
             current_cuda_version = ".".join(torch.version.cuda.split('.')[:2])
             install_cuda_version = torch_info['cuda_version']
             if install_cuda_version != current_cuda_version:
-                raise RuntimeError("CUDA version mismatch! DeepSpeed ops were compiled and installed "
+                raise RuntimeError("CUDA version mismatch! apex ops were compiled and installed "
                                    "with a different version than what is being used at runtime. "
-                                   f"Please re-install DeepSpeed or switch torch versions. "
+                                   f"Please re-install apex or switch torch versions. "
                                    f"Install CUDA version={install_cuda_version}, "
                                    f"Runtime CUDA version={current_cuda_version}")
         else:
             current_hip_version = ".".join(torch.version.hip.split('.')[:2])
             install_hip_version = torch_info['hip_version']
             if install_hip_version != current_hip_version:
-                raise RuntimeError("HIP version mismatch! DeepSpeed ops were compiled and installed "
+                raise RuntimeError("HIP version mismatch! apex ops were compiled and installed "
                                    "with a different version than what is being used at runtime. "
-                                   f"Please re-install DeepSpeed or switch torch versions. "
+                                   f"Please re-install apex or switch torch versions. "
                                    f"Install HIP version={install_hip_version}, "
                                    f"Runtime HIP version={current_hip_version}")
 
@@ -288,7 +288,7 @@ class OpBuilder(ABC):
 
     def include_paths(self):
         '''
-        Returns list of include paths, relative to root of deepspeed package (i.e., DeepSpeed/deepspeed)
+        Returns list of include paths, relative to root of apex package
         '''
         return []
 
@@ -505,7 +505,7 @@ class OpBuilder(ABC):
         self.error_log = f"{msg}"
         print(f"{WARNING} {msg}")
 
-    def deepspeed_src_path(self, code_path):
+    def apex_src_path(self, code_path):
         if os.path.isabs(code_path):
             return code_path
         else:
@@ -556,8 +556,8 @@ class OpBuilder(ABC):
         from torch.utils.cpp_extension import load
 
         start_build = time.time()
-        sources = [os.path.abspath(self.deepspeed_src_path(path)) for path in self.sources()]
-        extra_include_paths = [os.path.abspath(self.deepspeed_src_path(path)) for path in self.include_paths()]
+        sources = [os.path.abspath(self.apex_src_path(path)) for path in self.sources()]
+        extra_include_paths = [os.path.abspath(self.apex_src_path(path)) for path in self.include_paths()]
 
         # Torch will try and apply whatever CCs are in the arch list at compile time,
         # we have already set the intended targets ourselves we know that will be
@@ -778,7 +778,7 @@ class CUDAOpBuilder(OpBuilder):
             ]
         else:
             try:
-                nvcc_threads = int(os.getenv("DS_NVCC_THREADS", ""))
+                nvcc_threads = int(os.getenv("APEX_NVCC_THREADS", ""))
                 if nvcc_threads <= 0:
                     raise ValueError("")
             except ValueError:
@@ -797,7 +797,7 @@ class CUDAOpBuilder(OpBuilder):
                 '-U__CUDA_NO_HALF_OPERATORS__', '-U__CUDA_NO_HALF_CONVERSIONS__', '-U__CUDA_NO_HALF2_OPERATORS__',
                 f'--threads={nvcc_threads}'
             ]
-            if os.environ.get('DS_DEBUG_CUDA_BUILD', '0') == '1':
+            if os.environ.get('APEX_DEBUG_CUDA_BUILD', '0') == '1':
                 args.append('--ptxas-options=-v')
             args += self.compute_capability_args()
         return args

@@ -3,7 +3,7 @@ from .builder import CUDAOpBuilder
 import sys
 
 class ScaledSoftmaxCudaBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_SCALED_SOFTMAX_CUDA'
+    BUILD_VAR = 'APEX_BUILD_SCALED_SOFTMAX_CUDA'
     NAME = "scaled_softmax_cuda"
 
     def __init__(self):

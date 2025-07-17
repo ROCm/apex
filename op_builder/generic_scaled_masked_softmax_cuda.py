@@ -1,7 +1,7 @@
 from .builder import CUDAOpBuilder
 
 class GenericScaledMaskedSoftmaxCudaBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_GENERIC_SCALED_MASKED_SOFTMAX_CUDA'
+    BUILD_VAR = 'APEX_BUILD_GENERIC_SCALED_MASKED_SOFTMAX_CUDA'
     NAME = "generic_scaled_masked_softmax_cuda"
 
     def __init__(self):

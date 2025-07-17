@@ -4,7 +4,7 @@ import sys
 
 
 class BnpBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_BNP'
+    BUILD_VAR = 'APEX_BUILD_BNP'
     NAME = "bnp"
 
     def __init__(self):

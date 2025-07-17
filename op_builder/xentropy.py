@@ -4,7 +4,7 @@ import sys
 
 
 class XentropyBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_XENTROPY'
+    BUILD_VAR = 'APEX_BUILD_XENTROPY'
     NAME = "xentropy_cuda"
 
     def __init__(self):

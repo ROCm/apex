@@ -4,7 +4,7 @@ import sys
 
 
 class SyncBnBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_SYNCBN'
+    BUILD_VAR = 'APEX_BUILD_SYNCBN'
     NAME = "syncbn"
 
     def __init__(self):

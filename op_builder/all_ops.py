@@ -2,7 +2,7 @@ import os
 import pkgutil
 import importlib
 try:
-    # during installation time accelerator is visible, otherwise return deepspeed.accelerator
+    # during installation time accelerator is visible, otherwise return apex.accelerator
     from accelerator import get_accelerator
 except ImportError:
     from apex.accelerator import get_accelerator

@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# DeepSpeed Team
+# Taken from DeepSpeed
 
 import functools
 import os
@@ -204,7 +204,7 @@ class CUDA_Accelerator(ApexAccelerator):
             return True
         # See https://docs.nvidia.com/deeplearning/tensorrt/support-matrix/index.html#hardware-precision-matrix
         # FP16 on compute capability 6.x is deprecated
-        allow_deprecated_fp16 = os.environ.get('DS_ALLOW_DEPRECATED_FP16', '0') == '1'
+        allow_deprecated_fp16 = os.environ.get('APEX_ALLOW_DEPRECATED_FP16', '0') == '1'
         major, _ = torch.cuda.get_device_capability()
         if major >= 7:
             return True
@@ -307,7 +307,7 @@ class CUDA_Accelerator(ApexAccelerator):
 
     def op_builder_dir(self):
         try:
-            # is op_builder from deepspeed or a 3p version? this should only succeed if it's deepspeed
+            # is op_builder from apex or a 3p version? this should only succeed if it's apex
             # if successful this also means we're doing a local install and not JIT compile path
             from op_builder import __apex__  # noqa: F401 # type: ignore
             return "op_builder"

@@ -4,7 +4,7 @@ import sys
 
 
 class FusedDenseBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_FUSED_DENSE'
+    BUILD_VAR = 'APEX_BUILD_FUSED_DENSE'
     NAME = "fused_dense_cuda"
 
     def __init__(self):

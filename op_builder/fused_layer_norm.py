@@ -4,7 +4,7 @@ import sys
 
 
 class FusedLayerNormBuilder(CUDAOpBuilder):
-    BUILD_VAR = 'DS_BUILD_FUSED_LAYER_NORM'
+    BUILD_VAR = 'APEX_BUILD_FUSED_LAYER_NORM'
     NAME = "fused_layer_norm_cuda"
 
     def __init__(self):

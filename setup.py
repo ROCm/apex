@@ -271,8 +271,8 @@ def command_exists(cmd):
 
 
 BUILD_OP_PLATFORM = 1 if sys.platform == "win32" else 0
-BUILD_OP_DEFAULT = int(get_env_if_set('DS_BUILD_OPS', BUILD_OP_PLATFORM))
-print(f"DS_BUILD_OPS={BUILD_OP_DEFAULT}")
+BUILD_OP_DEFAULT = int(get_env_if_set('APEX_BUILD_OPS', BUILD_OP_PLATFORM))
+print(f"APEX_BUILD_OPS={BUILD_OP_DEFAULT}")
 
 ext_modules2 = []
 
@@ -325,7 +325,7 @@ if "--cuda_ext" in sys.argv:
 # Write out version/git info.
 git_hash_cmd = shlex.split("bash -c \"git rev-parse --short HEAD\"")
 git_branch_cmd = shlex.split("bash -c \"git rev-parse --abbrev-ref HEAD\"")
-if command_exists('git') and not is_env_set('DS_BUILD_STRING'):
+if command_exists('git') and not is_env_set('APEX_BUILD_STRING'):
     try:
         result = subprocess.check_output(git_hash_cmd)
         git_hash = result.decode('utf-8').strip()
@@ -338,18 +338,18 @@ else:
     git_hash = "unknown"
     git_branch = "unknown"
 
-# Parse the DeepSpeed version string from version.txt.
+# Parse the apex version string from version.txt.
 version_str = get_apex_version()
 
 # Build specifiers like .devX can be added at install time. Otherwise, add the git hash.
-# Example: `DS_BUILD_STRING=".dev20201022" python -m build --no-isolation`.
+# Example: `APEX_BUILD_STRING=".dev20201022" python -m build --no-isolation`.
 
 # Building wheel for distribution, update version file.
-if is_env_set('DS_BUILD_STRING'):
+if is_env_set('APEX_BUILD_STRING'):
     # Build string env specified, probably building for distribution.
     with open('build.txt', 'w') as fd:
-        fd.write(os.environ['DS_BUILD_STRING'])
-    version_str += os.environ['DS_BUILD_STRING']
+        fd.write(os.environ['APEX_BUILD_STRING'])
+    version_str += os.environ['APEX_BUILD_STRING']
 elif os.path.isfile('build.txt'):
     # build.txt exists, probably installing from distribution.
     with open('build.txt', 'r') as fd:
@@ -410,5 +410,6 @@ setup(
     cmdclass={'build_ext': BuildExtension} if ext_modules2 else {},
     extras_require=extras,
     install_requires=required,
+    include_package_data=True
 )
 
