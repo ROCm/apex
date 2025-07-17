@@ -25,5 +25,4 @@ class XentropyBuilder(CUDAOpBuilder):
         return args + self.version_dependent_macros()
 
     def nvcc_args(self):
-        nvcc_flags = ['-O3'] + self.version_dependent_macros() 
-        return nvcc_flags
+        return ['-O3'] + self.version_dependent_macros()

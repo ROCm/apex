@@ -23,8 +23,7 @@ class BnpBuilder(CUDAOpBuilder):
         return ['contrib/csrc', 'csrc']
 
     def cxx_args(self):
-        args = super().cxx_args()
-        return args + self.version_dependent_macros()
+        return self.version_dependent_macros()
 
     def nvcc_args(self):
         return ['-DCUDA_HAS_FP16=1',

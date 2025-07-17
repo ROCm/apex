@@ -24,17 +24,15 @@ class ScaledUpperTriangMaskedSoftmaxCudaBuilder(CUDAOpBuilder):
         return args + self.version_dependent_macros()
 
     def nvcc_args(self):
-        if self.is_rocm_pytorch():
-            return [
+        nvcc_flags = [
                 '-O3',
                 '-U__CUDA_NO_HALF_OPERATORS__',
                 '-U__CUDA_NO_HALF_CONVERSIONS__'
             ] + self.version_dependent_macros()
-        else:
-            return [
-                '-O3',
-                '-U__CUDA_NO_HALF_OPERATORS__',
-                '-U__CUDA_NO_HALF_CONVERSIONS__',
-                '--expt-relaxed-constexpr',
-                '--expt-extended-lambda'
-            ] + self.version_dependent_macros()
+        if not self.is_rocm_pytorch():
+            nvcc_flags.extend(
+                [
+                    '--expt-relaxed-constexpr',
+                    '--expt-extended-lambda'
+                ])
+        return nvcc_flags
