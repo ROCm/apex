@@ -38,7 +38,8 @@ class RefLAMB(Optimizer):
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super(RefLAMB, self).__init__(params, defaults)
         if multi_tensor_applier.available:
-            import amp_C
+            from apex.op_builder import AmpCBuilder
+            amp_C = AmpCBuilder().load()
             self.multi_tensor_l2norm=amp_C.multi_tensor_l2norm
             # Skip buffer
             self._dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=self.param_groups[0]["params"][0].device)
