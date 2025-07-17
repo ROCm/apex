@@ -3,7 +3,8 @@ import math
 import inspect
 import torch
 import importlib
-import amp_C
+from apex.op_builder import AmpCBuilder, DistributedLambBuilder, FusedAdamBuilder
+amp_C = AmpCBuilder().load()
 from apex.multi_tensor_apply import multi_tensor_applier
 
 import torch.distributed.distributed_c10d as c10d
@@ -113,14 +114,14 @@ class DistributedFusedLAMB(torch.optim.Optimizer):
         super(DistributedFusedLAMB, self).__init__(params, defaults)
 
         global fused_adam_cuda, distributed_lamb_cuda
-        fused_adam_cuda = importlib.import_module("fused_adam_cuda")
-        distributed_lamb_cuda = importlib.import_module("distributed_lamb_cuda")
+        fused_adam_cuda = FusedAdamBuilder().load()
+        distributed_lamb_cuda = DistributedLambBuilder().load()
 
         self._overflow_buf = torch.cuda.IntTensor([0])
         self._has_overflow = False
         self.multi_tensor_lamb_compute_update_term = distributed_lamb_cuda.multi_tensor_lamb_compute_update_term
         self.multi_tensor_lamb_update_weights = distributed_lamb_cuda.multi_tensor_lamb_update_weights
-        import amp_C
+        amp_C = AmpCBuilder().load()
         self.multi_tensor_l2norm = amp_C.multi_tensor_l2norm
 
         self._grad_averaging = grad_averaging
