@@ -54,8 +54,7 @@ _logger = get_transformer_logger(__name__)
 
 _grad_accum_fusion_available = True
 try:
-    from apex.op_builder import FusedWeightGradientMlpCudaBuilder  
-    fused_weight_gradient_mlp_cuda = FusedWeightGradientMlpCudaBuilder().load()
+    from apex.op_builder import FusedWeightGradientMlpCudaBuilder
 except ImportError:
     _grad_accum_fusion_available = False
 
@@ -364,6 +363,7 @@ class LinearWithGradAccumulationAndAsyncCommunication(torch.autograd.Function):
             )
 
         if ctx.gradient_accumulation_fusion:
+            fused_weight_gradient_mlp_cuda = FusedWeightGradientMlpCudaBuilder().load()
             if not ctx.use_16bit_in_wgrad_accum_fusion:
                 fused_weight_gradient_mlp_cuda.wgrad_gemm_accum_fp32(
                     total_input, grad_output, weight.main_grad
