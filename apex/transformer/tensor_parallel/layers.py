@@ -54,7 +54,8 @@ _logger = get_transformer_logger(__name__)
 
 _grad_accum_fusion_available = True
 try:
-    import fused_weight_gradient_mlp_cuda
+    from apex.op_builder import FusedWeightGradientMlpCudaBuilder  
+    fused_weight_gradient_mlp_cuda = FusedWeightGradientMlpCudaBuilder().load()
 except ImportError:
     _grad_accum_fusion_available = False
 
