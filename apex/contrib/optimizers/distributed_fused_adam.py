@@ -28,8 +28,9 @@ except ImportError:
     nccl_allocator = None
 
 from apex.multi_tensor_apply import multi_tensor_applier
-import amp_C
-import distributed_adam_cuda
+from apex.op_builder import AmpCBuilder, DistributedAdamBuilder, FusedAdamBuilder
+amp_C = AmpCBuilder().load()
+distributed_adam_cuda = DistributedAdamBuilder().load()
 
 # Fallback to private functions if using PyTorch <1.13.0
 try:
@@ -126,7 +127,7 @@ else:
 # Import optional CUDA kernels
 _FOUND_DEPRECATED_FUSED_ADAM: bool = False
 try:
-    import fused_adam_cuda
+    fused_adam_cuda = FusedAdamBuilder().load()
 
     _FOUND_DEPRECATED_FUSED_ADAM = True
 except ImportError:
