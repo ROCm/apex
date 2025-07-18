@@ -338,7 +338,8 @@ def _process_optimizer(optimizer, properties):
 
     # TODO:  Centralize exposure and import error checking for the C backend.
     if multi_tensor_applier.available:
-        import amp_C
+        from apex.op_builder import AmpCBuilder
+        amp_C = AmpCBuilder().load()
         optimizer._amp_stash.multi_tensor_scale = amp_C.multi_tensor_scale
         optimizer._amp_stash.multi_tensor_l2norm = amp_C.multi_tensor_l2norm
         optimizer._amp_stash.dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device='cuda')

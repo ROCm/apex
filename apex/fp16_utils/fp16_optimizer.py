@@ -101,7 +101,8 @@ class FP16_Optimizer(object):
 
         # TODO:  Centralize exposure and import error checking for the C backend.
         if multi_tensor_applier.available:
-            import amp_C
+            from apex.op_builder import AmpCBuilder
+            amp_C = AmpCBuilder().load()
             self.multi_tensor_scale = amp_C.multi_tensor_scale
             self._dummy_overflow_buf = torch.cuda.IntTensor([0]);
 

@@ -64,7 +64,8 @@ class LossScaler(object):
         self._has_overflow = False
         self._overflow_buf = torch.tensor([0], dtype=torch.int, device='cuda')
         if multi_tensor_applier.available:
-            import amp_C
+            from apex.op_builder import AmpCBuilder
+            amp_C = AmpCBuilder().load()
             LossScaler.has_fused_kernel = multi_tensor_applier.available
             LossScaler.multi_tensor_scale_cuda = amp_C.multi_tensor_scale
             LossScaler.multi_tensor_axpby_cuda = amp_C.multi_tensor_axpby
