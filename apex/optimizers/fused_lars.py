@@ -32,7 +32,8 @@ class FusedLARS(Optimizer):
         self.eps = eps
 
         if multi_tensor_applier.available:
-            import amp_C
+            from apex.op_builder import AmpCBuilder
+            amp_C = AmpCBuilder().load()
             # Skip buffer
             self._dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=self.param_groups[0]["params"][0].device)
             self.multi_tensor_l2norm = amp_C.multi_tensor_l2norm

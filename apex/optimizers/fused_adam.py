@@ -107,7 +107,8 @@ class FusedAdam(torch.optim.Optimizer):
             self._step_supports_amp_scaling = True
 
         if multi_tensor_applier.available:
-            import amp_C
+            from apex.op_builder import AmpCBuilder
+            amp_C = AmpCBuilder().load()
             # Skip buffer
             self._dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device='cuda')
             self.multi_tensor_adam = amp_C.multi_tensor_adam

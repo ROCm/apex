@@ -1,6 +1,7 @@
 import torch
-import transducer_loss_cuda
-import transducer_joint_cuda
+from apex.op_builder import TransducerJointBuilder, TransducerLossBuilder  
+transducer_loss_cuda = TransducerLossBuilder().load()
+transducer_joint_cuda = TransducerJointBuilder().load()
 
 class TransducerJoint(torch.nn.Module):
     """Transducer joint

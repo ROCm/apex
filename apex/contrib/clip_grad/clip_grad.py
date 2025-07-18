@@ -4,7 +4,8 @@ import torch
 
 _kernel_import_succeeded = False
 try:
-    import amp_C
+    from apex.op_builder import AmpCBuilder
+    amp_C = AmpCBuilder().load()
     from apex.multi_tensor_apply import multi_tensor_applier
     _kernel_import_succeeded = True
 except ImportError:
