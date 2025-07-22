@@ -868,6 +868,9 @@ class CUDAOpBuilder(OpBuilder):
         )
         return _nccl_version_getter.get_nccl_version()
 
+    def torch_version(self):
+        return (TORCH_MAJOR, TORCH_MINOR)
+
 class TorchCPUOpBuilder(CUDAOpBuilder):
 
     def get_cuda_lib64_path(self):

@@ -303,7 +303,13 @@ for op_name, builder in ALL_OPS.items():
 
     #if the necessary build flags for the op is not provided, then skip building it
     if not op_included:
-        builder.warning(f"Skip pre-compile of incompatible {op_name}; Build flags for {op_name}: {ALL_OPS[op_name].INCLUDE_FLAG} not set")
+        builder.warning(f"Skipping unsupported {op_name}; Build flags for {op_name}: {ALL_OPS[op_name].INCLUDE_FLAG} not set")
+        del install_ops[op_name]
+        continue
+
+    #check if the conditions for building the module are satisfied
+    if not op_compatible:
+        builder.warning(f"Skipping unsupported {op_name}; The conditions for building this module are not satisfied.")
         del install_ops[op_name]
         continue
 

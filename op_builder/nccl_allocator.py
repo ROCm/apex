@@ -28,8 +28,9 @@ class NCCLAllocatorBuilder(CUDAOpBuilder):
         return self.nccl_args()
 
     def is_compatible(self):
-        available_nccl_version = self.nccl_version()
-        if available_nccl_version >= (2, 19):
-            return True
-        else:
-            return False
+        torch_version = self.torch_version()
+        if torch_version >= (2, 6):
+            available_nccl_version = self.nccl_version()
+            if available_nccl_version >= (2, 19):
+                return True
+        return False
