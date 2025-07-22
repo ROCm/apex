@@ -860,6 +860,14 @@ class CUDAOpBuilder(OpBuilder):
             nccl_library = ["-lrccl"]
         return nccl_library
 
+    def nccl_version(self):
+        from torch.utils.cpp_extension import load
+        _nccl_version_getter = load(
+            name="_nccl_version_getter",
+            sources=["contrib/csrc/nccl_p2p/nccl_version.cpp", "contrib/csrc/nccl_p2p/nccl_version_check.cu"],
+        )
+        return _nccl_version_getter.get_nccl_version()
+
 class TorchCPUOpBuilder(CUDAOpBuilder):
 
     def get_cuda_lib64_path(self):

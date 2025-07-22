@@ -25,3 +25,10 @@ class NCCLAllocatorBuilder(CUDAOpBuilder):
 
     def nvcc_args(self):
         return self.nccl_args()
+
+    def is_compatible(self):
+        available_nccl_version = self.nccl_version()
+        if available_nccl_version >= (2, 19):
+            return True
+        else:
+            return False
