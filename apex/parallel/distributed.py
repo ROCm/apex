@@ -13,7 +13,8 @@ imported_flatten_impl = False
 def import_flatten_impl():
     global flatten_impl, unflatten_impl, imported_flatten_impl
     try:
-        import apex_C
+        from apex.op_builder import ApexCBuilder
+        apex_C = ApexCBuilder().load()
         flatten_impl = apex_C.flatten
         unflatten_impl = apex_C.unflatten
     except ImportError:
