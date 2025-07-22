@@ -2,6 +2,7 @@ from .builder import CUDAOpBuilder
 
 class GenericScaledMaskedSoftmaxCudaBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_GENERIC_SCALED_MASKED_SOFTMAX_CUDA'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "generic_scaled_masked_softmax_cuda"
 
     def __init__(self):
@@ -36,4 +37,3 @@ class GenericScaledMaskedSoftmaxCudaBuilder(CUDAOpBuilder):
                     '--expt-extended-lambda'
                 ])
         return nvcc_flags
-

@@ -5,6 +5,7 @@ import sys
 
 class FocalLossBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FOCAL_LOSS'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "focal_loss_cuda"
 
     def __init__(self):

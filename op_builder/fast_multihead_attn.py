@@ -5,6 +5,7 @@ import sys
 
 class FastMultiheadAttnBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FAST_MULTIHEAD_ATTN'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "fast_multihead_attn"
 
     def __init__(self):

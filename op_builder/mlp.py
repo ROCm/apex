@@ -5,6 +5,7 @@ import sys
 
 class MlpBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_MLP'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "mlp_cuda"
 
     def __init__(self):

@@ -5,6 +5,7 @@ import sys
 
 class FusedIndexMul2dBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FUSED_INDEX_MUL_2D'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "fused_index_mul_2d"
 
     def __init__(self):

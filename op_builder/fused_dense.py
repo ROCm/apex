@@ -5,6 +5,7 @@ import sys
 
 class FusedDenseBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FUSED_DENSE'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "fused_dense_cuda"
 
     def __init__(self):

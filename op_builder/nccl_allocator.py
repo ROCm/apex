@@ -5,6 +5,7 @@ import sys
 
 class NCCLAllocatorBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_NCCL_ALLOCATOR'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "_apex_nccl_allocator"
 
     def __init__(self):

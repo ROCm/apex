@@ -5,6 +5,7 @@ import sys
 
 class DistributedAdamBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_DISTRIBUTED_ADAM'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "distributed_adam_cuda"
 
     def __init__(self):

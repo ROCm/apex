@@ -5,6 +5,7 @@ import sys
 
 class AmpCBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_AMP_C'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "amp_C"
 
     def __init__(self):

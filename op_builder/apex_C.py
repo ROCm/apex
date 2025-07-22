@@ -5,6 +5,7 @@ import sys
 
 class ApexCBuilder(TorchCPUOpBuilder):
     BUILD_VAR = 'APEX_BUILD_C'
+    INCLUDE_FLAG = "APEX_CPP_OPS"
     NAME = "apex_C"
 
     def __init__(self):

@@ -217,29 +217,10 @@ ext_modules = []
 
 extras = {}
 
-# Set up macros for forward/backward compatibility hack around
-# https://github.com/pytorch/pytorch/commit/4404762d7dd955383acee92e6f06b48144a0742e
-# and
-# https://github.com/NVIDIA/apex/issues/456
-# https://github.com/pytorch/pytorch/commit/eb7b39e02f7d75c26d8a795ea8c7fd911334da7e#diff-4632522f237f1e4e728cb824300403ac
-version_ge_1_1 = []
-if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 0):
-    version_ge_1_1 = ["-DVERSION_GE_1_1"]
-version_ge_1_3 = []
-if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 2):
-    version_ge_1_3 = ["-DVERSION_GE_1_3"]
-version_ge_1_5 = []
-if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 4):
-    version_ge_1_5 = ["-DVERSION_GE_1_5"]
-version_dependent_macros = version_ge_1_1 + version_ge_1_3 + version_ge_1_5
-
 if not IS_ROCM_PYTORCH:
     _, bare_metal_version = get_cuda_bare_metal_version(CUDA_HOME)
 else:
     _, bare_metal_version, bare_metal_minor  = get_rocm_bare_metal_version(ROCM_HOME)
-
-if IS_ROCM_PYTORCH and (ROCM_MAJOR >= 6):
-    version_dependent_macros += ["-DHIPBLAS_V2"] 
 
 
 if "--cpp_ext" in sys.argv or "--cuda_ext" in sys.argv:
@@ -273,8 +254,17 @@ def command_exists(cmd):
 BUILD_OP_PLATFORM = 1 if sys.platform == "win32" else 0
 BUILD_OP_DEFAULT = int(get_env_if_set('APEX_BUILD_OPS', BUILD_OP_PLATFORM))
 print(f"APEX_BUILD_OPS={BUILD_OP_DEFAULT}")
+BUILD_CPP_OP = int(get_env_if_set('APEX_CPP_OPS', BUILD_OP_PLATFORM))
+BUILD_CUDA_OP = int(get_env_if_set('APEX_CUDA_OPS', BUILD_OP_PLATFORM))
+BUILD_AITER_OP = int(get_env_if_set('APEX_AITER_OPS', BUILD_OP_PLATFORM))
+build_flags = {
+    "APEX_BUILD_OPS" : BUILD_OP_DEFAULT,
+    "APEX_CPP_OPS" : BUILD_CPP_OP,
+    "APEX_OPS" : BUILD_CUDA_OP,
+    "APEX_AITER_OPS" : BUILD_AITER_OP
+    }
 
-ext_modules2 = []
+ext_modules = []
 
 def is_env_set(key):
     """
@@ -292,9 +282,17 @@ def op_enabled(op_name):
     env_var = op_envvar(op_name)
     return int(get_env_if_set(env_var, BUILD_OP_DEFAULT))
 
+def is_op_included(op_name):
+    #check if operation has BUILD_FLAG defined
+    assert hasattr(ALL_OPS[op_name], 'INCLUDE_FLAG'), \
+        f"{op_name} is missing INCLUDE_FLAG field"
+    include_flag = ALL_OPS[op_name].INCLUDE_FLAG
+    return get_env_if_set(include_flag, False)
+
 install_ops = dict.fromkeys(ALL_OPS.keys(), False)
 for op_name, builder in ALL_OPS.items():
     op_compatible = builder.is_compatible()
+    op_included = is_op_included(op_name)
 
     # If op is requested but not available, throw an error.
     if op_enabled(op_name) and not op_compatible:
@@ -303,14 +301,21 @@ for op_name, builder in ALL_OPS.items():
             builder.warning(f"Skip pre-compile of incompatible {op_name}; One can disable {op_name} with {env_var}=0")
         continue
 
+    #if the necessary build flags for the op is not provided, then skip building it
+    if not op_included:
+        builder.warning(f"Skip pre-compile of incompatible {op_name}; Build flags for {op_name}: {ALL_OPS[op_name].INCLUDE_FLAG} not set")
+        del install_ops[op_name]
+        continue
+
     # If op is compatible but install is not enabled (JIT mode).
     if IS_ROCM_PYTORCH and op_compatible and not op_enabled(op_name):
         builder.hipify_extension()
 
     # If op install enabled, add builder to extensions.
+    # Also check if corresponding flags are checked
     if op_enabled(op_name) and op_compatible:
         install_ops[op_name] = op_enabled(op_name)
-        ext_modules2.append(builder.builder())
+        ext_modules.append(builder.builder())
 
 print(f'Install Ops={install_ops}')
     
@@ -391,6 +396,7 @@ with open('apex/git_version_info_installed.py', 'w') as fd:
     fd.write(f"git_hash='{git_hash}'\n")
     fd.write(f"git_branch='{git_branch}'\n")
     fd.write(f"installed_ops={install_ops}\n")
+    fd.write(f"build_flags={build_flags}\n")
     fd.write(f"accelerator_name='{accelerator_name}'\n")
     fd.write(f"torch_info={torch_info}\n")
 
@@ -406,10 +412,9 @@ setup(
         exclude=("build", "include", "tests", "dist", "docs", "tests", "examples", "apex.egg-info", "op_builder", "accelerator")
     ),
     description="PyTorch Extensions written by NVIDIA",
-    ext_modules=ext_modules2,
-    cmdclass={'build_ext': BuildExtension} if ext_modules2 else {},
+    ext_modules=ext_modules,
+    cmdclass={'build_ext': BuildExtension} if ext_modules else {},
     extras_require=extras,
     install_requires=required,
     include_package_data=True
 )
-

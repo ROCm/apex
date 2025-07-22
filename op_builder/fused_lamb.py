@@ -5,6 +5,7 @@ import sys
 
 class FusedLambBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FUSED_LAMB'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "fused_lamb_cuda"
 
     def __init__(self):

@@ -4,6 +4,7 @@ import sys
 
 class TransducerJointBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_TRANSDUCER_JOINT'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "transducer_joint_cuda"
 
     def __init__(self):

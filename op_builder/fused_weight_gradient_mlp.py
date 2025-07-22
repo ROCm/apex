@@ -2,6 +2,7 @@ from .builder import CUDAOpBuilder
 
 class FusedWeightGradientMlpCudaBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FUSED_WEIGHT_GRADIENT_MLP'
+    INCLUDE_FLAG = "APEX_CUDA_OPS"
     NAME = "fused_weight_gradient_mlp_cuda"
 
     def __init__(self):
@@ -39,4 +40,3 @@ class FusedWeightGradientMlpCudaBuilder(CUDAOpBuilder):
                     "--use_fast_math"
                 ]) + self.compute_capability_args()
         return nvcc_flags
-
