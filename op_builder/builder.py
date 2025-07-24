@@ -310,6 +310,12 @@ class OpBuilder(ABC):
         '''
         return True
 
+    def is_supported(self):
+        '''
+        Check if all conditions are satisfied to build this op
+        '''
+        return True
+
     def extra_ldflags(self):
         return []
 
@@ -870,6 +876,9 @@ class CUDAOpBuilder(OpBuilder):
 
     def torch_version(self):
         return (TORCH_MAJOR, TORCH_MINOR)
+
+    def is_supported(self):
+        return super().is_supported()
 
 class TorchCPUOpBuilder(CUDAOpBuilder):
 
