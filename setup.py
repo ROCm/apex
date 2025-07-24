@@ -247,12 +247,10 @@ BUILD_OP_DEFAULT = int(get_env_if_set('APEX_BUILD_OPS', BUILD_OP_PLATFORM))
 print(f"APEX_BUILD_OPS={BUILD_OP_DEFAULT}")
 BUILD_CPP_OP = int(get_env_if_set('APEX_CPP_OPS', BUILD_OP_PLATFORM))
 BUILD_CUDA_OP = int(get_env_if_set('APEX_CUDA_OPS', BUILD_OP_PLATFORM))
-BUILD_AITER_OP = int(get_env_if_set('APEX_AITER_OPS', BUILD_OP_PLATFORM))
 build_flags = {
     "APEX_BUILD_OPS" : BUILD_OP_DEFAULT,
     "APEX_CPP_OPS" : BUILD_CPP_OP,
     "APEX_OPS" : BUILD_CUDA_OP,
-    "APEX_AITER_OPS" : BUILD_AITER_OP
     }
 
 ext_modules = []
