@@ -6,7 +6,7 @@ _kernel_import_succeeded = False
 try:
     from apex.op_builder import AmpCBuilder
     amp_C = AmpCBuilder().load()
-    from apex.multi_tensor_apply import multi_tensor_applier
+    from apex.multi_tensor_apply import MultiTensorApply
     _kernel_import_succeeded = True
 except ImportError:
     _kernel_import_succeeded = False
@@ -76,6 +76,7 @@ def clip_grad_norm_(
     # Compute gradient L2 norms
     norms = []
     dummy_overflow_buf = torch.zeros([1], dtype=torch.int32, device=device)
+    multi_tensor_applier = MultiTensorApply(256*32)
     if grads_fp32:
         norms.append(
             multi_tensor_applier(

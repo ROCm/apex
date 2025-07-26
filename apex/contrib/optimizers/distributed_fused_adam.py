@@ -27,7 +27,7 @@ try:
 except ImportError:
     nccl_allocator = None
 
-from apex.multi_tensor_apply import multi_tensor_applier
+from apex.multi_tensor_apply import MultiTensorApply
 from apex.op_builder import AmpCBuilder, DistributedAdamBuilder, FusedAdamBuilder
 amp_C = AmpCBuilder().load()
 distributed_adam_cuda = DistributedAdamBuilder().load()
@@ -211,6 +211,7 @@ def _multi_tensor_copy(
         use_fused_kernel = use_fused_kernel and is_cuda and is_contiguous
 
         # Copy buffers
+        multi_tensor_applier = MultiTensorApply(256*32)
         if use_fused_kernel and _FOUND_DEPRECATED_FUSED_ADAM:
             if dummy_overflow_buf is None:
                 dummy_overflow_buf = torch.zeros([1], dtype=torch.int32, device="cuda")
@@ -2265,6 +2266,7 @@ class DistributedFusedAdam(torch.optim.Optimizer):
                     )
 
         # Compute norm of each group of grads
+        multi_tensor_applier = MultiTensorApply(256*32)
         grad_norm_sq = None
         for grad_group in grad_groups.values():
             grad_group_norm_sq = (
@@ -2663,6 +2665,7 @@ class DistributedFusedAdam(torch.optim.Optimizer):
         # Apply optimizer step to each param group
         adam_func = distributed_adam_cuda.multi_tensor_fused_adam_capturable \
             if self.capturable else distributed_adam_cuda.multi_tensor_fused_adam
+        multi_tensor_applier = MultiTensorApply(256*32)
         for (group_id, _, _, _), group_buffers in buffers.items():
             group = self.param_groups[group_id]
             beta1, beta2 = group["betas"]
@@ -2750,6 +2753,7 @@ class DistributedFusedAdam(torch.optim.Optimizer):
                 )
 
         # Apply optimizer step to each param group
+        multi_tensor_applier = MultiTensorApply(256*32)
         for (group_id, _), group_buffers in buffers.items():
             group = self.param_groups[group_id]
             beta1, beta2 = group["betas"]
@@ -2833,6 +2837,7 @@ class DistributedFusedAdam(torch.optim.Optimizer):
                 buf.mul_(scale)
 
             # Apply optimizer step to each param group
+            multi_tensor_applier = MultiTensorApply(256*32)
             for group_id, buffers in group_buffers.items():
                 group = self.param_groups[group_id]
                 beta1, beta2 = group["betas"]

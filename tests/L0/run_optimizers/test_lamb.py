@@ -4,7 +4,7 @@ import os
 import torch
 from torch.optim import Optimizer
 import apex
-from apex.multi_tensor_apply import multi_tensor_applier
+from apex.multi_tensor_apply import MultiTensorApply
 from itertools import product
 
 class RefLAMB(Optimizer):
@@ -37,6 +37,7 @@ class RefLAMB(Optimizer):
             raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super(RefLAMB, self).__init__(params, defaults)
+        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
             from apex.op_builder import AmpCBuilder
             amp_C = AmpCBuilder().load()
@@ -73,6 +74,7 @@ class RefLAMB(Optimizer):
         device = self.param_groups[0]["params"][0].device
         g_norm_32, g_norm_16 = torch.zeros(1, device=device), torch.zeros(1, device=device)
         # compute grad norm for two lists
+        multi_tensor_applier = MultiTensorApply(256*32)
         if len(g_all_32) > 0:
             g_norm_32 = multi_tensor_applier(self.multi_tensor_l2norm,
                                              self._dummy_overflow_buf,

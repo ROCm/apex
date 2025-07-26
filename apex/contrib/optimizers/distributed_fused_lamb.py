@@ -5,7 +5,7 @@ import torch
 import importlib
 from apex.op_builder import AmpCBuilder, DistributedLambBuilder, FusedAdamBuilder
 amp_C = AmpCBuilder().load()
-from apex.multi_tensor_apply import multi_tensor_applier
+from apex.multi_tensor_apply import MultiTensorApply
 
 import torch.distributed.distributed_c10d as c10d
 
@@ -735,7 +735,8 @@ class DistributedFusedLAMB(torch.optim.Optimizer):
             else:
                 self._reduce_scatter_and_all_reduce(block_id)
 
-            # Compute L2 grad norm
+            # Compute L2 grad nor
+            multi_tensor_applier = MultiTensorApply(256*32)
             if block_id == 0:
                 with torch.cuda.stream(self._l2_grad_norm_st):
                     for block_id in range(self._num_blocks):
@@ -790,6 +791,7 @@ class DistributedFusedLAMB(torch.optim.Optimizer):
                         self._reductions_works[block_id][chunk_id].wait()
 
     def __compute_contrib_param_norm(self):
+        multi_tensor_applier = MultiTensorApply(256*32)
         if self._contrib_model_param_for_norm_fp16 is not None and self._contrib_model_param_for_norm_fp32 is not None:
             gnorm_fp16 = multi_tensor_applier(self.multi_tensor_l2norm, self._overflow_buf, [self._contrib_model_param_for_norm_fp16], True)[1]
             gnorm_fp32 = multi_tensor_applier(self.multi_tensor_l2norm, self._overflow_buf, [self._contrib_model_param_for_norm_fp32], True)[1]
@@ -803,6 +805,7 @@ class DistributedFusedLAMB(torch.optim.Optimizer):
         return gnorm
 
     def __compute_contrib_update_norm(self):
+        multi_tensor_applier = MultiTensorApply(256*32)
         l2_norm = torch.zeros(size=[self._model_params_num], dtype=torch.float32, device='cuda')
         local_contrib_l2_norm = multi_tensor_applier(self.multi_tensor_l2norm, self._overflow_buf, [self._contrib_update_frag_for_norm], True)[1] ** 2
         l2_norm.scatter_(dim=0, index=self._offsets, src=local_contrib_l2_norm)
@@ -811,6 +814,7 @@ class DistributedFusedLAMB(torch.optim.Optimizer):
         return l2_norm
 
     def _pipeline_step(self):
+        multi_tensor_applier = MultiTensorApply(256*32)
         global_scale = self.global_scale
         # if clip before ar, set max_grad_norm to 0
         max_grad_norm = self.defaults['max_grad_norm'] * self._clip_after_ar
@@ -900,6 +904,7 @@ class DistributedFusedLAMB(torch.optim.Optimizer):
                         )
 
     def _flatten_grad_mt(self, scale):
+        multi_tensor_applier = MultiTensorApply(256*32)
         if len(self._grads_fp16) > 0:
             self._overflow_buf.zero_()
             if not self._fused_norm:
@@ -986,6 +991,7 @@ class DistributedFusedLAMB(torch.optim.Optimizer):
         self._grads_generated = [False]*len(self._grads_info)
 
     def step(self, closure=None, grad_scaler=None):
+        multi_tensor_applier = MultiTensorApply(256*32)
         loss = None
         if closure is not None:
             loss = closure()

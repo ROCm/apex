@@ -1,5 +1,5 @@
 import torch
-from apex.multi_tensor_apply import multi_tensor_applier
+from apex.multi_tensor_apply import MultiTensorApply
 
 
 class FusedAdagrad(torch.optim.Optimizer):
@@ -48,6 +48,7 @@ class FusedAdagrad(torch.optim.Optimizer):
         self.adagrad_w_mode = 1 if adagrad_w_mode else 0
         self.set_grad_none = set_grad_none
 
+        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
             from apex.op_builder import AmpCBuilder
             amp_C = AmpCBuilder().load()
@@ -103,6 +104,7 @@ class FusedAdagrad(torch.optim.Optimizer):
                 else:
                     raise RuntimeError('FusedAdagrad only support fp16, bfloat16 and fp32.')
 
+            multi_tensor_applier = MultiTensorApply(256*32)
             if(len(g_16) > 0):
                 multi_tensor_applier(self.multi_tensor_adagrad,
                                      self._dummy_overflow_buf,

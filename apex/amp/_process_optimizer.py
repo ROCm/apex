@@ -1,6 +1,6 @@
 import types
 from ..fp16_utils import master_params_to_model_params
-from ..multi_tensor_apply import multi_tensor_applier
+from ..multi_tensor_apply import MultiTensorApply
 from ._amp_state import maybe_print, _amp_state
 import torch
 from ..optimizers import FusedSGD
@@ -13,6 +13,7 @@ class AmpOptimizerState(object):
 
 def _master_params_to_model_params(self):
     stash = self._amp_stash
+    multi_tensor_applier = MultiTensorApply(256*32)
     if multi_tensor_applier.available:
         if len(stash.all_fp16_params) > 0:
             multi_tensor_applier(
@@ -319,6 +320,7 @@ def _amp_lazy_init(self):
 
 
 def _process_optimizer(optimizer, properties):
+    multi_tensor_applier = MultiTensorApply(256*32)
     if hasattr(optimizer, "_amp_stash"):
         raise RuntimeError("A given optimizer should only be passed through amp.initialize once.")
     else:

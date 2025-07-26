@@ -1,7 +1,7 @@
 import types
 import torch
 import importlib
-from apex.multi_tensor_apply import multi_tensor_applier
+from apex.multi_tensor_apply import MultiTensorApply
 
 class FusedAdam(torch.optim.Optimizer):
 
@@ -46,6 +46,7 @@ class FusedAdam(torch.optim.Optimizer):
 
         self._use_multi_tensor = False
         if use_mt:
+            multi_tensor_applier = MultiTensorApply(256*32)
             if not multi_tensor_applier.available:
                 print("Warning:  multi_tensor_applier is unavailable")
             else:
@@ -189,6 +190,7 @@ class FusedAdam(torch.optim.Optimizer):
                                              group['weight_decay'])
 
             if self._use_multi_tensor:
+                multi_tensor_applier = MultiTensorApply(256*32)
                 with torch.cuda.device(tensordevice):
                     multi_tensor_applier(
                         fused_adam_cuda.adam_mt,

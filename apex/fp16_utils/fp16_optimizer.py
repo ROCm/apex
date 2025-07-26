@@ -6,7 +6,7 @@ from torch._utils import _flatten_dense_tensors, _unflatten_dense_tensors
 
 from ..amp._amp_state import _amp_state, maybe_print
 from ..amp.scaler import LossScaler
-from ..multi_tensor_apply import multi_tensor_applier
+from apex.multi_tensor_apply import MultiTensorApply
 from .fp16util import model_grads_to_master_grads, master_params_to_model_params, clip_grad_norm
 
 # TODO:  Update overflow check + downscale to use Carl's fused kernel.
@@ -100,6 +100,7 @@ class FP16_Optimizer(object):
         self.clip_grad_norm = clip_grad_norm
 
         # TODO:  Centralize exposure and import error checking for the C backend.
+        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
             from apex.op_builder import AmpCBuilder
             amp_C = AmpCBuilder().load()
@@ -159,6 +160,7 @@ class FP16_Optimizer(object):
     #     self.loss_scaler.update_scale(has_overflow)
 
     def _master_params_to_model_params(self):
+        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
             if len(self.all_fp16_params) > 0:
                 multi_tensor_applier(
