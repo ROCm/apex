@@ -21,7 +21,7 @@ try:
     from apex.parallel import DistributedDataParallel as DDP
     from apex.fp16_utils import *
     from apex import amp, optimizers
-    from apex.multi_tensor_apply import multi_tensor_applier
+    from apex.multi_tensor_apply import MultiTensorApply
 except ImportError:
     raise ImportError("Please install apex from https://www.github.com/nvidia/apex to run this example.")
 
@@ -99,6 +99,7 @@ args = parser.parse_args()
 
 # Let multi_tensor_applier be the canary in the coalmine
 # that verifies if the backend is what we think it is
+multi_tensor_applier = MultiTensorApply(256*32)
 assert multi_tensor_applier.available == args.has_ext 
 
 print("opt_level = {}".format(args.opt_level))

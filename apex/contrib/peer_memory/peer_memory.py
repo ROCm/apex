@@ -1,6 +1,7 @@
 import torch
 import numpy as np
-import peer_memory_cuda as pm
+from apex.op_builder import PeerMemoryBuilder
+pm = PeerMemoryBuilder().load()
 
 class PeerMemoryPool(object):
 

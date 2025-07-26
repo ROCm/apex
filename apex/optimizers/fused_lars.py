@@ -2,7 +2,7 @@ import torch
 from torch.optim.optimizer import Optimizer, required
 from torch import nn
 from torch.nn.parameter import Parameter
-from apex.multi_tensor_apply import multi_tensor_applier
+from apex.multi_tensor_apply import MultiTensorApply
 
 class FusedLARS(Optimizer):
     def __init__(self, params, lr=required, momentum=0, dampening=0,
@@ -31,8 +31,10 @@ class FusedLARS(Optimizer):
         self.trust_coefficient = trust_coefficient
         self.eps = eps
 
+        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
-            import amp_C
+            from apex.op_builder import AmpCBuilder
+            amp_C = AmpCBuilder().load()
             # Skip buffer
             self._dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=self.param_groups[0]["params"][0].device)
             self.multi_tensor_l2norm = amp_C.multi_tensor_l2norm
@@ -82,6 +84,7 @@ class FusedLARS(Optimizer):
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.
         """
+        multi_tensor_applier = MultiTensorApply(256*32)
         loss = None
         if closure is not None:
             loss = closure()
