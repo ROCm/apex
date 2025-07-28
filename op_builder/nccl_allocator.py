@@ -27,7 +27,7 @@ class NCCLAllocatorBuilder(CUDAOpBuilder):
     def nvcc_args(self):
         return self.nccl_args()
 
-    def is_supported(self):
+    def is_compatible(self, verbose=False):
         torch_version = self.torch_version()
         if torch_version >= (2, 6):
             available_nccl_version = self.nccl_version()

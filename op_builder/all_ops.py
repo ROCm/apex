@@ -1,3 +1,8 @@
+# Copyright (c) Microsoft Corporation.
+# SPDX-License-Identifier: Apache-2.0
+
+# DeepSpeed Team
+
 import os
 import pkgutil
 import importlib
@@ -9,7 +14,7 @@ except ImportError:
 
 # List of all available ops
 
-# reflect all builder names into __op_builders__
+# append all builder names into __op_builders__
 op_builder_dir = get_accelerator().op_builder_dir()
 op_builder_module = importlib.import_module(op_builder_dir)
 __op_builders__ = []

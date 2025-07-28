@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# Taken from DeepSpeed 
+# DeepSpeed Team 
 
 import abc
 from abc import ABC

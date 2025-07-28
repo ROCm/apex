@@ -1,13 +1,13 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# Taken from DeepSpeed
+# DeepSpeed Team
 import os
 
 try:
     # Importing logger currently requires that torch is installed, hence the try...except
     # TODO: Remove logger dependency on torch.
-    from apex.utils import logger as accel_logger
+    from apex.accelerator.logging import logger as accel_logger
 except ImportError as e:
     accel_logger = None
 

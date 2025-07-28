@@ -26,37 +26,9 @@ from op_builder import get_default_compute_capabilities, OpBuilder
 from op_builder.all_ops import ALL_OPS, accelerator_name
 from op_builder.builder import installed_cuda_version
 
-from accelerator import get_accelerator
-
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
-torch_dir = torch.__path__[0]
 
-
-
-# https://github.com/pytorch/pytorch/pull/71881
-# For the extensions which have rocblas_gemm_flags_fp16_alt_impl we need to make sure if at::BackwardPassGuard exists.
-# It helps the extensions be backward compatible with old PyTorch versions.
-# The check and ROCM_BACKWARD_PASS_GUARD in nvcc/hipcc args can be retired once the PR is merged into PyTorch upstream.
-
-context_file = os.path.join(torch_dir, "include", "ATen", "Context.h")
-if os.path.exists(context_file):
-    lines = open(context_file, 'r').readlines()
-    found_Backward_Pass_Guard = False
-    found_ROCmBackward_Pass_Guard = False
-    for line in lines:
-        if "BackwardPassGuard" in line:
-            # BackwardPassGuard has been renamed to ROCmBackwardPassGuard
-            # https://github.com/pytorch/pytorch/pull/71881/commits/4b82f5a67a35406ffb5691c69e6b4c9086316a43
-            if "ROCmBackwardPassGuard" in line:
-                found_ROCmBackward_Pass_Guard = True
-            else:
-                found_Backward_Pass_Guard = True
-            break
-
-found_aten_atomic_header = False
-if os.path.exists(os.path.join(torch_dir, "include", "ATen", "Atomic.cuh")):
-    found_aten_atomic_header = True
 
 def get_cuda_bare_metal_version(cuda_dir):
     raw_output = subprocess.check_output([cuda_dir + "/bin/nvcc", "-V"], universal_newlines=True)
@@ -76,50 +48,6 @@ def get_rocm_bare_metal_version(rocm_dir):
     bare_metal_minor = release[1][0]
     return raw_output, bare_metal_major, bare_metal_minor
 
-def check_cuda_torch_binary_vs_bare_metal(cuda_dir):
-    raw_output, bare_metal_major, bare_metal_minor = get_cuda_bare_metal_version(cuda_dir)
-    torch_binary_major = torch.version.cuda.split(".")[0]
-    torch_binary_minor = torch.version.cuda.split(".")[1]
-
-    print("\nCompiling cuda extensions with")
-    print(raw_output + "from " + cuda_dir + "/bin\n")
-
-    if (bare_metal_major != torch_binary_major) or (bare_metal_minor != torch_binary_minor):
-        raise RuntimeError(
-            "Cuda extensions are being compiled with a version of Cuda that does "
-            "not match the version used to compile Pytorch binaries.  "
-            "Pytorch binaries were compiled with Cuda {}.\n".format(torch.version.cuda)
-            + "In some cases, a minor-version mismatch will not cause later errors:  "
-            "https://github.com/NVIDIA/apex/pull/323#discussion_r287021798.  "
-            "You can try commenting out this check (at your own risk)."
-        )
-
-def check_rocm_torch_binary_vs_bare_metal(rocm_dir):
-    raw_output, bare_metal_major, bare_metal_minor = get_rocm_bare_metal_version(rocm_dir)
-    torch_binary_major = torch.version.hip.split(".")[0]
-    torch_binary_minor = torch.version.hip.split(".")[1]
-
-    print("\nCompiling rocm extensions with")
-    print(raw_output + "from " + rocm_dir + "/bin\n")
-
-    if (bare_metal_major != torch_binary_major) or (bare_metal_minor != torch_binary_minor):
-        raise RuntimeError(
-            "Cuda extensions are being compiled with a version of Cuda that does "
-            "not match the version used to compile Pytorch binaries.  "
-            "Pytorch binaries were compiled with Cuda {}.\n".format(torch.version.cuda)
-            + "In some cases, a minor-version mismatch will not cause later errors:  "
-            "https://github.com/NVIDIA/apex/pull/323#discussion_r287021798.  "
-            "You can try commenting out this check (at your own risk)."
-        )
-
-def raise_if_home_none(global_option: str) -> None:
-    if CUDA_HOME is not None or ROCM_HOME is not None:
-        return
-    raise RuntimeError(
-        f"{global_option} was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  "
-        "If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, "
-        "only images whose names contain 'devel' will provide nvcc."
-    )
 
 def get_apex_version():
     cwd = os.path.dirname(os.path.abspath(__file__))
@@ -137,23 +65,6 @@ def get_apex_version():
             apex_version += ".git"+os.getenv("APEX_COMMIT")[:8]
     return apex_version
 
-def append_nvcc_threads(nvcc_extra_args):
-    _, bare_metal_major, bare_metal_minor = get_cuda_bare_metal_version(CUDA_HOME)
-    if int(bare_metal_major) >= 11 and int(bare_metal_minor) >= 2:
-        return nvcc_extra_args + ["--threads", "4"]
-    return nvcc_extra_args
-
-
-def check_cudnn_version_and_warn(global_option: str, required_cudnn_version: int) -> bool:
-    cudnn_available = torch.backends.cudnn.is_available()
-    cudnn_version = torch.backends.cudnn.version() if cudnn_available else None
-    if not (cudnn_available and (cudnn_version >= required_cudnn_version)):
-        warnings.warn(
-            f"Skip `{global_option}` as it requires cuDNN {required_cudnn_version} or later, "
-            f"but {'cuDNN is not available' if not cudnn_available else cudnn_version}"
-        )
-        return False
-    return True
 
 print("\n\ntorch.__version__  = {}\n\n".format(torch.__version__))
 TORCH_MAJOR = int(torch.__version__.split('.')[0])
@@ -214,13 +125,6 @@ else:
     _, bare_metal_version, bare_metal_minor  = get_rocm_bare_metal_version(ROCM_HOME)
 
 
-if "--cpp_ext" in sys.argv or "--cuda_ext" in sys.argv:
-    if TORCH_MAJOR == 0:
-        raise RuntimeError("--cpp_ext requires Pytorch 1.0 or later, "
-                           "found torch.__version__ = {}".format(torch.__version__)
-                           )
-
-
 # ***************************** Op builder **********************
 
 def get_env_if_set(key, default: typing.Any = ""):
@@ -250,8 +154,14 @@ BUILD_CUDA_OP = int(get_env_if_set('APEX_CUDA_OPS', BUILD_OP_PLATFORM))
 build_flags = {
     "APEX_BUILD_OPS" : BUILD_OP_DEFAULT,
     "APEX_CPP_OPS" : BUILD_CPP_OP,
-    "APEX_OPS" : BUILD_CUDA_OP,
+    "APEX_CUDA_OPS" : BUILD_CUDA_OP,
     }
+
+if BUILD_CPP_OP or BUILD_CUDA_OP:
+    if TORCH_MAJOR == 0:
+        raise RuntimeError("--cpp_ext requires Pytorch 1.0 or later, "
+                           "found torch.__version__ = {}".format(torch.__version__)
+                           )
 
 ext_modules = []
 
@@ -282,7 +192,6 @@ install_ops = dict.fromkeys(ALL_OPS.keys(), False)
 for op_name, builder in ALL_OPS.items():
     op_compatible = builder.is_compatible()
     op_included = is_op_included(op_name)
-    op_supported = builder.is_supported()
 
     # If op is requested but not available, throw an error.
     if op_enabled(op_name) and not op_compatible:
@@ -297,12 +206,6 @@ for op_name, builder in ALL_OPS.items():
         del install_ops[op_name]
         continue
 
-    #check if the conditions for building the module are satisfied
-    if not op_supported:
-        builder.warning(f"Skipping unsupported {op_name}; The conditions for building this module are not satisfied.")
-        del install_ops[op_name]
-        continue
-
     # If op is compatible but install is not enabled (JIT mode).
     if IS_ROCM_PYTORCH and op_compatible and not op_enabled(op_name):
         builder.hipify_extension()
@@ -313,15 +216,7 @@ for op_name, builder in ALL_OPS.items():
         install_ops[op_name] = op_enabled(op_name)
         ext_modules.append(builder.builder())
 
-print(f'Install Ops={install_ops}')
-    
-if "--cuda_ext" in sys.argv:
-    raise_if_home_none("--cuda_ext")
-    
-    if not IS_ROCM_PYTORCH:
-        check_cuda_torch_binary_vs_bare_metal(CUDA_HOME)
-    else:
-        check_rocm_torch_binary_vs_bare_metal(ROCM_HOME)
+print(f'Install Ops={install_ops}')  
 
 # Write out version/git info.
 git_hash_cmd = shlex.split("bash -c \"git rev-parse --short HEAD\"")
@@ -395,7 +290,6 @@ with open('apex/git_version_info_installed.py', 'w') as fd:
     fd.write(f"build_flags={build_flags}\n")
     fd.write(f"accelerator_name='{accelerator_name}'\n")
     fd.write(f"torch_info={torch_info}\n")
-
 
 
 with open('requirements.txt') as f:

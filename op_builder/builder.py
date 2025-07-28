@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# Taken from DeepSpeed
+# DeepSpeed Team
 
 import os
 import re
@@ -307,12 +307,6 @@ class OpBuilder(ABC):
     def is_compatible(self, verbose=False):
         '''
         Check if all non-python dependencies are satisfied to build this op
-        '''
-        return True
-
-    def is_supported(self):
-        '''
-        Check if all conditions are satisfied to build this op
         '''
         return True
 
@@ -695,7 +689,12 @@ class CUDAOpBuilder(OpBuilder):
         version_ge_1_5 = []
         if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 4):
             version_ge_1_5 = ['-DVERSION_GE_1_5']
-        return version_ge_1_1 + version_ge_1_3 + version_ge_1_5
+        
+        version_dependent_macro_args = version_ge_1_1 + version_ge_1_3 + version_ge_1_5
+        if self.is_rocm_pytorch() and (self.torch_version()[0] >= 6):
+            version_dependent_macro_args += ["-DHIPBLAS_V2"] 
+
+        return version_dependent_macro_args
 
     def is_compatible(self, verbose=False):
         return super().is_compatible(verbose)

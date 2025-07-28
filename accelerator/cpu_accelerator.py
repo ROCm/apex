@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: Apache-2.0
 
-# Taken from DeepSpeed
+# DeepSpeed Team
 
 from .abstract_accelerator import ApexAccelerator
 
@@ -72,7 +72,7 @@ class CPU_Accelerator(ApexAccelerator):
         if device_count > 0:
             return device_count
         else:
-            from apex.utils.numa import get_numa_cores
+            from apex.accelerator.numa import get_numa_cores
             # Count NUMA node for number of cpu accelerators. On machine with HBM
             # In flat mode, HBM is in separate NUMA node with no cores on this node.
             # Ignore these NUMA nodes with no cores.
@@ -120,7 +120,7 @@ class CPU_Accelerator(ApexAccelerator):
         return None
 
     def stream(self, stream):
-        from apex.runtime.utils import noop_context
+        from apex.accelerator.utils import noop_context
         return noop_context()
 
     def current_stream(self, device_index=None):
@@ -246,7 +246,7 @@ class CPU_Accelerator(ApexAccelerator):
         return None
 
     def capture_to_graph(self, graph, pool=None, stream=None):
-        from apex.runtime.utils import noop_context
+        from apex.accelerator.utils import noop_context
         return noop_context()
 
     def replay_graph(self, graph):
