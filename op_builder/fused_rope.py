@@ -5,7 +5,7 @@ import sys
 
 class FusedRopeBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FUSED_ROPE'
-    INCLUDE_FLAG = "APEX_CUDA_OPS"
+    INCLUDE_FLAG = "APEX_BUILD_CUDA_OPS"
     NAME = "fused_rotary_positional_embedding"
 
     def __init__(self):

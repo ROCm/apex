@@ -4,7 +4,7 @@ import os
 
 class FusedBiasSwiGLUBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FUSED_BIAS_SWIGLU'
-    INCLUDE_FLAG = "APEX_CUDA_OPS"
+    INCLUDE_FLAG = "APEX_BUILD_CUDA_OPS"
     NAME = "fused_bias_swiglu"
 
     def __init__(self):

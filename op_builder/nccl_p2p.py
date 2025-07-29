@@ -5,7 +5,7 @@ import sys
 
 class NCCLP2PBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_NCCL_P2P'
-    INCLUDE_FLAG = "APEX_CUDA_OPS"
+    INCLUDE_FLAG = "APEX_BUILD_CUDA_OPS"
     NAME = "nccl_p2p_cuda"
 
     def __init__(self):

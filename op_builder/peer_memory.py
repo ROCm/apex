@@ -5,7 +5,7 @@ import sys
 
 class PeerMemoryBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_PEER_MEMORY'
-    INCLUDE_FLAG = "APEX_CUDA_OPS"
+    INCLUDE_FLAG = "APEX_BUILD_CUDA_OPS"
     NAME = "peer_memory_cuda"
 
     def __init__(self):

@@ -145,19 +145,15 @@ def command_exists(cmd):
         result = subprocess.Popen(safe_cmd, stdout=subprocess.PIPE)
         return result.wait() == 0
 
-
-BUILD_OP_PLATFORM = 1 if sys.platform == "win32" else 0
-BUILD_OP_DEFAULT = int(get_env_if_set('APEX_BUILD_OPS', BUILD_OP_PLATFORM))
-print(f"APEX_BUILD_OPS={BUILD_OP_DEFAULT}")
-BUILD_CPP_OP = int(get_env_if_set('APEX_CPP_OPS', BUILD_OP_PLATFORM))
-BUILD_CUDA_OP = int(get_env_if_set('APEX_CUDA_OPS', BUILD_OP_PLATFORM))
+BUILD_OP_DEFAULT = 0
+BUILD_CPP_OPS = int(get_env_if_set('APEX_BUILD_CPP_OPS', BUILD_OP_DEFAULT))
+BUILD_CUDA_OPS = int(get_env_if_set('APEX_BUILD_CUDA_OPS', BUILD_OP_DEFAULT))
 build_flags = {
-    "APEX_BUILD_OPS" : BUILD_OP_DEFAULT,
-    "APEX_CPP_OPS" : BUILD_CPP_OP,
-    "APEX_CUDA_OPS" : BUILD_CUDA_OP,
+    "APEX_BUILD_CPP_OPS" : BUILD_CPP_OPS,
+    "APEX_BUILD_CUDA_OPS" : BUILD_CUDA_OPS,
     }
 
-if BUILD_CPP_OP or BUILD_CUDA_OP:
+if BUILD_CPP_OPS or BUILD_CUDA_OPS:
     if TORCH_MAJOR == 0:
         raise RuntimeError("--cpp_ext requires Pytorch 1.0 or later, "
                            "found torch.__version__ = {}".format(torch.__version__)
@@ -191,29 +187,23 @@ def is_op_included(op_name):
 install_ops = dict.fromkeys(ALL_OPS.keys(), False)
 for op_name, builder in ALL_OPS.items():
     op_compatible = builder.is_compatible()
-    op_included = is_op_included(op_name)
+    enabled = op_enabled(op_name) or is_op_included(op_name)
 
     # If op is requested but not available, throw an error.
-    if op_enabled(op_name) and not op_compatible:
-        env_var = op_envvar(op_name)
+    if enabled and not op_compatible:
+        builder.warning(f"Skip pre-compile of incompatible {op_name}; One can disable {op_name} with {env_var}=0")
         if not is_env_set(env_var):
             builder.warning(f"Skip pre-compile of incompatible {op_name}; One can disable {op_name} with {env_var}=0")
         continue
 
-    #if the necessary build flags for the op is not provided, then skip building it
-    if not op_included:
-        builder.warning(f"Skipping unsupported {op_name}; Build flags for {op_name}: {ALL_OPS[op_name].INCLUDE_FLAG} not set")
-        del install_ops[op_name]
-        continue
-
     # If op is compatible but install is not enabled (JIT mode).
-    if IS_ROCM_PYTORCH and op_compatible and not op_enabled(op_name):
+    if IS_ROCM_PYTORCH and op_compatible and not enabled:
         builder.hipify_extension()
 
     # If op install enabled, add builder to extensions.
     # Also check if corresponding flags are checked
-    if op_enabled(op_name) and op_compatible:
-        install_ops[op_name] = op_enabled(op_name)
+    if enabled and op_compatible:
+        install_ops[op_name] = True
         ext_modules.append(builder.builder())
 
 print(f'Install Ops={install_ops}')  

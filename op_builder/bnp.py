@@ -5,7 +5,7 @@ import sys
 
 class BnpBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_BNP'
-    INCLUDE_FLAG = "APEX_CUDA_OPS"
+    INCLUDE_FLAG = "APEX_BUILD_CUDA_OPS"
     NAME = "bnp"
 
     def __init__(self):

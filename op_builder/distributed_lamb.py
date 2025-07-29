@@ -5,7 +5,7 @@ import sys
 
 class DistributedLambBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_DISTRIBUTED_LAMB'
-    INCLUDE_FLAG = "APEX_CUDA_OPS"
+    INCLUDE_FLAG = "APEX_BUILD_CUDA_OPS"
     NAME = "distributed_lamb_cuda"
 
     def __init__(self):

@@ -5,7 +5,7 @@ import sys
 
 class FusedAdamBuilder(CUDAOpBuilder):
     BUILD_VAR = 'APEX_BUILD_FUSED_ADAM'
-    INCLUDE_FLAG = "APEX_CUDA_OPS"
+    INCLUDE_FLAG = "APEX_BUILD_CUDA_OPS"
     NAME = "fused_adam_cuda"
 
     def __init__(self):
