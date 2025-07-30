@@ -10,10 +10,10 @@ import importlib
 
 from .builder import get_default_compute_capabilities, OpBuilder
 
-# Do not remove, required for abstract accelerator to detect if we have a deepspeed or 3p op_builder
+# Do not remove, required for abstract accelerator to detect if we have a apex or 3p op_builder
 __apex__ = True
 
-# List of all available op builders from deepspeed op_builder
+# List of all available op builders from apex op_builder
 try:
     import apex.op_builder  # noqa: F401 # type: ignore
     op_builder_dir = "apex.op_builder"

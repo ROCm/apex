@@ -316,23 +316,12 @@ class CPU_Accelerator(ApexAccelerator):
             # is op_builder from apex or a 3p version? this should only succeed if it's apex
             # if successful this also means we're doing a local install and not JIT compile path
             from op_builder import __apex__  # noqa: F401 # type: ignore
-            from op_builder.cpu import AsyncIOBuilder, CCLCommBuilder, ShareMemCommBuilder, FusedAdamBuilder, CPUAdamBuilder, NotImplementedBuilder
+            from op_builder.cpu import NotImplementedBuilder
         except ImportError:
-            from apex.ops.op_builder.cpu import AsyncIOBuilder, CCLCommBuilder, ShareMemCommBuilder, FusedAdamBuilder, CPUAdamBuilder, NotImplementedBuilder
+            from apex.op_builder.cpu import NotImplementedBuilder
 
-        if class_name == "CCLCommBuilder":
-            return CCLCommBuilder
-        elif class_name == "ShareMemCommBuilder":
-            return ShareMemCommBuilder
-        elif class_name == "FusedAdamBuilder":
-            return FusedAdamBuilder
-        elif class_name == "CPUAdamBuilder":
-            return CPUAdamBuilder
-        elif class_name == "AsyncIOBuilder":
-            return AsyncIOBuilder
-        else:
-            # return a NotImplementedBuilder to avoid get NoneType[Name] in unit tests
-            return NotImplementedBuilder
+        # return a NotImplementedBuilder to avoid get NoneType[Name] in unit tests
+        return NotImplementedBuilder
 
     def build_extension(self):
         from torch.utils.cpp_extension import BuildExtension
