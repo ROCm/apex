@@ -2,7 +2,8 @@ import torch
 import numpy as np
 from torch.nn.modules.batchnorm import _BatchNorm
 
-import bnp
+from apex.op_builder import BnpBuilder
+bnp = BnpBuilder().load()
 
 def check_if_rocm_pytorch():
     is_rocm_pytorch = False

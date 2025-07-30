@@ -3,7 +3,8 @@
 import torch
 import numpy as np
 import apex
-import syncbn
+from apex.op_builder import SyncBnBuilder
+syncbn = SyncBnBuilder().load()
 import os
 import argparse
 import torch.optim as optim
