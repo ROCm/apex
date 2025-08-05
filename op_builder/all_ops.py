@@ -12,7 +12,7 @@ class BuilderUtils:
         try:
             # is op_builder from apex or a 3p version? this should only succeed if it's apex
             # if successful this also means we're doing a local install and not JIT compile path
-            from op_builder import __apex__  # noqa: F401 # type: ignore
+            from op_builder import __apex__
             return "op_builder"
         except ImportError:
             return "apex.op_builder"
@@ -68,6 +68,7 @@ class BuilderUtils:
 builder_utils = BuilderUtils()
 op_builder_dir = builder_utils.op_builder_dir()
 op_builder_module = importlib.import_module(op_builder_dir)
+print ("op_builder_module", op_builder_module)
 __op_builders__ = []
 
 for _, module_name, _ in pkgutil.iter_modules([os.path.dirname(op_builder_module.__file__)]):
