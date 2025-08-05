@@ -30,15 +30,15 @@ def builder_closure(member_name):
         # during installation time cannot get builder due to torch not installed,
         # return closure instead
         def _builder():
-            from apex.accelerator import get_accelerator
-            builder = get_accelerator().create_op_builder(member_name)
+            from apex.op_builder.all_ops import BuilderUtils
+            builder = BuilderUtils().create_op_builder(member_name)
             return builder
 
         return _builder
     else:
         # during runtime, return op builder class directly
-        from apex.accelerator import get_accelerator
-        builder = get_accelerator().get_op_builder(member_name)
+        from apex.op_builder.all_ops import BuilderUtils
+        builder = BuilderUtils().get_op_builder(member_name)
         return builder
 
 

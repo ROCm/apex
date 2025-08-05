@@ -524,9 +524,8 @@ class OpBuilder(ABC):
         if self.name in __class__._loaded_ops:
             return __class__._loaded_ops[self.name]
 
-        from apex.git_version_info import installed_ops, torch_info, accelerator_name
-        from apex.accelerator import get_accelerator
-        if installed_ops.get(self.name, False) and accelerator_name == get_accelerator()._name:
+        from apex.git_version_info import installed_ops, torch_info
+        if installed_ops.get(self.name, False):
             # Ensure the op we're about to load was compiled with the same
             # torch/cuda versions we are currently using at runtime.
             self.validate_torch_version(torch_info)

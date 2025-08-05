@@ -18,7 +18,6 @@ except ModuleNotFoundError:
 
     from .op_builder.all_ops import ALL_OPS
     installed_ops = dict.fromkeys(ALL_OPS.keys(), False)
-    accelerator_name = ""
     torch_info = {'version': "0.0", "cuda_version": "0.0", "hip_version": "0.0"}
 
 # compatible_ops list is recreated for each launch

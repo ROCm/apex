@@ -22,7 +22,7 @@ import shlex
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from op_builder.all_ops import ALL_OPS, accelerator_name
+from op_builder.all_ops import ALL_OPS
 
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -274,7 +274,6 @@ with open('apex/git_version_info_installed.py', 'w') as fd:
     fd.write(f"git_branch='{git_branch}'\n")
     fd.write(f"installed_ops={install_ops}\n")
     fd.write(f"build_flags={build_flags}\n")
-    fd.write(f"accelerator_name='{accelerator_name}'\n")
     fd.write(f"torch_info={torch_info}\n")
 
 if "--cpp_ext" in sys.argv:
