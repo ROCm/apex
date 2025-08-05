@@ -10,7 +10,6 @@ import importlib
 
 from .builder import get_default_compute_capabilities, OpBuilder
 
-# Do not remove, required for abstract accelerator to detect if we have a apex or 3p op_builder
 __apex__ = True
 
 # List of all available op builders from apex op_builder
@@ -42,7 +41,7 @@ def builder_closure(member_name):
         return builder
 
 
-# reflect builder names and add builder closure, such as 'TransformerBuilder()' creates op builder wrt current accelerator
+# reflect builder names and add builder closure, such as 'TransformerBuilder()' creates op builder 
 for _, module_name, _ in pkgutil.iter_modules([os.path.dirname(this_module.__file__)]):
     if module_name != 'all_ops' and module_name != 'builder':
         module = importlib.import_module(f".{module_name}", package=op_builder_dir)
