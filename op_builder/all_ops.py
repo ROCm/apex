@@ -27,6 +27,7 @@ for _, module_name, _ in pkgutil.iter_modules([os.path.dirname(op_builder_module
             if member_name.endswith('Builder'):
                 # append builder to __op_builders__ list
                 builder = get_accelerator().create_op_builder(member_name)
+                print ("--", member_name, type(builder))
                 __op_builders__.append(builder)
                 
 ALL_OPS = {op.name: op for op in __op_builders__ if op is not None}

@@ -22,9 +22,7 @@ import shlex
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from op_builder import get_default_compute_capabilities, OpBuilder
 from op_builder.all_ops import ALL_OPS, accelerator_name
-from op_builder.builder import installed_cuda_version
 
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -115,8 +113,6 @@ if TORCH_MAJOR == 0 and TORCH_MINOR < 4:
     )
 
 # cmdclass = {}
-ext_modules = []
-
 extras = {}
 
 if not IS_ROCM_PYTORCH:
@@ -159,8 +155,6 @@ if BUILD_CPP_OPS or BUILD_CUDA_OPS:
                            "found torch.__version__ = {}".format(torch.__version__)
                            )
 
-ext_modules = []
-
 def is_env_set(key):
     """
     Checks if an environment variable is set and not "".
@@ -184,7 +178,9 @@ def is_op_included(op_name):
     include_flag = ALL_OPS[op_name].INCLUDE_FLAG
     return get_env_if_set(include_flag, False)
 
+ext_modules = []
 install_ops = dict.fromkeys(ALL_OPS.keys(), False)
+
 for op_name, builder in ALL_OPS.items():
     op_compatible = builder.is_compatible()
     enabled = op_enabled(op_name) or is_op_included(op_name)
@@ -281,6 +277,11 @@ with open('apex/git_version_info_installed.py', 'w') as fd:
     fd.write(f"accelerator_name='{accelerator_name}'\n")
     fd.write(f"torch_info={torch_info}\n")
 
+if "--cpp_ext" in sys.argv:
+    sys.argv.remove("--cpp_ext")
+
+if "--cuda_ext" in sys.argv:
+    sys.argv.remove("--cuda_ext")
 
 with open('requirements.txt') as f:
     required = f.read().splitlines()

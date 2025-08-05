@@ -46,7 +46,7 @@ class LoggerFactory:
         return logger_
 
 
-logger = LoggerFactory.create_logger(name="DeepSpeed", level=logging.INFO)
+logger = LoggerFactory.create_logger(name="apex", level=logging.INFO)
 
 
 @functools.lru_cache(None)
