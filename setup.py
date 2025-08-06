@@ -161,17 +161,17 @@ def is_env_set(key):
     """
     return bool(os.environ.get(key, None))
 
-def op_envvar(op_name):
+def get_op_build_env_name(op_name):
     assert hasattr(ALL_OPS[op_name], 'BUILD_VAR'), \
         f"{op_name} is missing BUILD_VAR field"
     return ALL_OPS[op_name].BUILD_VAR
 
 
-def op_enabled(op_name):
-    env_var = op_envvar(op_name)
+def op_build_enabled(op_name):
+    env_var = get_op_build_env_name(op_name)
     return int(get_env_if_set(env_var, BUILD_OP_DEFAULT))
 
-def is_op_included(op_name):
+def is_op_build_included(op_name):
     #check if operation has BUILD_FLAG defined
     assert hasattr(ALL_OPS[op_name], 'INCLUDE_FLAG'), \
         f"{op_name} is missing INCLUDE_FLAG field"
@@ -183,22 +183,21 @@ install_ops = dict.fromkeys(ALL_OPS.keys(), False)
 
 for op_name, builder in ALL_OPS.items():
     op_compatible = builder.is_compatible()
-    enabled = op_enabled(op_name) or is_op_included(op_name)
+    build_enabled = op_build_enabled(op_name) or is_op_build_included(op_name)
 
     # If op is requested but not available, throw an error.
-    if enabled and not op_compatible:
+    if build_enabled and not op_compatible:
+        env_var = get_op_build_env_name(op_name)
         builder.warning(f"Skip pre-compile of incompatible {op_name}; One can disable {op_name} with {env_var}=0")
-        if not is_env_set(env_var):
-            builder.warning(f"Skip pre-compile of incompatible {op_name}; One can disable {op_name} with {env_var}=0")
         continue
 
-    # If op is compatible but install is not enabled (JIT mode).
-    if IS_ROCM_PYTORCH and op_compatible and not enabled:
+    # If op is compatible but install is not build enabled (JIT mode).
+    if IS_ROCM_PYTORCH and op_compatible and not build_enabled:
         builder.hipify_extension()
 
-    # If op install enabled, add builder to extensions.
+    # If op build enabled, add builder to extensions.
     # Also check if corresponding flags are checked
-    if enabled and op_compatible:
+    if build_enabled and op_compatible:
         install_ops[op_name] = True
         ext_modules.append(builder.builder())
 
@@ -222,23 +221,7 @@ else:
 
 # Parse the apex version string from version.txt.
 version_str = get_apex_version()
-
-# Build specifiers like .devX can be added at install time. Otherwise, add the git hash.
-# Example: `APEX_BUILD_STRING=".dev20201022" python -m build --no-isolation`.
-
-# Building wheel for distribution, update version file.
-if is_env_set('APEX_BUILD_STRING'):
-    # Build string env specified, probably building for distribution.
-    with open('build.txt', 'w') as fd:
-        fd.write(os.environ['APEX_BUILD_STRING'])
-    version_str += os.environ['APEX_BUILD_STRING']
-elif os.path.isfile('build.txt'):
-    # build.txt exists, probably installing from distribution.
-    with open('build.txt', 'r') as fd:
-        version_str += fd.read().strip()
-else:
-    # None of the above, probably installing from source.
-    version_str += f'+{git_hash}'
+version_str += f'+{git_hash}'
 
 torch_version = ".".join([str(TORCH_MAJOR), str(TORCH_MINOR)])
 bf16_support = False
