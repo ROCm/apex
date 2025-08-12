@@ -13,10 +13,9 @@
 #include <rocblas/rocblas.h> 
 #include "type_shim.h" 
 
-#if defined(CUBLAS_VERSION) && CUBLAS_VERSION >= 11000
-  #include <cublasLt.h>
-  #include <hipblaslt/hipblaslt-ext.hpp>
-#endif
+#include <cublasLt.h>
+#include <hipblaslt/hipblaslt-ext.hpp>
+
 // FP64 Wrapper around cublas GEMMEx
 cublasStatus_t gemm_bias(
     cublasHandle_t handle,
@@ -168,8 +167,6 @@ cublasStatus_t gemm_bias(
       CUBLAS_COMPUTE_32F,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 }
-
-#if defined(CUBLAS_VERSION) && CUBLAS_VERSION >= 11600
 
 
 int gemm_bias_lt(
@@ -439,6 +436,7 @@ int gemm_bias_lt(
     cudaStream_t stream,
     bool use_bias,
     const void* bias) {
+  
   cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
 
   cublasLtMatmulDescOpaque_t operationDesc = {};
@@ -552,6 +550,7 @@ int gemm_bias_gelu_lt(
     bool use_bias,
     const void* gelu_in,
     const void* bias) {
+  printf ("-------half-----\n");
   cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
 
   cublasLtMatmulDescOpaque_t operationDesc = {};
@@ -817,6 +816,8 @@ int gemm_bias_gelu_lt(
     bool use_bias,
     const void* gelu_in,
     const void* bias) {
+
+  printf ("-------float-----\n");
   cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
 
   cublasLtMatmulDescOpaque_t operationDesc = {};
@@ -1637,8 +1638,6 @@ CLEANUP:
   return status == CUBLAS_STATUS_SUCCESS ? 0 : 1;
 }
 
-#endif
-
 template <typename T>
 int linear_bias_forward_cuda(at::Tensor input, T *weight, at::Tensor bias, int in_features, int batch_size, int out_features, at::Tensor output, void *lt_workspace) {
     cublasHandle_t handle = at::cuda::getCurrentCUDABlasHandle();
@@ -1649,7 +1648,7 @@ int linear_bias_forward_cuda(at::Tensor input, T *weight, at::Tensor bias, int i
     const float beta_zero       = 0.0;
     const float beta_one       = 1.0;
     int status = 1;
-#if defined(CUBLAS_VERSION) && CUBLAS_VERSION >= 11600
+  if(at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt){
     status = gemm_bias_lt(
     (cublasLtHandle_t)handle,
     CUBLAS_OP_T,
@@ -1670,8 +1669,8 @@ int linear_bias_forward_cuda(at::Tensor input, T *weight, at::Tensor bias, int i
     stream,
     true,
     static_cast<const void*>(bias.data_ptr<T>()));
-#endif
-    if (status != 0){
+  }
+  else{
         output.copy_(bias);
         status = gemm_bias(
           handle,
@@ -1702,7 +1701,7 @@ int linear_bias_backward_cuda(T *input, T *weight, T *d_output, int in_features,
     const float alpha          = 1.0;
     const float beta_zero       = 0.0;
     int status = 1;
-#if defined(CUBLAS_VERSION) && CUBLAS_VERSION >= 11600
+  if(at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt){
     status = gemm_bgradb_lt(
     (cublasLtHandle_t)handle,
     CUBLAS_OP_N,
@@ -1723,10 +1722,8 @@ int linear_bias_backward_cuda(T *input, T *weight, T *d_output, int in_features,
     stream,
     true,
     static_cast<const void*>(d_bias));
-#endif
-    
 
-    if (status != 0){
+  }else{
     
         status = gemm_bias(
           handle,
@@ -1743,7 +1740,7 @@ int linear_bias_backward_cuda(T *input, T *weight, T *d_output, int in_features,
           &beta_zero,
           d_weight,
           in_features);
-    }
+    
     
     status = gemm_bias(
       handle,
@@ -1761,19 +1758,22 @@ int linear_bias_backward_cuda(T *input, T *weight, T *d_output, int in_features,
       d_input,
       in_features);
     return status;
-
+  }
 }
 
 template <typename T>
 int linear_gelu_linear_forward_cuda(T *input, T *weight1, T *bias1, T *weight2, T *bias2, int in_features, int hidden_features, int batch_size, int out_features, T *output1, T *output2, T *gelu_in, void *lt_workspace) {
-    cublasHandle_t handle = at::cuda::getCurrentCUDABlasHandle();
+    
+  printf("----------linear_gelu_linear_forward_cuda---------\n");
+  cublasHandle_t handle = at::cuda::getCurrentCUDABlasHandle();
     // Get the stream from cublas handle to reuse for biasReLU kernel.
     cudaStream_t stream;
     cublasGetStream(handle, &stream);
     const float alpha          = 1.0;
     const float beta_zero       = 0.0;
     int status = 1;
-#if defined(CUBLAS_VERSION) && CUBLAS_VERSION >= 11600
+  if(at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt){
+    printf("----case1----\n");
     status = gemm_bias_gelu_lt(
     (cublasLtHandle_t)handle,
     CUBLAS_OP_T,
@@ -1816,9 +1816,11 @@ int linear_gelu_linear_forward_cuda(T *input, T *weight1, T *bias1, T *weight2, 
     true,
     static_cast<const void*>(bias2));
     return status;
-#else 
+  }
+  else{
+    printf("----case2----\n");  
     return 1;
-#endif
+  }
 }
 
 template <typename T>
@@ -1830,7 +1832,7 @@ int linear_gelu_linear_backward_cuda(T *input, T *gelu_in, T *output1, T *weight
     const float alpha          = 1.0;
     const float beta_zero       = 0.0;
     int status = 1;
-#if defined(CUBLAS_VERSION) && CUBLAS_VERSION >= 11600
+  if(at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt){
 //wgrad for first gemm
     status = gemm_bgradb_lt(
     (cublasLtHandle_t)handle,
@@ -1906,8 +1908,8 @@ int linear_gelu_linear_backward_cuda(T *input, T *gelu_in, T *output1, T *weight
       &beta_zero,
       d_input,
       in_features);
-#endif
-    return status;
+  }
+  return status;
 
 }
 

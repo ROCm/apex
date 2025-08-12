@@ -45,7 +45,7 @@ class FusedDenseGeluDenseFunc(torch.autograd.Function):
         ctx.save_for_backward(input, weight, weight2)
         output, output2, gelu = fused_dense_cuda.linear_gelu_linear_forward(input, weight, bias, weight2, bias2)
         ctx.save_for_backward(input, weight, weight2, gelu, output)
-        return output2
+        return output2, output, gelu
 
     @staticmethod
     def backward(ctx, grad_output):

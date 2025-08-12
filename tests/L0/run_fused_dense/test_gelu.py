@@ -30,11 +30,13 @@ class FusedDenseGeluDenseTest(unittest.TestCase):
         W2 = denseGelu.weight2
         b2 = denseGelu.bias2
 
-        y_tst = denseGelu(I.clone().detach().requires_grad_(True))
+        y_tst, output, gelu = denseGelu(I.clone().detach().requires_grad_(True))
 
         C1  = torch.matmul(I, W1.t())+b1
         gelu_output = F.gelu(C1)
         y_ref = torch.matmul(gelu_output, W2.t())+b2
+        torch.testing.assert_close(output,  C1,  atol=1e-3, rtol=1e-3, equal_nan=True)
+        torch.testing.assert_close(gelu,  gelu_output,  atol=1e-3, rtol=1e-3, equal_nan=True)
         torch.testing.assert_close(y_ref,  y_tst,  atol=1e-3, rtol=1e-3, equal_nan=True)
 
 

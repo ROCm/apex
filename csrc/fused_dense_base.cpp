@@ -97,7 +97,7 @@ std::vector<at::Tensor> linear_bias_backward(at::Tensor input, at::Tensor weight
 }
 
 std::vector<at::Tensor> linear_gelu_linear_forward(at::Tensor input, at::Tensor weight1, at::Tensor bias1, at::Tensor weight2, at::Tensor bias2) {
-
+  printf("----------linear_gelu_linear_forward---------\n");
   auto batch_size = input.size(0);
   auto in_features = input.size(1);
 
