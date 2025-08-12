@@ -1,9 +1,8 @@
 import torch
-from apex.op_builder import FusedBiasSwiGLUBuilder
+import fused_bias_swiglu
 from torch.testing._internal import common_utils
 import torch.nn.functional as F
 
-fused_bias_swiglu = FusedBiasSwiGLUBuilder().load()
 
 class TestFusedBiasSwiGLU(common_utils.TestCase):
 

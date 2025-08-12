@@ -1,5 +1,5 @@
 import torch
-from apex.multi_tensor_apply import MultiTensorApply
+from apex.multi_tensor_apply import multi_tensor_applier
 
 class FusedAdam(torch.optim.Optimizer):
 
@@ -106,10 +106,8 @@ class FusedAdam(torch.optim.Optimizer):
 
             self._step_supports_amp_scaling = True
 
-        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
-            from apex.op_builder import AmpCBuilder
-            amp_C = AmpCBuilder().load()
+            import amp_C
             # Skip buffer
             self._dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device='cuda')
             self.multi_tensor_adam = amp_C.multi_tensor_adam
@@ -138,7 +136,6 @@ class FusedAdam(torch.optim.Optimizer):
         if any(p is not None for p in [grads, output_params, scale, grad_norms]):
             raise RuntimeError('FusedAdam has been updated.  Simply initialize it identically to torch.optim.Adam, and call step() with no arguments.')
         loss = None
-        multi_tensor_applier = MultiTensorApply(256*32)
         if closure is not None:
             loss = closure()
 

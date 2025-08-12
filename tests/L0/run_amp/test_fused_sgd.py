@@ -14,8 +14,7 @@ from utils import common_init, HALF, FLOAT,\
     ALWAYS_HALF, ALWAYS_FLOAT, MATCH_INPUT
 
 try:
-  from apex.op_builder import AmpCBuilder
-  amp_C = AmpCBuilder().load()
+  import amp_C
   disabled = False
   from apex.optimizers import FusedSGD as FusedSGD
 except ImportError as err:

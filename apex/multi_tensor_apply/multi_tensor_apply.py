@@ -6,8 +6,7 @@ class MultiTensorApply(object):
 
     def __init__(self, chunk_size):
         try:
-            from apex.op_builder import AmpCBuilder
-            amp_C = AmpCBuilder().load()
+            import amp_C
             MultiTensorApply.available = True
             self.chunk_size = chunk_size
         except ImportError as err:

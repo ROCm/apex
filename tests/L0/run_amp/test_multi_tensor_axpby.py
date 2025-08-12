@@ -13,8 +13,7 @@ from utils import common_init, HALF, FLOAT,\
     ALWAYS_HALF, ALWAYS_FLOAT, MATCH_INPUT, common_reset
 
 try:
-  from apex.op_builder import AmpCBuilder
-  amp_C = AmpCBuilder().load()
+  import amp_C
   from amp_C import multi_tensor_axpby
   from apex.multi_tensor_apply import MultiTensorApply
   disabled = False

@@ -16,7 +16,6 @@ import torch
 
 from apex._autocast_utils import _cast_if_autocast_enabled
 from apex.transformer.enums import AttnMaskType
-from apex.op_builder import ScaledSoftmaxCudaBuilder, ScaledUpperTriangMaskedSoftmaxCudaBuilder, GenericScaledMaskedSoftmaxCudaBuilder, ScaledMaskedSoftmaxCudaBuilder
 
 
 class ScaledUpperTriangMaskedSoftmax(torch.autograd.Function):
@@ -29,8 +28,7 @@ class ScaledUpperTriangMaskedSoftmax(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, inputs, scale):
-
-        scaled_upper_triang_masked_softmax_cuda = ScaledUpperTriangMaskedSoftmaxCudaBuilder().load()
+        import scaled_upper_triang_masked_softmax_cuda
 
         scale_t = torch.tensor([scale])
         softmax_results = scaled_upper_triang_masked_softmax_cuda.forward(
@@ -42,8 +40,7 @@ class ScaledUpperTriangMaskedSoftmax(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, output_grads):
-
-        scaled_upper_triang_masked_softmax_cuda = ScaledUpperTriangMaskedSoftmaxCudaBuilder().load()
+        import scaled_upper_triang_masked_softmax_cuda
 
         softmax_results, scale_t = ctx.saved_tensors
         input_grads = scaled_upper_triang_masked_softmax_cuda.backward(
@@ -74,7 +71,7 @@ def scaled_upper_triang_masked_softmax(inputs, _, scale):
 class ScaledMaskedSoftmax(torch.autograd.Function):
     @staticmethod
     def forward(ctx, inputs, mask, scale):
-        scaled_masked_softmax_cuda = ScaledMaskedSoftmaxCudaBuilder().load()
+        import scaled_masked_softmax_cuda
 
         scale_t = torch.tensor([scale])
 
@@ -84,7 +81,7 @@ class ScaledMaskedSoftmax(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, output_grads):
-        scaled_masked_softmax_cuda = ScaledMaskedSoftmaxCudaBuilder().load()
+        import scaled_masked_softmax_cuda
 
         softmax_results, scale_t = ctx.saved_tensors
 
@@ -109,8 +106,7 @@ def scaled_masked_softmax(inputs, mask, scale):
 class GenericScaledMaskedSoftmax(torch.autograd.Function):
     @staticmethod
     def forward(ctx, inputs, mask, scale):
-
-        generic_scaled_masked_softmax_cuda = GenericScaledMaskedSoftmaxCudaBuilder().load()
+        import generic_scaled_masked_softmax_cuda
 
         scale_t = torch.tensor([scale])
         softmax_results = generic_scaled_masked_softmax_cuda.forward(inputs, mask, scale_t[0])
@@ -119,8 +115,7 @@ class GenericScaledMaskedSoftmax(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, output_grads):
-
-        generic_scaled_masked_softmax_cuda = GenericScaledMaskedSoftmaxCudaBuilder().load()
+        import generic_scaled_masked_softmax_cuda_new
 
         softmax_results, scale_t = ctx.saved_tensors
 
@@ -144,7 +139,7 @@ class ScaledSoftmax(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, inputs, scale):
-        scaled_softmax_cuda = ScaledSoftmaxCudaBuilder().load()
+        import scaled_softmax_cuda
 
         scale_t = torch.tensor([scale])
 
@@ -156,8 +151,7 @@ class ScaledSoftmax(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, output_grads):
-
-        scaled_softmax_cuda = ScaledSoftmaxCudaBuilder().load()
+        import scaled_softmax_cuda
 
         softmax_results, scale_t = ctx.saved_tensors
 
@@ -275,7 +269,6 @@ class FusedScaleMaskSoftmax(torch.nn.Module):
 
     @staticmethod
     def get_batch_per_block(sq, sk, b, np):
-
-        scaled_masked_softmax_cuda = ScaledMaskedSoftmaxCudaBuilder().load()
+        import scaled_masked_softmax_cuda
 
         return scaled_masked_softmax_cuda.get_batch_per_block(sq, sk, b, np)

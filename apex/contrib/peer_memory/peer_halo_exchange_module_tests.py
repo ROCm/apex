@@ -1,7 +1,6 @@
 import torch
 from apex.contrib.peer_memory import PeerMemoryPool, PeerHaloExchanger1d
-from apex.op_builder import PeerMemoryBuilder
-pm = PeerMemoryBuilder().load()
+import peer_memory_cuda as pm
 
 # How to run:
 # torchrun --nproc_per_node <num-GPU> <this-python-prog>

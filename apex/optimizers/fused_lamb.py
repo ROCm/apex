@@ -1,5 +1,5 @@
 import torch
-from apex.multi_tensor_apply import MultiTensorApply
+from apex.multi_tensor_apply import multi_tensor_applier, multi_tensor_applier_l2norm
 
 class FusedLAMB(torch.optim.Optimizer):
 
@@ -72,11 +72,8 @@ class FusedLAMB(torch.optim.Optimizer):
                         grad_averaging=grad_averaging,
                         max_grad_norm=max_grad_norm)
         super(FusedLAMB, self).__init__(params, defaults)
-        multi_tensor_applier = MultiTensorApply(256*32)
-        multi_tensor_applier_l2norm = MultiTensorApply(2048*32)
         if multi_tensor_applier.available and multi_tensor_applier_l2norm.available:
-            from apex.op_builder import AmpCBuilder
-            amp_C = AmpCBuilder().load()
+            import amp_C
             self.multi_tensor_l2norm=amp_C.multi_tensor_l2norm
             # Skip buffer
             self._dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=self.param_groups[0]["params"][0].device)
@@ -123,8 +120,6 @@ class FusedLAMB(torch.optim.Optimizer):
         device = self.param_groups[0]["params"][0].device
         g_norm_32, g_norm_16 = torch.zeros(1, device=device), torch.zeros(1, device=device)
         # compute grad norm for two lists
-        multi_tensor_applier = MultiTensorApply(256*32)
-        multi_tensor_applier_l2norm = MultiTensorApply(2048*32)
         if len(g_all_32) > 0:
             g_norm_32 = multi_tensor_applier_l2norm(self.multi_tensor_l2norm,
                                              self._dummy_overflow_buf,

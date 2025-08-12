@@ -1,5 +1,5 @@
 import torch
-from apex.multi_tensor_apply import MultiTensorApply
+from ..multi_tensor_apply import multi_tensor_applier
 from ._amp_state import _amp_state, master_params, maybe_print
 from itertools import product
 
@@ -63,10 +63,8 @@ class LossScaler(object):
         self._unskipped = 0
         self._has_overflow = False
         self._overflow_buf = torch.tensor([0], dtype=torch.int, device='cuda')
-        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
-            from apex.op_builder import AmpCBuilder
-            amp_C = AmpCBuilder().load()
+            import amp_C
             LossScaler.has_fused_kernel = multi_tensor_applier.available
             LossScaler.multi_tensor_scale_cuda = amp_C.multi_tensor_scale
             LossScaler.multi_tensor_axpby_cuda = amp_C.multi_tensor_axpby
@@ -103,7 +101,6 @@ class LossScaler(object):
 
     # unused_scale keeps some of the old API alive for hopefully a short time.
     def unscale(self, model_grads, master_grads, unused_scale, models_are_masters=False, scale_override=None):
-        multi_tensor_applier = MultiTensorApply(256*32)
         if self._has_overflow:
             return
 
@@ -166,7 +163,6 @@ class LossScaler(object):
                              stashed_master_grads,
                              master_grads,
                              scale_override=None):
-        multi_tensor_applier = MultiTensorApply(256*32)
         if self._has_overflow:
             return
 

@@ -1,5 +1,5 @@
 import torch
-from apex.multi_tensor_apply import MultiTensorApply
+from apex.multi_tensor_apply import multi_tensor_applier
 
 class FP16_Optimizer(object):
     """
@@ -53,10 +53,8 @@ class FP16_Optimizer(object):
             self.fp32_groups.append(fp32_group)
             param_group['params'] = fp32_group
 
-        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
-            from apex.op_builder import AmpCBuilder
-            amp_C = AmpCBuilder().load()
+            import amp_C
             self.overflow_buf = torch.cuda.IntTensor([0])
             self.multi_tensor_l2norm=amp_C.multi_tensor_l2norm
         else:
@@ -109,7 +107,6 @@ class FP16_Optimizer(object):
         
         # nan check
         self.overflow_buf.zero_()
-        multi_tensor_applier = MultiTensorApply(256*32)
         for fp16_grad in fp16_grads:
             if len(fp16_grad) > 0:
                 norm, norm_per_tensor = multi_tensor_applier(self.multi_tensor_l2norm,

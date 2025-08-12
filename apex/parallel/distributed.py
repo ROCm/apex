@@ -6,15 +6,14 @@ from collections import OrderedDict
 from itertools import chain
 import copy
 import importlib
-from apex.multi_tensor_apply import MultiTensorApply
+from ..multi_tensor_apply import multi_tensor_applier
 
 imported_flatten_impl = False
 
 def import_flatten_impl():
     global flatten_impl, unflatten_impl, imported_flatten_impl
     try:
-        from apex.op_builder import ApexCBuilder
-        apex_C = ApexCBuilder().load()
+        import apex_C
         flatten_impl = apex_C.flatten
         unflatten_impl = apex_C.unflatten
     except ImportError:
@@ -244,11 +243,9 @@ class DistributedDataParallel(Module):
                                     "torch.cuda.DoubleTensor" : 2,
                                     "torch.cuda.BFloat16Tensor" : 3}
 
-        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
             # TODO:  I really need to centralize the C++ backed imports
-            from apex.op_builder import AmpCBuilder
-            amp_C = AmpCBuilder().load()
+            import amp_C
             self.multi_tensor_scale = amp_C.multi_tensor_scale
             self._overflow_buf = torch.cuda.IntTensor([0])
 
@@ -428,7 +425,6 @@ class DistributedDataParallel(Module):
 
     def allreduce_bucket(self, bucket, bucket_idx, force_default_stream):
         tensor = flatten(bucket)
-        multi_tensor_applier = MultiTensorApply(256*32)
 
         if force_default_stream:
             bucket_stream = self.main_stream
