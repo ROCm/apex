@@ -865,12 +865,7 @@ class CUDAOpBuilder(OpBuilder):
         return nccl_library
 
     def nccl_version(self):
-        from torch.utils.cpp_extension import load
-        _nccl_version_getter = load(
-            name="_nccl_version_getter",
-            sources=["contrib/csrc/nccl_p2p/nccl_version.cpp", "contrib/csrc/nccl_p2p/nccl_version_check.cu"],
-        )
-        return _nccl_version_getter.get_nccl_version()
+        return torch.cuda.nccl.version()[0:2]
 
     def torch_version(self):
         return (TORCH_MAJOR, TORCH_MINOR)

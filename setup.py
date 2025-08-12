@@ -23,6 +23,7 @@ import shlex
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from op_builder.all_ops import ALL_OPS
+import shutil
 
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -268,6 +269,25 @@ if "--cuda_ext" in sys.argv:
 with open('requirements.txt') as f:
     required = f.read().splitlines()
 
+# Find python files in compatibility folder
+compatibility_dir = os.path.join(this_dir, 'compatibility')
+py_modules = []
+
+if os.path.exists(compatibility_dir):
+    for file in os.listdir(compatibility_dir):
+        if file.endswith('.py') and file != '__init__.py':
+            module_name = f"{file[:-3]}"
+            py_modules.append(module_name)
+
+            #copy outside temporarily
+            src_file = os.path.join(compatibility_dir, file)
+            dst_file = os.path.join(this_dir, file)
+            shutil.copy2(src_file, dst_file)
+else:
+    print("Warning: compatibility folder not found")
+
+print ("-----py_modules--------", py_modules)
+
 setup(
     name="apex",
     version=get_apex_version(),
@@ -279,5 +299,12 @@ setup(
     cmdclass={'build_ext': BuildExtension} if ext_modules else {},
     extras_require=extras,
     install_requires=required,
-    include_package_data=True
+    include_package_data=True,
+    py_modules=py_modules
 )
+
+#delete the temporarily copied compatibility files
+for py_module in py_modules:
+    path = dst_file = os.path.join(this_dir, py_module + ".py")
+    if os.path.exists(path):
+        os.remove(path)
