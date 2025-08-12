@@ -1,8 +1,6 @@
 try:
     import torch
-    from apex.op_builder import XentropyBuilder
-    xentropy_cuda = XentropyBuilder().load()
-    
+    import xentropy_cuda
     from .softmax_xentropy import SoftmaxCrossEntropyLoss
     del torch
     del xentropy_cuda

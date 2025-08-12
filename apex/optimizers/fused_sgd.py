@@ -1,7 +1,7 @@
 import torch
 from torch.optim.optimizer import Optimizer, required
 
-from apex.multi_tensor_apply import MultiTensorApply
+from apex.multi_tensor_apply import multi_tensor_applier
 
 class FusedSGD(Optimizer):
     r"""Implements stochastic gradient descent (optionally with momentum).
@@ -97,10 +97,8 @@ class FusedSGD(Optimizer):
         self.scale_set_by_backward = False
         self.set_grad_none = set_grad_none
 
-        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
-            from apex.op_builder import AmpCBuilder
-            amp_C = AmpCBuilder().load()
+            import amp_C
             # Skip buffer
             self._dummy_overflow_buf = torch.tensor([0], dtype=torch.int, device=self.param_groups[0]["params"][0].device)
             self.multi_tensor_sgd = amp_C.multi_tensor_sgd
@@ -144,7 +142,6 @@ class FusedSGD(Optimizer):
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.
         """
-        multi_tensor_applier = MultiTensorApply(256*32)
         loss = None
         if closure is not None:
             loss = closure()

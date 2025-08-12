@@ -1,7 +1,10 @@
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm
 from torch.nn import functional as F
+
+import syncbn
 from .optimized_sync_batchnorm_kernel import SyncBatchnormFunction
+
 
 class SyncBatchNorm(_BatchNorm):
     """

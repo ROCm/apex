@@ -1,6 +1,6 @@
 import torch
-from apex.op_builder import FusedIndexMul2dBuilder  
-fused_index_mul_2d = FusedIndexMul2dBuilder().load()
+
+import fused_index_mul_2d
 
 class IndexMul2d_(torch.autograd.Function):
     '''

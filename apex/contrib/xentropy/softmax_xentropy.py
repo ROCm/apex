@@ -1,7 +1,5 @@
 import torch
-from apex.op_builder import XentropyBuilder
-
-xentropy_cuda = XentropyBuilder().load()
+import xentropy_cuda
 
 class SoftmaxCrossEntropyLoss(torch.autograd.Function):
     @staticmethod

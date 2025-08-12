@@ -1,7 +1,6 @@
 try:
     import torch
-    from apex.op_builder import BnpBuilder
-    bnp = BnpBuilder().load()
+    import bnp
     from .batch_norm import BatchNorm2d_NHWC
     del torch
     del bnp

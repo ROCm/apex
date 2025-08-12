@@ -1,7 +1,6 @@
 import torch
 
-from apex.op_builder import FastMultiheadAttnBuilder  
-fast_multihead_attn = FastMultiheadAttnBuilder().load()
+import fast_multihead_attn
 
 
 class FastSelfAttnNormAddFunc(torch.autograd.Function):

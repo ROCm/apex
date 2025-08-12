@@ -1,6 +1,7 @@
 import torch
-from apex.op_builder import FocalLossBuilder
-focal_loss_cuda = FocalLossBuilder().load()
+
+import focal_loss_cuda
+
 
 class FocalLoss(torch.autograd.Function):
     @staticmethod

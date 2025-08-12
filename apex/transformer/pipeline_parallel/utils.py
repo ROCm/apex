@@ -19,11 +19,13 @@ from typing import Optional, List, Union
 import torch
 from torch.nn.parallel import DistributedDataParallel
 
-from apex.multi_tensor_apply import MultiTensorApply
+from apex.multi_tensor_apply import multi_tensor_applier
 from apex.transformer import parallel_state
 from apex.transformer.enums import ModelType
 from apex.transformer.microbatches import build_num_microbatches_calculator
 from apex.transformer.pipeline_parallel._timers import _Timers
+if multi_tensor_applier.available:
+    import amp_C
 
 
 _GLOBAL_ARGS = None
@@ -225,10 +227,6 @@ def calc_params_l2_norm(model: torch.nn.Module, bf16: bool):
                 else:
                     params_data.append(param.data)
     # Calculate norm
-    multi_tensor_applier = MultiTensorApply(256*32)
-    if multi_tensor_applier.available:
-        from apex.op_builder import AmpCBuilder
-        amp_C = AmpCBuilder().load()
     dummy_overflow_buf = torch.cuda.IntTensor([0])
     norm, _ = multi_tensor_applier(
         amp_C.multi_tensor_l2norm, dummy_overflow_buf, [params_data], False  # no per-parameter norm

@@ -1,5 +1,5 @@
 import torch
-from apex.multi_tensor_apply import MultiTensorApply
+from apex.multi_tensor_apply import multi_tensor_applier
 
 class FusedNovoGrad(torch.optim.Optimizer):
 
@@ -76,10 +76,8 @@ class FusedNovoGrad(torch.optim.Optimizer):
                         grad_averaging=grad_averaging, norm_type=norm_type,
                         init_zero=init_zero)
         super(FusedNovoGrad, self).__init__(params, defaults)
-        multi_tensor_applier = MultiTensorApply(256*32)
         if multi_tensor_applier.available:
-            from apex.op_builder import AmpCBuilder
-            amp_C = AmpCBuilder().load()
+            import amp_C
             # Skip buffer
 
             # Creating the overflow buffer on the same device as the params tensors.
@@ -114,7 +112,6 @@ class FusedNovoGrad(torch.optim.Optimizer):
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.
         """
-        multi_tensor_applier = MultiTensorApply(256*32)
         loss = None
         if closure is not None:
             loss = closure()
