@@ -117,27 +117,6 @@ Note: Pytorch version recommended is >=1.5 for extension build.
 pip install . --no-build-isolation
 ```
 
-=======
-### Supported Versions
-| ``APEX Version`` | ``APEX branch`` | ``Torch Version`` |
-|------------------|-----------------|-------------------|
-| ``1.7.0``        | release/1.7.0   | ``2.7``           | 
-| ``1.6.0``        | release/1.6.0   | ``2.6``           | 
-| ``1.5.0``        | release/1.5.0   | ``2.5``           | 
-| ``1.4.0``        | release/1.4.0   | ``2.4``           | 
-| ``1.3.0``        | release/1.3.0   | ``2.3``           | 
-| ``1.2.0``        | release/1.2.0   | ``2.2``           | 
-| ``1.1.0``        | release/1.1.0   | ``2.1``           |
-| ``1.0.0``        | release/1.0.0   | ``2.0`` and older |
-
-
-The relation between APEX and ROCm PyTorch is maintained in file `related_commits` in [ROCm PyTorch release branches](https://github.com/ROCm/pytorch/branches/all?query=release) in the following format. 
-
-```
-ubuntu|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
-centos|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
-```
-
 ### To install the extensions while installing use the following command in apex folder:
 ```
 APEX_BUILD_CPP_OPS=1 APEX_BUILD_CUDA_OPS=1 pip install . --no-build-isolation
@@ -197,6 +176,28 @@ To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=
 ```
 pip uninstall apex
 make clean
+```
+
+=======
+### Supported Versions
+| ``APEX Version`` | ``APEX branch`` | ``Torch Version`` |
+|------------------|-----------------|-------------------|
+| ``1.8.0``        | release/1.8.0   | ``2.8``           | 
+| ``1.7.0``        | release/1.7.0   | ``2.7``           | 
+| ``1.6.0``        | release/1.6.0   | ``2.6``           | 
+| ``1.5.0``        | release/1.5.0   | ``2.5``           | 
+| ``1.4.0``        | release/1.4.0   | ``2.4``           | 
+| ``1.3.0``        | release/1.3.0   | ``2.3``           | 
+| ``1.2.0``        | release/1.2.0   | ``2.2``           | 
+| ``1.1.0``        | release/1.1.0   | ``2.1``           |
+| ``1.0.0``        | release/1.0.0   | ``2.0`` and older |
+
+
+The relation between APEX and ROCm PyTorch is maintained in file `related_commits` in [ROCm PyTorch release branches](https://github.com/ROCm/pytorch/branches/all?query=release) in the following format. 
+
+```
+ubuntu|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
+centos|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
 ```
 
 ### Enable hipblasLT on ROCm
