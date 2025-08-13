@@ -117,7 +117,6 @@ Note: Pytorch version recommended is >=1.5 for extension build.
 pip install . --no-build-isolation
 ```
 
-=======
 ### Supported Versions
 | ``APEX Version`` | ``APEX branch`` | ``Torch Version`` |
 |------------------|-----------------|-------------------|
