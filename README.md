@@ -194,6 +194,12 @@ make aiter
 
 To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=1```.
 
+### To create a wheel and then install using the wheel, use the following command in apex folder:
+```
+python -m build --wheel --no-isolation (can use the same environment variables to build specific extensions, cpp extensions and cuda extensions)
+pip install dist/apex-*.whl​
+```
+
 ### To uninstall apex and its extensions, use the following command in apex folder:
 ```
 pip uninstall apex
