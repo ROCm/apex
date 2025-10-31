@@ -1,9 +1,9 @@
-from .builder import TorchCPUOpBuilder
+from .builder import CPUOpBuilder
 
 import sys
 
 
-class ApexCBuilder(TorchCPUOpBuilder):
+class ApexCBuilder(CPUOpBuilder):
     BUILD_VAR = 'APEX_BUILD_APEX_C'
     INCLUDE_FLAG = "APEX_BUILD_CPP_OPS"
     NAME = "apex_C"

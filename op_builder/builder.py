@@ -873,7 +873,7 @@ class CUDAOpBuilder(OpBuilder):
     def is_supported(self):
         return super().is_supported()
 
-class TorchCPUOpBuilder(CUDAOpBuilder):
+class CPUOpBuilder(CUDAOpBuilder):
 
     def get_cuda_lib64_path(self):
         import torch

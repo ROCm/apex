@@ -8,20 +8,21 @@ ROCM_BLACKLIST = [
     "layer_norm"
 ]
 
-runner = unittest.TextTestRunner(verbosity=2)
+if __name__ ==  '__main__':
+    runner = unittest.TextTestRunner(verbosity=2)
 
-errcode = 0
+    errcode = 0
 
-for test_dir in test_dirs:
-    if test_dir in ROCM_BLACKLIST:
-        continue
-    suite = unittest.TestLoader().discover(test_dir)
+    for test_dir in test_dirs:
+        if test_dir in ROCM_BLACKLIST:
+            continue
+        suite = unittest.TestLoader().discover(test_dir)
 
-    print("\nExecuting tests from " + test_dir)
+        print("\nExecuting tests from " + test_dir)
 
-    result = runner.run(suite)
+        result = runner.run(suite)
 
-    if not result.wasSuccessful():
-        errcode = 1
+        if not result.wasSuccessful():
+            errcode = 1
 
-sys.exit(errcode)
+    sys.exit(errcode)

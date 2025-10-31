@@ -41,7 +41,7 @@ class BuilderUtils:
                     for member_name in module.__dir__():
                         if member_name.endswith(
                                 'Builder'
-                        ) and member_name != "OpBuilder" and member_name != "CUDAOpBuilder" and member_name != "TorchCPUOpBuilder":  # avoid abstract classes
+                        ) and member_name != "OpBuilder" and member_name != "CUDAOpBuilder" and member_name != "CPUOpBuilder":  # avoid abstract classes
                             if not member_name in self.class_dict:
                                 self.class_dict[member_name] = getattr(module, member_name)
             # end initialize for create_op_builder()
@@ -68,7 +68,6 @@ class BuilderUtils:
 builder_utils = BuilderUtils()
 op_builder_dir = builder_utils.op_builder_dir()
 op_builder_module = importlib.import_module(op_builder_dir)
-print ("op_builder_module", op_builder_module)
 __op_builders__ = []
 
 for _, module_name, _ in pkgutil.iter_modules([os.path.dirname(op_builder_module.__file__)]):
