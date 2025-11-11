@@ -100,15 +100,12 @@ Note that we recommend restoring the model using the same `opt_level`. Also note
 # Installation
 
 ## Containers
-ROCm pytorch containers are available from https://hub.docker.com/r/rocm/pytorch.
+ROCm pytorch containers contain apex package and these are available from https://hub.docker.com/r/rocm/pytorch.
 
 ## From Source
 
-To install Apex from source, we recommend using the nightly Pytorch obtainable from https://github.com/rocm/pytorch.
+Torch must be installed before installing apex. We recommend using the nightly Pytorch obtainable from https://github.com/rocm/pytorch. The latest stable release obtainable from https://pytorch.org should also work.
 
-The latest stable release obtainable from https://pytorch.org should also work.
-
-## ROCm
 Apex on ROCm supports both python only build and extension build.
 Note: Pytorch version recommended is >=1.5 for extension build.
 
@@ -228,6 +225,37 @@ pip install . --no-build-isolation
 on your system. A Python-only build via `pip install --no-build-isolation -v --no-cache-dir .` is more likely to work.  
 If you installed Pytorch in a Conda environment, make sure to install Apex in that same environment.
 
+# Testing
+
+## L0 tests
+
+```
+cd tests/L0
+sh run_rocm.sh
+```
+
+## contrib tests
+
+```
+cd apex/contrib/test
+python run_rocm_extensions.py
+torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py
+```
+
+## Distributed tests
+
+```
+cd tests/distributed/synced_batchnorm
+sh unit_test.sh
+```
+
+## JIT build and then run tests
+
+```
+sh tests/jit_build/build.sh condition 1
+sh tests/jit_build/run_tests.sh condition 1
+```
+where condition is from 1 to 13
 
 # Release notes
 
