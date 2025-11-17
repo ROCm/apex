@@ -66,13 +66,27 @@ def get_cuda_bare_metal_version(cuda_dir):
     return raw_output, bare_metal_major, bare_metal_minor
 
 def get_rocm_bare_metal_version(rocm_dir):
-    raw_output = subprocess.check_output([rocm_dir + "/bin/hipcc", "--version"], universal_newlines=True)
-    output = raw_output.split()
-    release_idx = output.index("version:") + 1
-    release = output[release_idx].split(".")
-    bare_metal_major = release[0]
-    bare_metal_minor = release[1][0]
-    return raw_output, bare_metal_major, bare_metal_minor
+    #read rocm version from /opt/rocm/include/rocm-core/rocm_version.h
+    rocm_major = None
+    rocm_minor = None
+    rocm_patch = None
+    
+    with open(os.path.join(rocm_dir, "include", "rocm-core", "rocm_version.h"), "r") as f:
+        for line in f:
+            if "ROCM_VERSION_MAJOR" in line and "#define" in line:
+                rocm_major = line.split()[-1].strip()
+            elif "ROCM_VERSION_MINOR" in line and "#define" in line:
+                rocm_minor = line.split()[-1].strip()
+            elif "ROCM_VERSION_PATCH" in line and "#define" in line:
+                rocm_patch = line.split()[-1].strip()
+    
+    if rocm_major is None or rocm_minor is None or rocm_patch is None:
+        raise RuntimeError("Failed to parse ROCm version from rocm_version.h")
+    
+    raw_output = f"{rocm_major}.{rocm_minor}.{rocm_patch}"
+    print("ROCM Version: ", raw_output)
+    
+    return raw_output, rocm_major, rocm_minor
 
 def check_cuda_torch_binary_vs_bare_metal(cuda_dir):
     raw_output, bare_metal_major, bare_metal_minor = get_cuda_bare_metal_version(cuda_dir)
@@ -97,16 +111,15 @@ def check_rocm_torch_binary_vs_bare_metal(rocm_dir):
     torch_binary_major = torch.version.hip.split(".")[0]
     torch_binary_minor = torch.version.hip.split(".")[1]
 
-    print("\nCompiling rocm extensions with")
+    print("\nCompiling ROCm extensions with")
     print(raw_output + "from " + rocm_dir + "/bin\n")
 
     if (bare_metal_major != torch_binary_major) or (bare_metal_minor != torch_binary_minor):
         raise RuntimeError(
-            "Cuda extensions are being compiled with a version of Cuda that does "
+            "ROCm extensions are being compiled with a version of ROCm that does "
             "not match the version used to compile Pytorch binaries.  "
-            "Pytorch binaries were compiled with Cuda {}.\n".format(torch.version.cuda)
-            + "In some cases, a minor-version mismatch will not cause later errors:  "
-            "https://github.com/NVIDIA/apex/pull/323#discussion_r287021798.  "
+            "Pytorch binaries were compiled with ROCm {}.\n".format(torch.version.hip)
+            + "In some cases, a minor-version mismatch will not cause later errors."
             "You can try commenting out this check (at your own risk)."
         )
 
