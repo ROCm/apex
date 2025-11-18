@@ -225,38 +225,6 @@ pip install . --no-build-isolation
 on your system. A Python-only build via `pip install --no-build-isolation -v --no-cache-dir .` is more likely to work.  
 If you installed Pytorch in a Conda environment, make sure to install Apex in that same environment.
 
-# Testing
-
-## L0 tests
-
-```
-cd tests/L0
-sh run_rocm.sh
-```
-
-## contrib tests
-
-```
-cd apex/contrib/test
-python run_rocm_extensions.py
-torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py
-```
-
-## Distributed tests
-
-```
-cd tests/distributed/synced_batchnorm
-sh unit_test.sh
-```
-
-## JIT build and then run tests
-
-```
-sh tests/jit_build/build.sh condition 1
-sh tests/jit_build/run_tests.sh condition 1
-```
-where condition is from 1 to 13
-
 # Release notes
 
 ## release/1.7.0
