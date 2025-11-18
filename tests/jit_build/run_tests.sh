@@ -32,3 +32,5 @@ echo "Failed L0 tests = $FAILED_TESTS"
 echo "Failed contrib tests = $FAILED_TESTS2"
 echo ".so count = $BUILT_SO_COUNT"
 echo "JIT torch extensions count = $TORCH_EXTENSIONS_COUNT"
+
+echo "$FAILED_TESTS $FAILED_TESTS2 $BUILT_SO_COUNT $TORCH_EXTENSIONS_COUNT"
