@@ -10,7 +10,7 @@ failed_tests = []
 for line in lines:
     if "ERROR: " in line:
         failed_tests.append(line[7:].strip())
-    if " FAILED" in line:
-        failed_tests.append(line[: -6].strip())
+    if " FAILED" in line and "#" not in line:
+        failed_tests.append(line[: -8].strip())
 print(len(failed_tests))
 #print(str(len(failed_tests)) + "," + ";".join(failed_tests)) 

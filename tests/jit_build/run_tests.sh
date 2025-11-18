@@ -14,20 +14,19 @@ cd apex/contrib/test
 PYTHONUNBUFFERED=1 python run_rocm_extensions.py 2>&1 | tee ../../../$LOG_FILE2
 cd ../../../
 
-torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee -a ../../../$LOG_FILE2
+torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee -a $LOG_FILE2
 
 cd tests/distributed/synced_batchnorm
 sh unit_test.sh 2>&1 | tee -a ../../../$LOG_FILE2
 cd ../../../
 
 #explicitly load the builder and build the remaining extensions
-cd ../
-python run_directory/load_extra_extensions.py 2>&1 | tee ../../../apex/$LOG_FILE
+python tests/jit_build/load_extra_extensions.py 2>&1 | tee $LOG_FILE
 
-FAILED_TESTS=$(python run_directory/count_failed_unit_tests.py apex/$LOG_FILE)
-FAILED_TESTS2=$(python run_directory/count_failed_unit_tests.py apex/$LOG_FILE2)
-BUILT_SO_COUNT=$(python run_directory/count_built_so.py)
-TORCH_EXTENSIONS_COUNT=$(python run_directory/count_torch_extensions.py)
+FAILED_TESTS=$(python tests/jit_build/count_failed_unit_tests.py $LOG_FILE)
+FAILED_TESTS2=$(python tests/jit_build/count_failed_unit_tests.py $LOG_FILE2)
+BUILT_SO_COUNT=$(python tests/jit_build/count_built_so.py)
+TORCH_EXTENSIONS_COUNT=$(python tests/jit_build/count_torch_extensions.py)
 
 echo "Failed L0 tests = $FAILED_TESTS"
 echo "Failed contrib tests = $FAILED_TESTS2"
