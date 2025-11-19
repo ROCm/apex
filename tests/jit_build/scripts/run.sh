@@ -20,6 +20,6 @@ TEST_RESULTS=$(sh tests/jit_build/run_tests.sh "condition" $JIT_CONDITION | tail
 # Parse the returned values
 read FAILED_TESTS FAILED_TESTS2 BUILT_SO_COUNT TORCH_EXTENSIONS_COUNT <<< "$TEST_RESULTS"
 
-MULTIPLE_RESULTS_FILE="results_jit_unit_test.csv"
+MULTIPLE_RESULTS_FILE="../results_jit_unit_test.csv"
 #echo "condition,failed unit tests" > "$MULTIPLE_RESULTS_FILE"
 echo "$JIT_CONDITION,$FAILED_TESTS,$FAILED_TESTS2,$BUILT_SO_COUNT,$TORCH_EXTENSIONS_COUNT" >> "$MULTIPLE_RESULTS_FILE"
