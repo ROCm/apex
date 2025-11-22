@@ -4,7 +4,7 @@ import os
 import glob
 from packaging.version import parse, Version
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Distribution
 import subprocess
 
 import torch
@@ -286,7 +286,10 @@ if os.path.exists(compatibility_dir):
 else:
     print("Warning: compatibility folder not found")
 
-print ("-----py_modules--------", py_modules)
+class BinaryDistribution(Distribution):
+    """Force wheel to be platform-specific even without ext_modules."""
+    def has_ext_modules(self):
+        return True
 
 setup(
     name="apex",
@@ -300,7 +303,8 @@ setup(
     extras_require=extras,
     install_requires=required,
     include_package_data=True,
-    py_modules=py_modules
+    py_modules=py_modules,
+    distclass=BinaryDistribution
 )
 
 #delete the temporarily copied compatibility files
