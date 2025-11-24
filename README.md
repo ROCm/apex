@@ -199,7 +199,13 @@ If you installed Pytorch in a Conda environment, make sure to install Apex in th
 
 ## release/1.7.0
 
+Build and installation related
+- Support use of BUILD_VERSION environment to override version.txt when creating apex wheels
+- Disable aiter installation by default. make aiter command is used to build apex
+
 Unit test related
 - Include running transformer tests in L0/run_test.py
 - Fix transformer unit tests
+- Fix batch norm unit tests
+- Fix fused dense gelu dense unit tests
 
