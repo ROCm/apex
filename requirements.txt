@@ -8,3 +8,5 @@ matplotlib>=3.8
 pandas>=2.2.2
 py-cpuinfo
 build
+ninja
+wheel
