@@ -295,7 +295,7 @@ setup(
     name="apex",
     version=get_apex_version(),
     packages=find_packages(
-        exclude=("build", "include", "tests", "dist", "docs", "tests", "examples", "apex.egg-info", "op_builder")
+        exclude=("build", "include", "tests", "dist", "docs", "tests", "examples", "apex.egg-info", "op_builder", "compatibility")
     ),
     description="PyTorch Extensions written by NVIDIA",
     ext_modules=ext_modules,
