@@ -137,12 +137,12 @@ ubuntu|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https
 centos|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
 ```
 
-### To build and install all the supported extensions while installing apex, use the following command in apex folder:
+### To pre-build and install all the supported extensions while installing apex, use the following command in apex folder:
 ```
 APEX_BUILD_CPP_OPS=1 APEX_BUILD_CUDA_OPS=1 pip install . --no-build-isolation
 ```
 
-It is possible to build and install specific extensions by using the following command in apex folder:
+It is also possible to pre-build and install specific extensions by using the following command in apex folder:
 ```
 APEX_BUILD_<OP_NAME>=1 pip install . --no-build-isolation
 ```
