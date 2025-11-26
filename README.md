@@ -181,7 +181,7 @@ For example, to build FUSED_DENSE​ you can use the following command:
 ```
 APEX_BUILD_FUSED_DENSE​=1 pip install . --no-build-isolation
 ```
-This will install FUSED_DENSE​ module and rest of the modules are JIT loaded. 
+This will pre-build and install FUSED_DENSE​ module and rest of the modules are installed to be JIT built and loaded at runtime. 
 
 
 
@@ -192,7 +192,7 @@ make aiter
 
 To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=1```.
 
-### To create a wheel and then install using the wheel, use the following command in apex folder:
+### To create a wheel and then install apex using the wheel, use the following command in apex folder:
 ```
 python -m build --wheel --no-isolation (can use the same environment variables to build specific extensions, cpp extensions and cuda extensions)
 pip install dist/apex-*.whl​
