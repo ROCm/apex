@@ -109,7 +109,8 @@ Torch must be installed before installing apex. We recommend using the nightly P
 Apex on ROCm supports both python only build and extension build.
 Note: Pytorch version recommended is >=1.5 for extension build.
 
-### To install and jit load the extensions use the following command in apex folder:
+### The following command will install all the extensions, which will be built and linked at runtime using [PyTorch's JIT (just-in-time) loader](https://pytorch.org/docs/stable/cpp_extension.html):
+This requires ninja to be installed
 ```
 pip install . --no-build-isolation
 ```
@@ -136,12 +137,12 @@ ubuntu|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https
 centos|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
 ```
 
-### To install the extensions while installing use the following command in apex folder:
+### To build and install all the supported extensions while installing apex, use the following command in apex folder:
 ```
 APEX_BUILD_CPP_OPS=1 APEX_BUILD_CUDA_OPS=1 pip install . --no-build-isolation
 ```
 
-It is possible to build specific extensions by using the following command in apex folder:
+It is possible to build and install specific extensions by using the following command in apex folder:
 ```
 APEX_BUILD_<OP_NAME>=1 pip install . --no-build-isolation
 ```
