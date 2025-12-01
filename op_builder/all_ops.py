@@ -3,6 +3,10 @@
 
 # DeepSpeed Team
 
+# Portions of this code were adapted from DeepSpeed:
+# https://github.com/microsoft/DeepSpeed
+# Modified for ROCm Apex
+
 import os
 import pkgutil
 import importlib

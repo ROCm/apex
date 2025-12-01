@@ -3,6 +3,10 @@
 
 # DeepSpeed Team
 
+# Portions of this code were adapted from DeepSpeed:
+# https://github.com/microsoft/DeepSpeed
+# Modified for ROCm Apex
+
 try:
     #  This is populated by setup.py
     from .git_version_info_installed import *  # noqa: F401 # type: ignore
