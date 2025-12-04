@@ -100,24 +100,21 @@ Note that we recommend restoring the model using the same `opt_level`. Also note
 # Installation
 
 ## Containers
-ROCm pytorch containers are available from https://hub.docker.com/r/rocm/pytorch.
+ROCm pytorch containers contain apex package and these are available from https://hub.docker.com/r/rocm/pytorch.
 
 ## From Source
 
-To install Apex from source, we recommend using the nightly Pytorch obtainable from https://github.com/rocm/pytorch.
+Torch must be installed before installing apex. We recommend using the nightly Pytorch obtainable from https://github.com/rocm/pytorch. The latest stable release obtainable from https://pytorch.org should also work.
 
-The latest stable release obtainable from https://pytorch.org should also work.
-
-## ROCm
 Apex on ROCm supports both python only build and extension build.
 Note: Pytorch version recommended is >=1.5 for extension build.
 
-### To install using python only build use the following command in apex folder:
+### The following command will install all the extensions, which will be built and linked at runtime using [PyTorch's JIT (just-in-time) loader](https://pytorch.org/docs/stable/cpp_extension.html):
+This requires ninja to be installed
 ```
-python setup.py install
+pip install . --no-build-isolation
 ```
 
-=======
 ### Supported Versions
 | ``APEX Version`` | ``APEX branch`` | ``Torch Version`` |
 |------------------|-----------------|-------------------|
@@ -140,25 +137,72 @@ ubuntu|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https
 centos|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
 ```
 
-### To install using extensions enabled use the following command in apex folder:
+### To pre-build and install all the supported extensions while installing apex, use the following command in apex folder:
 ```
-# if pip >= 23.1 (ref: https://pip.pypa.io/en/stable/news/#v23-1) which supports multiple `--config-settings` with the same key...
-pip install -v --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
-# otherwise
-python setup.py install --cpp_ext --cuda_ext
+APEX_BUILD_CPP_OPS=1 APEX_BUILD_CUDA_OPS=1 pip install . --no-build-isolation
+```
 
+It is also possible to pre-build and install specific extensions by using the following command in apex folder:
 ```
-Note that using --cuda_ext flag to install Apex will also enable all the extensions supported on ROCm including "--distributed_adam", "--distributed_lamb", "--bnp", "--xentropy", "--deprecated_fused_adam", "--deprecated_fused_lamb", and "--fast_multihead_attn".
+APEX_BUILD_<OP_NAME>=1 pip install . --no-build-isolation
+```
+The following extensions are supported:
+| extension | environment to build specific extension | install option |
+|-----------|-----------|-----------|
+| amp_C | APEX_BUILD_AMP_C=1 | APEX_BUILD_CUDA_OPS=1 |
+| apex_C | APEX_BUILD_APEX_C=1 | APEX_BUILD_CPP_OPS=1 |
+| bnp | APEX_BUILD_BNP=1 | APEX_BUILD_CUDA_OPS=1 |
+| distributed_adam_cuda | APEX_BUILD_DISTRIBUTED_ADAM=1 | APEX_BUILD_CUDA_OPS=1 |
+| distributed_lamb_cuda | APEX_BUILD_DISTRIBUTED_LAMB=1 | APEX_BUILD_CUDA_OPS=1 |
+| fast_multihead_attn | APEX_BUILD_FAST_MULTIHEAD_ATTN=1 | APEX_BUILD_CUDA_OPS=1 |
+| focal_loss_cuda | APEX_BUILD_FOCAL_LOSS=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_adam_cuda | APEX_BUILD_FUSED_ADAM=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_bias_swiglu | APEX_BUILD_FUSED_BIAS_SWIGLU=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_dense_cuda | APEX_BUILD_FUSED_DENSE=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_index_mul_2d | APEX_BUILD_FUSED_INDEX_MUL_2D=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_lamb_cuda | APEX_BUILD_FUSED_LAMB=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_layer_norm_cuda | APEX_BUILD_FUSED_LAYER_NORM=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_rotary_positional_embedding | APEX_BUILD_FUSED_ROPE=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_weight_gradient_mlp_cuda | APEX_BUILD_FUSED_WEIGHT_GRADIENT_MLP=1 | APEX_BUILD_CUDA_OPS=1 |
+| generic_scaled_masked_softmax_cuda | APEX_BUILD_GENERIC_SCALED_MASKED_SOFTMAX_CUDA=1 | APEX_BUILD_CUDA_OPS=1 |
+| mlp_cuda | APEX_BUILD_MLP=1 | APEX_BUILD_CUDA_OPS=1 |
+| _apex_nccl_allocator | APEX_BUILD_NCCL_ALLOCATOR=1 | APEX_BUILD_CUDA_OPS=1 |
+| nccl_p2p_cuda | APEX_BUILD_NCCL_P2P=1 | APEX_BUILD_CUDA_OPS=1 |
+| peer_memory_cuda | APEX_BUILD_PEER_MEMORY=1 | APEX_BUILD_CUDA_OPS=1 |
+| scaled_masked_softmax_cuda | APEX_BUILD_SCALED_MASKED_SOFTMAX_CUDA=1 | APEX_BUILD_CUDA_OPS=1 |
+| scaled_softmax_cuda | APEX_BUILD_SCALED_SOFTMAX_CUDA=1 | APEX_BUILD_CUDA_OPS=1 |
+| scaled_upper_triang_masked_softmax_cuda | APEX_BUILD_SCALED_UPPER_TRIANG_MASKED_SOFTMAX_CUDA=1 | APEX_BUILD_CUDA_OPS=1 |
+| syncbn | APEX_BUILD_SYNCBN=1 | APEX_BUILD_CUDA_OPS=1 |
+| transducer_joint_cuda | APEX_BUILD_TRANSDUCER_JOINT=1 | APEX_BUILD_CUDA_OPS=1 |
+| transducer_loss_cuda | APEX_BUILD_TRANSDUCER_LOSS=1 | APEX_BUILD_CUDA_OPS=1 |
+| xentropy_cuda | APEX_BUILD_XENTROPY=1 | APEX_BUILD_CUDA_OPS=1 |
 
-In addition, aiter backend can be built during apex installation by providing --aiter flag
+For example, to build FUSED_DENSE​ you can use the following command: 
 ```
-# if pip >= 23.1 (ref: https://pip.pypa.io/en/stable/news/#v23-1) which supports multiple `--config-settings` with the same key...
-pip install -v --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" --config-settings "--build-option=--aiter" ./
-# otherwise
-python setup.py install --cpp_ext --cuda_ext --aiter
+APEX_BUILD_FUSED_DENSE​=1 pip install . --no-build-isolation
+```
+This will pre-build and install FUSED_DENSE​ module and rest of the modules are installed to be JIT built and loaded at runtime. 
+
+
+
+Aiter backend can be built and used for fused rope. To install aiter:
+```
+make aiter
 ```
 
 To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=1```.
+
+### To create a wheel and then install apex using the wheel, use the following command in apex folder:
+```
+python -m build --wheel --no-isolation (can use the same environment variables to build specific extensions, cpp extensions and cuda extensions)
+pip install dist/apex-*.whl​
+```
+
+### To uninstall apex and its extensions, use the following command in apex folder:
+```
+pip uninstall apex
+make clean
+```
 
 ### Enable hipblasLT on ROCm
 hipblasLT is supported only on mi300 (gfx942) only.  
@@ -173,33 +217,22 @@ CUDA and C++ extensions via
 ```bash
 git clone https://github.com/rocm/apex
 cd apex
-# if pip >= 23.1 (ref: https://pip.pypa.io/en/stable/news/#v23-1) which supports multiple `--config-settings` with the same key...
-pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --config-settings "--build-option=--cpp_ext" --config-settings "--build-option=--cuda_ext" ./
-# otherwise
-pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+pip install . --no-build-isolation
 ```
-
-Apex also supports a Python-only build via
-```bash
-pip install -v --disable-pip-version-check --no-build-isolation --no-cache-dir ./
-```
-A Python-only build omits:
-- Fused kernels required to use `apex.optimizers.FusedAdam`.
-- Fused kernels required to use `apex.normalization.FusedLayerNorm` and `apex.normalization.FusedRMSNorm`.
-- Fused kernels that improve the performance and numerical stability of `apex.parallel.SyncBatchNorm`.
-- Fused kernels that improve the performance of `apex.parallel.DistributedDataParallel` and `apex.amp`.
-`DistributedDataParallel`, `amp`, and `SyncBatchNorm` will still be usable, but they may be slower.
 
 
 ### [Experimental] Windows
-`pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" .` may work if you were able to build Pytorch from source
-on your system. A Python-only build via `pip install -v --no-cache-dir .` is more likely to work.  
+`pip install . --no-build-isolation` may work if you were able to build Pytorch from source
+on your system. A Python-only build via `pip install --no-build-isolation -v --no-cache-dir .` is more likely to work.  
 If you installed Pytorch in a Conda environment, make sure to install Apex in that same environment.
 
-
 # Release notes
 
-# Release notes
+## release/1.10.0
+
+Build and installation related
+- Support JIT (just-in-time) load cpp and CUDA extensions
+
 ## release/1.9.0
 
 - No new features were added in this release cycle.
