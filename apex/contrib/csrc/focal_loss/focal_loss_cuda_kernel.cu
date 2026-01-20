@@ -91,10 +91,12 @@ __global__ void focal_loss_forward_cuda_kernel(
           accscalar_t p = static_cast<accscalar_t>(*((scalar_t *)(&p_vec) + j));
 
           // Optimized Transcendental: Single exp and stable log1p
-          accscalar_t abs_p = (p >= 0) ? p : -p;
-          accscalar_t exp_neg_abs = ::exp(-abs_p);
-          accscalar_t sigma = (p >= 0) ? (one / (one + exp_neg_abs)) : (exp_neg_abs / (one + exp_neg_abs));
-          accscalar_t off_a = ::log1p(exp_neg_abs) + ((p < 0) ? abs_p : 0);
+          accscalar_t exp_np = ::exp(-p);
+          accscalar_t exp_pp = ::exp(p);
+          accscalar_t sigma = one / (one + exp_np);
+          accscalar_t logee = (p >= 0) ? exp_np : exp_pp;
+          accscalar_t addee = (p >= 0) ? 0 : -p;
+          accscalar_t off_a = addee + ::log(one + logee);
 
           // Negative matches
           accscalar_t base = SMOOTHING ? nn_norm * p : p;
