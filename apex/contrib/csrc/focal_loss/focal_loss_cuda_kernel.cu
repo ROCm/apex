@@ -22,7 +22,6 @@ __global__ void focal_loss_forward_cuda_kernel(
     const float alpha, const float gamma, const float smoothing_factor) {
   extern __shared__ unsigned char shm[];
   accscalar_t *loss_shm = reinterpret_cast<accscalar_t *>(shm);
-  labelscalar_t *labels_shm = reinterpret_cast<labelscalar_t *>(shm + blockDim.x * sizeof(accscalar_t));
   
   loss_shm[threadIdx.x] = 0;
   accscalar_t loss_acc = 0;
@@ -44,89 +43,71 @@ __global__ void focal_loss_forward_cuda_kernel(
 
   // Accumulate loss on each thread
   int64_t stride = (int64_t)gridDim.x * blockDim.x * ILP;
-  int64_t i_base = (int64_t)(blockIdx.x * blockDim.x + threadIdx.x) * ILP;
-  int64_t idy = i_base / num_classes;
-  int64_t base_yid = i_base % num_classes;
+  int64_t i = (int64_t)(blockIdx.x * blockDim.x + threadIdx.x) * ILP;
+  int64_t idy = i / num_classes;
+  int64_t base_yid = i % num_classes;
 
   int64_t stride_div = stride / num_classes;
   int64_t stride_rem = stride % num_classes;
 
-  for (int64_t loop_offset = (int64_t)blockIdx.x * blockDim.x * ILP;
-       loop_offset < num_examples * num_classes;
-       loop_offset += stride) {
-    
-    // 1. Cooperatively load labels into LDS
-    int64_t idy_block_start = loop_offset / num_classes;
-    int64_t idy_block_end = (loop_offset + (int64_t)blockDim.x * ILP - 1) / num_classes;
-    int64_t num_labels_to_load = idy_block_end - idy_block_start + 1;
+  for (; i < num_examples * num_classes; i += stride) {
+    labelscalar_t y = cls_targets_at_level[idy];
+    int64_t pos_idx = idy * num_classes + y;
+    p_vec = *(uint4 *)&cls_output[i];
 
-    for (int l = threadIdx.x; l < num_labels_to_load; l += blockDim.x) {
-      labels_shm[l] = cls_targets_at_level[idy_block_start + l];
-    }
-    __syncthreads();
-
-    // 2. Process elements
-    int64_t i = loop_offset + threadIdx.x * ILP;
-    if (i < num_examples * num_classes) {
-      labelscalar_t y = labels_shm[idy - idy_block_start];
-      int64_t pos_idx = idy * num_classes + y;
-      p_vec = *(uint4 *)&cls_output[i];
-
-      // Skip ignored matches
-      if (y == -2) {
+    // Skip ignored matches
+    if (y == -2) {
 #pragma unroll
-        for (int j = 0; j < ILP; j++) {
-          *((scalar_t *)(&grad_vec) + j) = 0;
-        }
-        *(uint4 *)&partial_grad[i] = grad_vec;
-      } else {
-#pragma unroll
-        for (int j = 0; j < ILP; j++) {
-          // Skip the pad classes
-          if (base_yid + j >= num_real_classes) {
-            *((scalar_t *)(&grad_vec) + j) = 0;
-            continue;
-          }
-
-          accscalar_t p = static_cast<accscalar_t>(*((scalar_t *)(&p_vec) + j));
-
-          // Optimized Transcendental: Single exp and stable log1p
-          accscalar_t exp_np = ::exp(-p);
-          accscalar_t exp_pp = ::exp(p);
-          accscalar_t sigma = one / (one + exp_np);
-          accscalar_t logee = (p >= 0) ? exp_np : exp_pp;
-          accscalar_t addee = (p >= 0) ? 0 : -p;
-          accscalar_t off_a = addee + ::log(one + logee);
-
-          // Negative matches
-          accscalar_t base = SMOOTHING ? nn_norm * p : p;
-          accscalar_t off_b = (SMOOTHING ? np_norm : 0) - sigma;
-          accscalar_t coeff_f1 = one - alpha;
-          accscalar_t coeff_f2 = sigma;
-          accscalar_t coeff_b1 = gamma;
-          accscalar_t coeff_b2 = one - sigma;
-
-          // Positive matches
-          if (y >= 0 && (i + j == pos_idx)) {
-            base = SMOOTHING ? pn_norm * p : 0;
-            off_b = (SMOOTHING ? pp_norm : one) - sigma;
-            coeff_f1 = alpha;
-            coeff_f2 = one - sigma;
-            coeff_b1 = -gamma;
-            coeff_b2 = sigma;
-          }
-
-          accscalar_t coeff_f = coeff_f1 * ::pow(coeff_f2, gamma);
-          accscalar_t coeff_b = coeff_b1 * coeff_b2;
-
-          accscalar_t loss_t = coeff_f * (base + off_a);
-          accscalar_t grad = coeff_f * (coeff_b * (base + off_a) - off_b);
-
-          loss_acc += loss_t;
-          *((scalar_t *)(&grad_vec) + j) = static_cast<scalar_t>(grad);
-        }
-        *(uint4 *)&partial_grad[i] = grad_vec;
+      for (int j = 0; j < ILP; j++) {
+        *((scalar_t *)(&grad_vec) + j) = 0;
       }
+      *(uint4 *)&partial_grad[i] = grad_vec;
+    } else {
+#pragma unroll
+      for (int j = 0; j < ILP; j++) {
+        // Skip the pad classes
+        if (base_yid + j >= num_real_classes) {
+          *((scalar_t *)(&grad_vec) + j) = 0;
+          continue;
+        }
+
+        accscalar_t p = static_cast<accscalar_t>(*((scalar_t *)(&p_vec) + j));
+
+        accscalar_t exp_np = ::exp(-p);
+        accscalar_t exp_pp = ::exp(p);
+        accscalar_t sigma = one / (one + exp_np);
+        accscalar_t logee = (p >= 0) ? exp_np : exp_pp;
+        accscalar_t addee = (p >= 0) ? 0 : -p;
+        accscalar_t off_a = addee + ::log(one + logee);
+
+        // Negative matches
+        accscalar_t base = SMOOTHING ? nn_norm * p : p;
+        accscalar_t off_b = (SMOOTHING ? np_norm : 0) - sigma;
+        accscalar_t coeff_f1 = one - alpha;
+        accscalar_t coeff_f2 = sigma;
+        accscalar_t coeff_b1 = gamma;
+        accscalar_t coeff_b2 = one - sigma;
+
+        // Positive matches
+        if (y >= 0 && (i + j == pos_idx)) {
+          base = SMOOTHING ? pn_norm * p : 0;
+          off_b = (SMOOTHING ? pp_norm : one) - sigma;
+          coeff_f1 = alpha;
+          coeff_f2 = one - sigma;
+          coeff_b1 = -gamma;
+          coeff_b2 = sigma;
+        }
+
+        accscalar_t coeff_f = coeff_f1 * ::pow(coeff_f2, gamma);
+        accscalar_t coeff_b = coeff_b1 * coeff_b2;
+
+        accscalar_t loss_t = coeff_f * (base + off_a);
+        accscalar_t grad = coeff_f * (coeff_b * (base + off_a) - off_b);
+
+        loss_acc += loss_t;
+        *((scalar_t *)(&grad_vec) + j) = static_cast<scalar_t>(grad);
+      }
+      *(uint4 *)&partial_grad[i] = grad_vec;
     }
 
     // Update indices for next iteration (Division-free)
@@ -136,7 +117,6 @@ __global__ void focal_loss_forward_cuda_kernel(
       idy++;
       base_yid -= num_classes;
     }
-    __syncthreads(); // Ensure LDS is ready for next iteration
   }
   loss_shm[threadIdx.x] = loss_acc;
 
@@ -234,8 +214,7 @@ std::vector<at::Tensor> focal_loss_forward_cuda(
           using labelscalar_t = int64_t;
           using outscalar_t = float;
           const int ILP = sizeof(uint4) / sizeof(scalar_t);
-          // Allocate enough SHM for reduction AND label cache (max labels ~514)
-          size_t shm_size = block.x * sizeof(accscalar_t) + (block.x * ILP / ILP + 2) * sizeof(labelscalar_t);
+          size_t shm_size = block.x * sizeof(accscalar_t);
           focal_loss_forward_cuda_kernel<false, ILP, scalar_t, labelscalar_t,
                                          accscalar_t, outscalar_t>
               <<<grid, block, shm_size, stream>>>(
@@ -254,7 +233,7 @@ std::vector<at::Tensor> focal_loss_forward_cuda(
           using labelscalar_t = int64_t;
           using outscalar_t = float;
           const int ILP = sizeof(uint4) / sizeof(scalar_t);
-          size_t shm_size = block.x * sizeof(accscalar_t) + (block.x * ILP / ILP + 2) * sizeof(labelscalar_t);
+          size_t shm_size = block.x * sizeof(accscalar_t);
           focal_loss_forward_cuda_kernel<true, ILP, scalar_t, labelscalar_t,
                                          accscalar_t, outscalar_t>
               <<<grid, block, shm_size, stream>>>(
