@@ -2,13 +2,30 @@
 #include <ATen/AccumulateType.h>
 #include <ATen/cuda/CUDAContext.h>
 
-
 #define ASSERT_UINT4_ALIGNED(PTR)                                              \
   TORCH_INTERNAL_ASSERT(is_aligned<uint4>(PTR), "Tensor " #PTR " is not uint4 aligned")
 
 template <class T> bool is_aligned(const void *ptr) noexcept {
   auto iptr = reinterpret_cast<std::uintptr_t>(ptr);
   return !(iptr % alignof(T));
+}
+
+__device__ __forceinline__ float fast_exp_ml(float x) {
+    x = fmaxf(x, -80.0f);
+    x *= 1.4426950408889634f; // convert to base-2
+    return __builtin_amdgcn_exp2f(x);        // device: SFU
+}
+
+__device__ __forceinline__ float fast_log_ml(float x) {
+    // Hardware instruction: v_log_f32 (base-2)
+    // ln(x) = log2(x) * ln(2)
+    return __builtin_amdgcn_logf(x) * 0.6931471805599453f;
+}
+
+__device__ __forceinline__ float fast_pow_ml(float x, float y) {
+    // Hardware instructions: v_log_f32 followed by v_exp_f32
+    // x^y = exp2(y * log2(x))
+    return __builtin_amdgcn_exp2f(y * __builtin_amdgcn_logf(x));
 }
 
 template <bool SMOOTHING, int ILP, typename scalar_t, typename labelscalar_t,
@@ -72,13 +89,14 @@ __global__ void focal_loss_forward_cuda_kernel(
         }
 
         accscalar_t p = static_cast<accscalar_t>(*((scalar_t *)(&p_vec) + j));
+	constexpr bool is_float_v = std::is_same<accscalar_t, float>::value;
 
-        accscalar_t exp_np = ::exp(-p);
-        accscalar_t exp_pp = ::exp(p);
+        accscalar_t exp_np = is_float_v ? fast_exp_ml(float(-p)) : ::exp(-p);
+        accscalar_t exp_pp = is_float_v ? fast_exp_ml(float(p)) : ::exp(p);
         accscalar_t sigma = one / (one + exp_np);
         accscalar_t logee = (p >= 0) ? exp_np : exp_pp;
         accscalar_t addee = (p >= 0) ? 0 : -p;
-        accscalar_t off_a = addee + ::log(one + logee);
+        accscalar_t off_a = addee + (is_float_v ? fast_log_ml(1.0f + float(logee)) : ::log(one + logee));
 
         // Negative matches
         accscalar_t base = SMOOTHING ? nn_norm * p : p;
@@ -98,8 +116,19 @@ __global__ void focal_loss_forward_cuda_kernel(
           coeff_b2 = sigma;
         }
 
-        accscalar_t coeff_f = coeff_f1 * ::pow(coeff_f2, gamma);
-        accscalar_t coeff_b = coeff_b1 * coeff_b2;
+        // Specialized pow for common gamma values to reduce VALU pressure on MI350
+        accscalar_t coeff_f;
+        if (gamma == 2.0f) {
+            coeff_f = coeff_f1 * (coeff_f2 * coeff_f2);
+        } else if (gamma == 1.0f) {
+            coeff_f = coeff_f1 * coeff_f2;
+        } else if (gamma == 0.0f) {
+            coeff_f = coeff_f1;
+        } else {
+            coeff_f = coeff_f1 * (is_float_v ? (accscalar_t)fast_pow_ml(float(coeff_f2), gamma) : ::pow(coeff_f2, gamma));
+        }
+
+	accscalar_t coeff_b = coeff_b1 * coeff_b2;
 
         accscalar_t loss_t = coeff_f * (base + off_a);
         accscalar_t grad = coeff_f * (coeff_b * (base + off_a) - off_b);
