@@ -1,6 +1,7 @@
 #include <torch/extension.h>
 #include <ATen/ATen.h>
 #include <vector>
+#include <tuple>
 
 // ROCm implementation of fused_conv_bias_relu using ATen operations.
 // While not a single fused kernel call via MIOpen Fusion Plan yet,
@@ -26,8 +27,13 @@ std::vector<at::Tensor> conv_bias_relu_backward(std::vector<at::Tensor> inputs, 
     // ReLU backward: grad_output * (out > 0)
     auto grad_relu = grad_output * (out > 0).to(grad_output.dtype());
 
+    int64_t bias_size = weight.size(0);
+    std::vector<int64_t> bias_sizes = {bias_size};
+
     auto grads = at::convolution_backward(grad_relu, x, weight, 
-                                         {padding, padding}, {stride, stride}, {1, 1}, false, {0, 0}, 1,
+                                         bias_sizes,
+                                         {stride, stride}, {padding, padding}, {1, 1}, 
+                                         false, {0, 0}, 1,
                                          {true, true, true});
 
     return {std::get<0>(grads), std::get<1>(grads), std::get<2>(grads)};
@@ -48,8 +54,13 @@ std::vector<at::Tensor> conv_bias_backward(std::vector<at::Tensor> inputs, int64
     auto weight = inputs[1];
     auto grad_output = inputs[2];
 
+    int64_t bias_size = weight.size(0);
+    std::vector<int64_t> bias_sizes = {bias_size};
+
     auto grads = at::convolution_backward(grad_output, x, weight, 
-                                         {padding, padding}, {stride, stride}, {1, 1}, false, {0, 0}, 1,
+                                         bias_sizes,
+                                         {stride, stride}, {padding, padding}, {1, 1}, 
+                                         false, {0, 0}, 1,
                                          {true, true, true});
 
     return {std::get<0>(grads), std::get<1>(grads), std::get<2>(grads)};
