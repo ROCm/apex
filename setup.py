@@ -102,11 +102,10 @@ def check_rocm_torch_binary_vs_bare_metal(rocm_dir):
 
     if (bare_metal_major != torch_binary_major) or (bare_metal_minor != torch_binary_minor):
         raise RuntimeError(
-            "Cuda extensions are being compiled with a version of Cuda that does "
+            "ROCm extensions are being compiled with a version of ROCm that does "
             "not match the version used to compile Pytorch binaries.  "
-            "Pytorch binaries were compiled with Cuda {}.\n".format(torch.version.cuda)
-            + "In some cases, a minor-version mismatch will not cause later errors:  "
-            "https://github.com/NVIDIA/apex/pull/323#discussion_r287021798.  "
+            "Pytorch binaries were compiled with ROCm {}.\n".format(torch.version.hip)
+            + "In some cases, a minor-version mismatch will not cause later errors.  "
             "You can try commenting out this check (at your own risk)."
         )
 
@@ -142,7 +141,32 @@ def append_nvcc_threads(nvcc_extra_args):
     return nvcc_extra_args
 
 
+print("\n\ntorch.__version__  = {}\n\n".format(torch.__version__))
+TORCH_MAJOR = int(torch.__version__.split('.')[0])
+TORCH_MINOR = int(torch.__version__.split('.')[1])
+
+if hasattr(torch.version, 'hip') and torch.version.hip is not None:
+    print("\n\ntorch.version.hip  = {}\n\n".format(torch.version.hip))
+    ROCM_MAJOR = int(torch.version.hip.split('.')[0])
+    ROCM_MINOR = int(torch.version.hip.split('.')[1])
+else:
+    ROCM_MAJOR = 0
+    ROCM_MINOR = 0
+
+def check_if_rocm_pytorch():
+    is_rocm_pytorch = False
+    if TORCH_MAJOR > 1 or (TORCH_MAJOR == 1 and TORCH_MINOR >= 5):
+        is_rocm_pytorch = True if ((hasattr(torch.version, 'hip') and torch.version.hip is not None) and (ROCM_HOME is not None)) else False
+    return is_rocm_pytorch
+
+IS_ROCM_PYTORCH = check_if_rocm_pytorch()
+
+
 def check_cudnn_version_and_warn(global_option: str, required_cudnn_version: int) -> bool:
+    if IS_ROCM_PYTORCH:
+        # ROCm uses MIOpen, not cuDNN. We return True here to allow enabling ROCm-compatible extensions
+        # that are typically cuDNN-only on NVIDIA.
+        return True
     cudnn_available = torch.backends.cudnn.is_available()
     cudnn_version = torch.backends.cudnn.version() if cudnn_available else None
     if not (cudnn_available and (cudnn_version >= required_cudnn_version)):
@@ -152,22 +176,6 @@ def check_cudnn_version_and_warn(global_option: str, required_cudnn_version: int
         )
         return False
     return True
-
-print("\n\ntorch.__version__  = {}\n\n".format(torch.__version__))
-TORCH_MAJOR = int(torch.__version__.split('.')[0])
-TORCH_MINOR = int(torch.__version__.split('.')[1])
-
-print("\n\ntorch.version.hip  = {}\n\n".format(torch.version.hip))
-ROCM_MAJOR = int(torch.version.hip.split('.')[0])
-ROCM_MINOR = int(torch.version.hip.split('.')[1])
-
-def check_if_rocm_pytorch():
-    is_rocm_pytorch = False
-    if TORCH_MAJOR > 1 or (TORCH_MAJOR == 1 and TORCH_MINOR >= 5):
-        is_rocm_pytorch = True if ((torch.version.hip is not None) and (ROCM_HOME is not None)) else False
-    return is_rocm_pytorch
-
-IS_ROCM_PYTORCH = check_if_rocm_pytorch()
 
 if not torch.cuda.is_available() and not IS_ROCM_PYTORCH:
     # https://github.com/NVIDIA/apex/issues/486
@@ -933,15 +941,24 @@ if "--fused_conv_bias_relu" in sys.argv:
     sys.argv.remove("--fused_conv_bias_relu")
     raise_if_cuda_home_none("--fused_conv_bias_relu")
     if check_cudnn_version_and_warn("--fused_conv_bias_relu", 8400):
-        subprocess.run(["git", "submodule", "update", "--init", "apex/contrib/csrc/cudnn-frontend/"])
-        ext_modules.append(
-            CUDAExtension(
-                name="fused_conv_bias_relu",
-                sources=["apex/contrib/csrc/conv_bias_relu/conv_bias_relu.cpp"],
-                include_dirs=[os.path.join(this_dir, "apex/contrib/csrc/cudnn-frontend/include")],
-                extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
+        if IS_ROCM_PYTORCH:
+            ext_modules.append(
+                CUDAExtension(
+                    name="fused_conv_bias_relu",
+                    sources=["apex/contrib/csrc/conv_bias_relu/conv_bias_relu_rocm.cpp"],
+                    extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
+                )
             )
-        )
+        else:
+            subprocess.run(["git", "submodule", "update", "--init", "apex/contrib/csrc/cudnn-frontend/"])
+            ext_modules.append(
+                CUDAExtension(
+                    name="fused_conv_bias_relu",
+                    sources=["apex/contrib/csrc/conv_bias_relu/conv_bias_relu.cpp"],
+                    include_dirs=[os.path.join(this_dir, "apex/contrib/csrc/cudnn-frontend/include")],
+                    extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
+                )
+            )
 
 #NCCL allocator is supported for apex 1.6 version and onwards
 if TORCH_MAJOR == 2 and TORCH_MINOR >= 6:

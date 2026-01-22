@@ -39,7 +39,17 @@ _library_root_logger.addHandler(handler)
 _library_root_logger.propagate = False
 
 
+def check_if_rocm_pytorch():
+    is_rocm_pytorch = False
+    if hasattr(torch.version, 'hip') and torch.version.hip is not None:
+        is_rocm_pytorch = True
+    return is_rocm_pytorch
+
+IS_ROCM_PYTORCH = check_if_rocm_pytorch()
+
 def check_cudnn_version_and_warn(global_option: str, required_cudnn_version: int) -> bool:
+    if IS_ROCM_PYTORCH:
+        return True
     cudnn_available = torch.backends.cudnn.is_available()
     cudnn_version = torch.backends.cudnn.version() if cudnn_available else None
     if not (cudnn_available and (cudnn_version >= required_cudnn_version)):

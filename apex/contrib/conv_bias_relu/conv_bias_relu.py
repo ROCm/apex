@@ -1,12 +1,13 @@
-import pdb
-
 import torch
 from torch.autograd import gradcheck
 
-from apex import check_cudnn_version_and_warn
-import fused_conv_bias_relu
-
-check_cudnn_version_and_warn(__name__, 8400)
+if check_cudnn_version_and_warn(__name__, 8400):
+    try:
+        import fused_conv_bias_relu
+    except ImportError:
+        fused_conv_bias_relu = None
+else:
+    fused_conv_bias_relu = None
 
 
 class ConvBiasReLU_(torch.autograd.Function):
