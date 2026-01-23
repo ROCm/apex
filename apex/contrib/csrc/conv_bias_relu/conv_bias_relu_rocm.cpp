@@ -20,7 +20,7 @@
 
 // Plan Cache for MIOpen Fusion
 struct FusionPlanEntry {
-    miopenFusionPlan_t plan;
+    miopenFusionPlanDescriptor_t fusion_plan;
     miopenFusionOpDescriptor_t conv_op;
     miopenFusionOpDescriptor_t bias_op;
     miopenFusionOpDescriptor_t activ_op;
@@ -56,7 +56,7 @@ std::vector<at::Tensor> conv_bias_relu_forward(std::vector<at::Tensor> inputs, i
 
     // Check cache
     if (plan_cache.find(key) == plan_cache.end()) {
-        miopenFusionPlan_t plan;
+        miopenFusionPlanDescriptor_t plan;
         miopenTensorDescriptor_t input_desc;
         miopenCreateTensorDescriptor(&input_desc);
         
@@ -103,8 +103,11 @@ std::vector<at::Tensor> conv_bias_relu_forward(std::vector<at::Tensor> inputs, i
         // Compile
         MIOPEN_CHECK(miopenCompileFusionPlan(handle, plan));
         
-        plan_cache[key] = {plan, conv_op, bias_op, activ_op};
-        
+        plan_cache[key].fusion_plan = plan;
+        plan_cache[key].conv_op = conv_op;
+        plan_cache[key].bias_op = bias_op;
+        plan_cache[key].activ_op = activ_op; 
+
         miopenDestroyTensorDescriptor(input_desc);
         miopenDestroyTensorDescriptor(weight_desc);
         miopenDestroyTensorDescriptor(bias_desc);
@@ -145,9 +148,9 @@ std::vector<at::Tensor> conv_bias_relu_forward(std::vector<at::Tensor> inputs, i
     float alpha = 1.0f, beta = 0.0f;
     MIOPEN_CHECK(miopenSetOpArgsConvForward(args, entry.conv_op, &alpha, &beta, weight.data_ptr()));
     MIOPEN_CHECK(miopenSetOpArgsBiasForward(args, entry.bias_op, &alpha, &beta, bias.data_ptr()));
-    MIOPEN_CHECK(miopenSetOpArgsActivationForward(args, entry.activ_op, &alpha, &beta, 0, 0, 0));
+    MIOPEN_CHECK(miopenSetOpArgsActivForward(args, entry.activ_op, &alpha, &beta, 0, 0, 0));
 
-    MIOPEN_CHECK(miopenExecuteFusionPlan(handle, entry.plan, 
+    MIOPEN_CHECK(miopenExecuteFusionPlan(handle, entry.fusion_plan, 
         input_desc, x.data_ptr(),
         output_desc, out.data_ptr(),
         args));
