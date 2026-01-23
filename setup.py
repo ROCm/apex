@@ -302,9 +302,9 @@ def resolve_symlinks_in_dir(base_dir):
         if os.path.islink(entry_path) and os.path.isdir(os.path.realpath(entry_path)):
             target = os.path.realpath(entry_path)
             symbolic_link_folders.append([entry_path, target])
-    
+
     print(f"Symbolic link folders: {symbolic_link_folders}")
-    
+
     for entry_path, target in symbolic_link_folders:
         print(f"Resolving symlink {entry_path} -> {target}")
         os.unlink(entry_path)
