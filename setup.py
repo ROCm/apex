@@ -946,6 +946,7 @@ if "--fused_conv_bias_relu" in sys.argv:
                 CUDAExtension(
                     name="fused_conv_bias_relu",
                     sources=["apex/contrib/csrc/conv_bias_relu/conv_bias_relu_rocm.cpp"],
+                    libraries=["MIOpen"],
                     extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
                 )
             )
