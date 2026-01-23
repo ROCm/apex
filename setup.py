@@ -295,16 +295,20 @@ class BinaryDistribution(Distribution):
 # Resolve symlinks for packaging - auto-detect symlinks in apex folder
 def resolve_symlinks_in_dir(base_dir):
     """Find and resolve all symlink directories inside a directory."""
+
+    symbolic_link_folders = []
     for entry in os.listdir(base_dir):
         entry_path = os.path.join(base_dir, entry)
         if os.path.islink(entry_path) and os.path.isdir(os.path.realpath(entry_path)):
             target = os.path.realpath(entry_path)
-            print(f"Resolving symlink {entry_path} -> {target}")
-            os.unlink(entry_path)
-            shutil.copytree(target, entry_path)
-        elif os.path.isdir(entry_path) and not os.path.islink(entry_path):
-            # Recurse into non-symlink directories
-            resolve_symlinks_in_dir(entry_path)
+            symbolic_link_folders.append([entry_path, target])
+    
+    print(f"Symbolic link folders: {symbolic_link_folders}")
+    
+    for entry_path, target in symbolic_link_folders:
+        print(f"Resolving symlink {entry_path} -> {target}")
+        os.unlink(entry_path)
+        shutil.copytree(target, entry_path)
 
 resolve_symlinks_in_dir(os.path.join(this_dir, 'apex'))
 
