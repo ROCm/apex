@@ -6,3 +6,7 @@ pytest>=3.5.1
 packaging>=14.0
 matplotlib>=3.8
 pandas>=2.2.2
+py-cpuinfo
+build
+ninja
+wheel

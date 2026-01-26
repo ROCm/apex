@@ -4,7 +4,7 @@ import os
 import glob
 from packaging.version import parse, Version
 
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Distribution
 import subprocess
 
 import torch
@@ -17,44 +17,17 @@ from torch.utils.cpp_extension import (
         load,
      )
 
+import typing
+import shlex
+
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+from op_builder.all_ops import ALL_OPS
+import shutil
 
 # ninja build does not work unless include_dirs are abs path
 this_dir = os.path.dirname(os.path.abspath(__file__))
-torch_dir = torch.__path__[0]
 
-
-# https://github.com/pytorch/pytorch/pull/71881
-# For the extensions which have rocblas_gemm_flags_fp16_alt_impl we need to make sure if at::BackwardPassGuard exists.
-# It helps the extensions be backward compatible with old PyTorch versions.
-# The check and ROCM_BACKWARD_PASS_GUARD in nvcc/hipcc args can be retired once the PR is merged into PyTorch upstream.
-
-context_file = os.path.join(torch_dir, "include", "ATen", "Context.h")
-if os.path.exists(context_file):
-    lines = open(context_file, 'r').readlines()
-    found_Backward_Pass_Guard = False
-    found_ROCmBackward_Pass_Guard = False
-    for line in lines:
-        if "BackwardPassGuard" in line:
-            # BackwardPassGuard has been renamed to ROCmBackwardPassGuard
-            # https://github.com/pytorch/pytorch/pull/71881/commits/4b82f5a67a35406ffb5691c69e6b4c9086316a43
-            if "ROCmBackwardPassGuard" in line:
-                found_ROCmBackward_Pass_Guard = True
-            else:
-                found_Backward_Pass_Guard = True
-            break
-
-found_aten_atomic_header = False
-if os.path.exists(os.path.join(torch_dir, "include", "ATen", "Atomic.cuh")):
-    found_aten_atomic_header = True
-
-def raise_if_cuda_home_none(global_option: str) -> None:
-    if CUDA_HOME is not None or ROCM_HOME is not None:
-        return
-    raise RuntimeError(
-        f"{global_option} was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  "
-        "If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, "
-        "only images whose names contain 'devel' will provide nvcc."
-    )
 
 def get_cuda_bare_metal_version(cuda_dir):
     raw_output = subprocess.check_output([cuda_dir + "/bin/nvcc", "-V"], universal_newlines=True)
@@ -74,50 +47,6 @@ def get_rocm_bare_metal_version(rocm_dir):
     bare_metal_minor = release[1][0]
     return raw_output, bare_metal_major, bare_metal_minor
 
-def check_cuda_torch_binary_vs_bare_metal(cuda_dir):
-    raw_output, bare_metal_major, bare_metal_minor = get_cuda_bare_metal_version(cuda_dir)
-    torch_binary_major = torch.version.cuda.split(".")[0]
-    torch_binary_minor = torch.version.cuda.split(".")[1]
-
-    print("\nCompiling cuda extensions with")
-    print(raw_output + "from " + cuda_dir + "/bin\n")
-
-    if (bare_metal_major != torch_binary_major) or (bare_metal_minor != torch_binary_minor):
-        raise RuntimeError(
-            "Cuda extensions are being compiled with a version of Cuda that does "
-            "not match the version used to compile Pytorch binaries.  "
-            "Pytorch binaries were compiled with Cuda {}.\n".format(torch.version.cuda)
-            + "In some cases, a minor-version mismatch will not cause later errors:  "
-            "https://github.com/NVIDIA/apex/pull/323#discussion_r287021798.  "
-            "You can try commenting out this check (at your own risk)."
-        )
-
-def check_rocm_torch_binary_vs_bare_metal(rocm_dir):
-    raw_output, bare_metal_major, bare_metal_minor = get_rocm_bare_metal_version(rocm_dir)
-    torch_binary_major = torch.version.hip.split(".")[0]
-    torch_binary_minor = torch.version.hip.split(".")[1]
-
-    print("\nCompiling rocm extensions with")
-    print(raw_output + "from " + rocm_dir + "/bin\n")
-
-    if (bare_metal_major != torch_binary_major) or (bare_metal_minor != torch_binary_minor):
-        raise RuntimeError(
-            "Cuda extensions are being compiled with a version of Cuda that does "
-            "not match the version used to compile Pytorch binaries.  "
-            "Pytorch binaries were compiled with Cuda {}.\n".format(torch.version.cuda)
-            + "In some cases, a minor-version mismatch will not cause later errors:  "
-            "https://github.com/NVIDIA/apex/pull/323#discussion_r287021798.  "
-            "You can try commenting out this check (at your own risk)."
-        )
-
-def raise_if_home_none(global_option: str) -> None:
-    if CUDA_HOME is not None or ROCM_HOME is not None:
-        return
-    raise RuntimeError(
-        f"{global_option} was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  "
-        "If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, "
-        "only images whose names contain 'devel' will provide nvcc."
-    )
 
 def get_apex_version():
     cwd = os.path.dirname(os.path.abspath(__file__))
@@ -135,23 +64,6 @@ def get_apex_version():
             apex_version += ".git"+os.getenv("APEX_COMMIT")[:8]
     return apex_version
 
-def append_nvcc_threads(nvcc_extra_args):
-    _, bare_metal_major, bare_metal_minor = get_cuda_bare_metal_version(CUDA_HOME)
-    if int(bare_metal_major) >= 11 and int(bare_metal_minor) >= 2:
-        return nvcc_extra_args + ["--threads", "4"]
-    return nvcc_extra_args
-
-
-def check_cudnn_version_and_warn(global_option: str, required_cudnn_version: int) -> bool:
-    cudnn_available = torch.backends.cudnn.is_available()
-    cudnn_version = torch.backends.cudnn.version() if cudnn_available else None
-    if not (cudnn_available and (cudnn_version >= required_cudnn_version)):
-        warnings.warn(
-            f"Skip `{global_option}` as it requires cuDNN {required_cudnn_version} or later, "
-            f"but {'cuDNN is not available' if not cudnn_available else cudnn_version}"
-        )
-        return False
-    return True
 
 print("\n\ntorch.__version__  = {}\n\n".format(torch.__version__))
 TORCH_MAJOR = int(torch.__version__.split('.')[0])
@@ -202,779 +114,154 @@ if TORCH_MAJOR == 0 and TORCH_MINOR < 4:
     )
 
 # cmdclass = {}
-ext_modules = []
-
 extras = {}
-
-# Set up macros for forward/backward compatibility hack around
-# https://github.com/pytorch/pytorch/commit/4404762d7dd955383acee92e6f06b48144a0742e
-# and
-# https://github.com/NVIDIA/apex/issues/456
-# https://github.com/pytorch/pytorch/commit/eb7b39e02f7d75c26d8a795ea8c7fd911334da7e#diff-4632522f237f1e4e728cb824300403ac
-version_ge_1_1 = []
-if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 0):
-    version_ge_1_1 = ["-DVERSION_GE_1_1"]
-version_ge_1_3 = []
-if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 2):
-    version_ge_1_3 = ["-DVERSION_GE_1_3"]
-version_ge_1_5 = []
-if (TORCH_MAJOR > 1) or (TORCH_MAJOR == 1 and TORCH_MINOR > 4):
-    version_ge_1_5 = ["-DVERSION_GE_1_5"]
-version_dependent_macros = version_ge_1_1 + version_ge_1_3 + version_ge_1_5
 
 if not IS_ROCM_PYTORCH:
     _, bare_metal_version = get_cuda_bare_metal_version(CUDA_HOME)
 else:
     _, bare_metal_version, bare_metal_minor  = get_rocm_bare_metal_version(ROCM_HOME)
 
-if IS_ROCM_PYTORCH and (ROCM_MAJOR >= 6):
-    version_dependent_macros += ["-DHIPBLAS_V2"] 
 
+# ***************************** Op builder **********************
 
-if "--cpp_ext" in sys.argv or "--cuda_ext" in sys.argv:
+def get_env_if_set(key, default: typing.Any = ""):
+    """
+    Returns an environment variable if it is set and not "",
+    otherwise returns a default value. In contrast, the fallback
+    parameter of os.environ.get() is skipped if the variable is set to "".
+    """
+    return os.environ.get(key, None) or default
+
+def command_exists(cmd):
+    if sys.platform == "win32":
+        safe_cmd = shlex.split(f'{cmd}')
+        result = subprocess.Popen(safe_cmd, stdout=subprocess.PIPE)
+        return result.wait() == 1
+    else:
+        safe_cmd = shlex.split(f"bash -c type {cmd}")
+        result = subprocess.Popen(safe_cmd, stdout=subprocess.PIPE)
+        return result.wait() == 0
+
+BUILD_OP_DEFAULT = 0
+BUILD_CPP_OPS = int(get_env_if_set('APEX_BUILD_CPP_OPS', BUILD_OP_DEFAULT))
+BUILD_CUDA_OPS = int(get_env_if_set('APEX_BUILD_CUDA_OPS', BUILD_OP_DEFAULT))
+build_flags = {
+    "APEX_BUILD_CPP_OPS" : BUILD_CPP_OPS,
+    "APEX_BUILD_CUDA_OPS" : BUILD_CUDA_OPS,
+    }
+
+if BUILD_CPP_OPS or BUILD_CUDA_OPS:
     if TORCH_MAJOR == 0:
         raise RuntimeError("--cpp_ext requires Pytorch 1.0 or later, "
                            "found torch.__version__ = {}".format(torch.__version__)
                            )
 
+def is_env_set(key):
+    """
+    Checks if an environment variable is set and not "".
+    """
+    return bool(os.environ.get(key, None))
+
+def get_op_build_env_name(op_name):
+    assert hasattr(ALL_OPS[op_name], 'BUILD_VAR'), \
+        f"{op_name} is missing BUILD_VAR field"
+    return ALL_OPS[op_name].BUILD_VAR
+
+
+def op_build_enabled(op_name):
+    env_var = get_op_build_env_name(op_name)
+    return int(get_env_if_set(env_var, BUILD_OP_DEFAULT))
+
+def is_op_build_included(op_name):
+    #check if operation has BUILD_FLAG defined
+    assert hasattr(ALL_OPS[op_name], 'INCLUDE_FLAG'), \
+        f"{op_name} is missing INCLUDE_FLAG field"
+    include_flag = ALL_OPS[op_name].INCLUDE_FLAG
+    return get_env_if_set(include_flag, False)
+
+ext_modules = []
+install_ops = dict.fromkeys(ALL_OPS.keys(), False)
+
+for op_name, builder in ALL_OPS.items():
+    op_compatible = builder.is_compatible()
+    build_enabled = op_build_enabled(op_name) or is_op_build_included(op_name)
+
+    # If op is requested but not available, throw an error.
+    if build_enabled and not op_compatible:
+        env_var = get_op_build_env_name(op_name)
+        builder.warning(f"Skip pre-compile of incompatible {op_name}; One can disable {op_name} with {env_var}=0")
+        continue
+
+    # If op is compatible but install is not build enabled (JIT mode).
+    if IS_ROCM_PYTORCH and op_compatible and not build_enabled:
+        builder.hipify_extension()
+
+    # If op build enabled, add builder to extensions.
+    # Also check if corresponding flags are checked
+    if build_enabled and op_compatible:
+        install_ops[op_name] = True
+        ext_modules.append(builder.builder())
+
+print(f'Install Ops={install_ops}')  
+
+# Write out version/git info.
+git_hash_cmd = shlex.split("bash -c \"git rev-parse --short HEAD\"")
+git_branch_cmd = shlex.split("bash -c \"git rev-parse --abbrev-ref HEAD\"")
+if command_exists('git') and not is_env_set('APEX_BUILD_STRING'):
+    try:
+        result = subprocess.check_output(git_hash_cmd)
+        git_hash = result.decode('utf-8').strip()
+        result = subprocess.check_output(git_branch_cmd)
+        git_branch = result.decode('utf-8').strip()
+    except subprocess.CalledProcessError:
+        git_hash = "unknown"
+        git_branch = "unknown"
+else:
+    git_hash = "unknown"
+    git_branch = "unknown"
+
+# Parse the apex version string from version.txt.
+version_str = get_apex_version()
+version_str += f'+{git_hash}'
+
+torch_version = ".".join([str(TORCH_MAJOR), str(TORCH_MINOR)])
+bf16_support = False
+# Set cuda_version to 0.0 if cpu-only.
+cuda_version = "0.0"
+nccl_version = "0.0"
+# Set hip_version to 0.0 if cpu-only.
+hip_version = "0.0"
+if torch.version.cuda is not None:
+    cuda_version = ".".join(torch.version.cuda.split('.')[:2])
+    if sys.platform != "win32":
+        if isinstance(torch.cuda.nccl.version(), int):
+            # This will break if minor version > 9.
+            nccl_version = ".".join(str(torch.cuda.nccl.version())[:2])
+        else:
+            nccl_version = ".".join(map(str, torch.cuda.nccl.version()[:2]))
+    if hasattr(torch.cuda, 'is_bf16_supported') and torch.cuda.is_available():
+        bf16_support = torch.cuda.is_bf16_supported()
+if hasattr(torch.version, 'hip') and torch.version.hip is not None:
+    hip_version = ".".join(torch.version.hip.split('.')[:2])
+torch_info = {
+    "version": torch_version,
+    "bf16_support": bf16_support,
+    "cuda_version": cuda_version,
+    "nccl_version": nccl_version,
+    "hip_version": hip_version
+}
+
+print(f"version={version_str}, git_hash={git_hash}, git_branch={git_branch}")
+with open('apex/git_version_info_installed.py', 'w') as fd:
+    fd.write(f"version='{version_str}'\n")
+    fd.write(f"git_hash='{git_hash}'\n")
+    fd.write(f"git_branch='{git_branch}'\n")
+    fd.write(f"installed_ops={install_ops}\n")
+    fd.write(f"build_flags={build_flags}\n")
+    fd.write(f"torch_info={torch_info}\n")
+
 if "--cpp_ext" in sys.argv:
     sys.argv.remove("--cpp_ext")
-    ext_modules.append(CppExtension("apex_C", ["csrc/flatten_unflatten.cpp"]))
-
-if "--distributed_adam" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--distributed_adam" in sys.argv:
-        sys.argv.remove("--distributed_adam")
-
-    raise_if_home_none("--distributed_adam")
-    nvcc_args_adam = ['-O3', '--use_fast_math'] + version_dependent_macros
-    hipcc_args_adam = ['-O3'] + version_dependent_macros
-    ext_modules.append(
-        CUDAExtension(
-            name='distributed_adam_cuda',
-            sources=[
-                'apex/contrib/csrc/optimizers/multi_tensor_distopt_adam.cpp',
-                'apex/contrib/csrc/optimizers/multi_tensor_distopt_adam_kernel.cu',
-            ],
-            include_dirs=[
-                os.path.join(this_dir, 'csrc'),
-                os.path.join(this_dir, 'apex/contrib/csrc/optimizers'),
-            ],
-            extra_compile_args={
-                'cxx': ['-O3',] + version_dependent_macros,
-                'nvcc':nvcc_args_adam if not IS_ROCM_PYTORCH else hipcc_args_adam,
-            }
-        )
-    )
-
-if "--distributed_lamb" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--distributed_lamb" in sys.argv:
-        sys.argv.remove("--distributed_lamb")
-
-    raise_if_home_none("--distributed_lamb")
-
-    print ("INFO: Building the distributed_lamb extension.")
-    nvcc_args_distributed_lamb = ['-O3', '--use_fast_math'] + version_dependent_macros
-    hipcc_args_distributed_lamb = ['-O3'] + version_dependent_macros
-    ext_modules.append(
-        CUDAExtension(
-            name='distributed_lamb_cuda',
-            sources=[
-                'apex/contrib/csrc/optimizers/multi_tensor_distopt_lamb.cpp',
-                'apex/contrib/csrc/optimizers/multi_tensor_distopt_lamb_kernel.cu',
-            ],
-            include_dirs=[os.path.join(this_dir, 'csrc')],
-            extra_compile_args={
-                'cxx': ['-O3',] + version_dependent_macros,
-                'nvcc': nvcc_args_distributed_lamb if not IS_ROCM_PYTORCH else hipcc_args_distributed_lamb,
-                }
-            )
-        )
-
-    
-if "--cuda_ext" in sys.argv:
-    raise_if_home_none("--cuda_ext")
-    
-    if not IS_ROCM_PYTORCH:
-        check_cuda_torch_binary_vs_bare_metal(CUDA_HOME)
-    else:
-        check_rocm_torch_binary_vs_bare_metal(ROCM_HOME)
-
-#**********  multi-tensor apply  ****************
-    print ("INFO: Building the multi-tensor apply extension.")
-    nvcc_args_multi_tensor = ['-lineinfo', '-O3', '--use_fast_math'] + version_dependent_macros
-    hipcc_args_multi_tensor = ['-O3'] + version_dependent_macros
-    ext_modules.append(
-        CUDAExtension(
-            name='amp_C',
-            sources=[
-                'csrc/amp_C_frontend.cpp',
-                'csrc/multi_tensor_sgd_kernel.cu',
-                'csrc/multi_tensor_scale_kernel.cu',
-                'csrc/multi_tensor_axpby_kernel.cu',
-                'csrc/multi_tensor_l2norm_kernel.cu',
-                'csrc/multi_tensor_l2norm_kernel_mp.cu',
-                'csrc/multi_tensor_l2norm_scale_kernel.cu',
-                'csrc/multi_tensor_lamb_stage_1.cu',
-                'csrc/multi_tensor_lamb_stage_2.cu',
-                'csrc/multi_tensor_adam.cu',
-                'csrc/multi_tensor_adagrad.cu',
-                'csrc/multi_tensor_novograd.cu',
-                'csrc/multi_tensor_lars.cu',
-                'csrc/multi_tensor_lamb.cu',
-                'csrc/multi_tensor_lamb_mp.cu'],
-            include_dirs=[os.path.join(this_dir, 'csrc')],
-            extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
-                                'nvcc': nvcc_args_multi_tensor if not IS_ROCM_PYTORCH else hipcc_args_multi_tensor,
-                                }
-            )
-        )
-
-#**********  syncbn  ****************
-    print("INFO: Building syncbn extension.")
-    ext_modules.append(
-        CUDAExtension(
-            name='syncbn',
-            sources=[
-                'csrc/syncbn.cpp',
-                'csrc/welford.cu',
-            ],
-            include_dirs=[os.path.join(this_dir, 'csrc')],
-            extra_compile_args={
-                'cxx': ['-O3'] + version_dependent_macros,
-                'nvcc':['-O3'] + version_dependent_macros,
-                }
-            )
-        )
-
-#**********  fused layernorm  ****************
-    nvcc_args_layer_norm = ['-maxrregcount=50', '-O3', '--use_fast_math'] + version_dependent_macros
-    hipcc_args_layer_norm = ['-O3'] + version_dependent_macros
-
-    print ("INFO: Building fused layernorm extension.")
-    ext_modules.append(
-        CUDAExtension(
-            name='fused_layer_norm_cuda',
-            sources=[
-                'csrc/layer_norm_cuda.cpp',
-                'csrc/layer_norm_cuda_kernel.cu',
-            ],
-            include_dirs=[os.path.join(this_dir, 'csrc')],
-            extra_compile_args={
-                'cxx': ['-O3'] + version_dependent_macros,
-                'nvcc': nvcc_args_layer_norm if not IS_ROCM_PYTORCH else hipcc_args_layer_norm,
-                }
-            )
-        )
-
-#**********  fused dense  ****************
-    ext_modules.append(
-        CUDAExtension(
-            name='fused_dense_cuda',
-            sources=[
-                'csrc/fused_dense_base.cpp',
-                'csrc/fused_dense_cuda.cu',
-            ],
-            extra_compile_args={
-                'cxx': ['-O3'] + version_dependent_macros,
-                'nvcc':['-O3'] + version_dependent_macros
-                }
-            )
-        )
-    
-    bare_metal_version = Version(bare_metal_version)
-    print("Bare Metal Version : ", bare_metal_version)
-    if True:
-
-        cc_flag = []
-        cc_flag.append("-gencode")
-        cc_flag.append("arch=compute_70,code=sm_70")
-        cc_flag.append("-gencode")
-        cc_flag.append("arch=compute_80,code=sm_80")
-        if bare_metal_version >= Version("11.1"):
-            cc_flag.append("-gencode")
-            cc_flag.append("arch=compute_86,code=sm_86")
-        if bare_metal_version >= Version("11.8"):
-            cc_flag.append("-gencode")
-            cc_flag.append("arch=compute_90,code=sm_90")
-
-        nvcc_args_fused_weight_gradient =  [
-                        "-O3",
-                        "-U__CUDA_NO_HALF_OPERATORS__",
-                        "-U__CUDA_NO_HALF_CONVERSIONS__",
-                        "--expt-relaxed-constexpr",
-                        "--expt-extended-lambda",
-                        "--use_fast_math",
-                    ] + version_dependent_macros + cc_flag
-
-        hipcc_args_fused_weight_gradient = [
-                        "-O3",
-                        "-U__CUDA_NO_HALF_OPERATORS__",
-                        "-U__CUDA_NO_HALF_CONVERSIONS__"
-                    ] + version_dependent_macros
-
-        ext_modules.append(
-            CUDAExtension(
-                name="fused_weight_gradient_mlp_cuda",
-                include_dirs=[os.path.join(this_dir, "csrc")],
-                sources=[
-                    "csrc/megatron/fused_weight_gradient_dense.cpp",
-                    "csrc/megatron/fused_weight_gradient_dense_cuda.cu",
-                    "csrc/megatron/fused_weight_gradient_dense_16bit_prec_cuda.cu",
-                ],
-                extra_compile_args={
-                    "cxx": ["-O3"] + version_dependent_macros,
-                    "nvcc": nvcc_args_fused_weight_gradient if not IS_ROCM_PYTORCH else hipcc_args_fused_weight_gradient,
-                },
-            )
-        )
-#**********  mlp_cuda  ****************
-    hipcc_args_mlp = ['-O3'] + version_dependent_macros
-    if found_Backward_Pass_Guard:
-        hipcc_args_mlp = hipcc_args_mlp + ['-DBACKWARD_PASS_GUARD'] + ['-DBACKWARD_PASS_GUARD_CLASS=BackwardPassGuard']
-    if found_ROCmBackward_Pass_Guard:
-        hipcc_args_mlp = hipcc_args_mlp + ['-DBACKWARD_PASS_GUARD'] + ['-DBACKWARD_PASS_GUARD_CLASS=ROCmBackwardPassGuard']
-
-    print ("INFO: Building the MLP Extension.")
-    ext_modules.append(
-        CUDAExtension(
-            name='mlp_cuda',
-            sources=[
-                'csrc/mlp.cpp',
-                'csrc/mlp_cuda.cu',
-            ],
-            include_dirs=[os.path.join(this_dir, 'csrc')],
-            extra_compile_args={
-                'cxx': ['-O3'] + version_dependent_macros,
-                'nvcc':['-O3'] + version_dependent_macros if not IS_ROCM_PYTORCH else hipcc_args_mlp,
-                }
-            )
-        )
-
-#**********  scaled_upper_triang_masked_softmax_cuda  ****************
-    nvcc_args_transformer = ['-O3',
-                             '-U__CUDA_NO_HALF_OPERATORS__',
-                             '-U__CUDA_NO_HALF_CONVERSIONS__',
-                             '--expt-relaxed-constexpr',
-                             '--expt-extended-lambda'] + version_dependent_macros
-    hipcc_args_transformer = ['-O3',
-                              '-U__CUDA_NO_HALF_OPERATORS__',
-                              '-U__CUDA_NO_HALF_CONVERSIONS__'] + version_dependent_macros
-
-    ext_modules.append(
-        CUDAExtension(
-            name='scaled_upper_triang_masked_softmax_cuda',
-            sources=[
-                 'csrc/megatron/scaled_upper_triang_masked_softmax_cpu.cpp',
-                 'csrc/megatron/scaled_upper_triang_masked_softmax_cuda.cu',
-             ],
-             include_dirs=[os.path.join(this_dir, 'csrc')],
-             extra_compile_args={
-                'cxx': ['-O3'] + version_dependent_macros,
-                'nvcc':nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer,
-                 }
-             )
-        )
-#*********** generic_scaled_masked_softmax_cuda   ****************
-    ext_modules.append(
-        CUDAExtension(
-            name="generic_scaled_masked_softmax_cuda",
-            sources=[
-                "csrc/megatron/generic_scaled_masked_softmax_cpu.cpp",
-                "csrc/megatron/generic_scaled_masked_softmax_cuda.cu",
-            ],
-            include_dirs=[os.path.join(this_dir, "csrc")],
-            extra_compile_args={
-                "cxx": ["-O3"] + version_dependent_macros,
-                "nvcc": nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer, 
-            },
-        )
-    )
-
-
-#*********** scaled_masked_softmax_cuda   ****************
-    ext_modules.append(
-        CUDAExtension(
-            name='scaled_masked_softmax_cuda',
-            sources=[
-                'csrc/megatron/scaled_masked_softmax_cpu.cpp',
-                'csrc/megatron/scaled_masked_softmax_cuda.cu',
-            ],
-            include_dirs=[os.path.join(this_dir, 'csrc'),
-                          os.path.join(this_dir, 'csrc/megatron')],
-            extra_compile_args={
-                'cxx': ['-O3'] + version_dependent_macros,
-                'nvcc':nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer,
-                }
-            )
-        )
-
-#***********  scaled_softmax_cuda   ****************
-    ext_modules.append(
-        CUDAExtension(
-            name="scaled_softmax_cuda",
-            sources=[
-                "csrc/megatron/scaled_softmax_cpu.cpp", 
-                "csrc/megatron/scaled_softmax_cuda.cu",
-            ],
-            include_dirs=[os.path.join(this_dir, "csrc")],
-            extra_compile_args={
-                "cxx": ["-O3"] + version_dependent_macros,
-                "nvcc":nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer,
-                }
-            )
-        )
-
-#***********  fused_rotary_positional_embedding   ****************
-    if IS_ROCM_PYTORCH and "--aiter" in sys.argv:
-        sys.argv.remove("--aiter")
-        subprocess.run(["pip", "install", "."], cwd = "third_party/aiter")
-
-    ext_modules.append(
-        CUDAExtension(
-            name="fused_rotary_positional_embedding",
-            sources=[
-                "csrc/megatron/fused_rotary_positional_embedding.cpp",
-                "csrc/megatron/fused_rotary_positional_embedding_cuda.cu",
-            ],
-            include_dirs=[os.path.join(this_dir, "csrc")],
-            extra_compile_args={
-                "cxx": ["-O3"] + version_dependent_macros,
-                "nvcc":nvcc_args_transformer if not IS_ROCM_PYTORCH else hipcc_args_transformer,
-                }
-            )
-        )
-
-#***********  fused_bias_swiglu   ****************
-    nvcc_args_swiglu = ['-O3',
-                        '-U__CUDA_NO_HALF_OPERATORS__',
-                        '-U__CUDA_NO_HALF_CONVERSIONS__',
-                        '--expt-relaxed-constexpr',
-                        '--expt-extended-lambda'] + version_dependent_macros
-    hipcc_args_swiglu = ['-O3',
-                        '-U__CUDA_NO_HALF_OPERATORS__',
-                        '-U__CUDA_NO_HALF_CONVERSIONS__'] + version_dependent_macros
-
-    if IS_ROCM_PYTORCH:
-        try:
-            amdgpu_targets = os.environ.get('PYTORCH_ROCM_ARCH', '')
-            if not amdgpu_targets:
-                print("Warning: PYTORCH_ROCM_ARCH environment variable is empty.")
-                print("Using default architecture. Set this variable for specific GPU targets.")
-                print("Example: export PYTORCH_ROCM_ARCH=gfx906")
-                amdgpu_targets = "gfx906"  # Default to a common architecture
-                
-            # Handle multiple architectures (separated by semicolons)
-            for amdgpu_target in amdgpu_targets.split(';'):
-                if amdgpu_target:  # Skip empty strings
-                    hipcc_args_swiglu += [f'--offload-arch={amdgpu_target}']
-        except Exception as e:
-            print(f"Warning: Error processing PYTORCH_ROCM_ARCH: {e}")
-            print("Falling back to default architecture gfx906")
-            hipcc_args_swiglu += ['--offload-arch=gfx906']
-
-
-    ext_modules.append(
-        CUDAExtension(
-            name="fused_bias_swiglu",
-            sources=[
-                "csrc/megatron/fused_bias_swiglu.cpp",
-                "csrc/megatron/fused_bias_swiglu_cuda.cu",
-            ],
-            include_dirs=[os.path.join(this_dir, "csrc")],
-            extra_compile_args={
-                "cxx": ["-O3"] + version_dependent_macros,
-                "nvcc": nvcc_args_swiglu if not IS_ROCM_PYTORCH else hipcc_args_swiglu,
-            }
-        )
-    )
-
-if "--bnp" in sys.argv or "--cuda_ext" in sys.argv:
-
-    if "--bnp" in sys.argv:
-        sys.argv.remove("--bnp")
-
-    if torch.utils.cpp_extension.CUDA_HOME is None and not IS_ROCM_PYTORCH:
-        raise RuntimeError("--bnp was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, only images whose names contain 'devel' will provide nvcc.")
-    else:
-        ext_modules.append(
-            CUDAExtension(name='bnp',
-                          sources=['apex/contrib/csrc/groupbn/batch_norm.cu',
-                                   'apex/contrib/csrc/groupbn/ipc.cu',
-                                   'apex/contrib/csrc/groupbn/interface.cpp',
-                                   'apex/contrib/csrc/groupbn/batch_norm_add_relu.cu'],
-                          include_dirs=[os.path.join(this_dir, 'csrc'),
-                                        os.path.join(this_dir, 'apex/contrib/csrc/groupbn')],
-                          extra_compile_args={'cxx': [] + version_dependent_macros,
-                                              'nvcc':['-DCUDA_HAS_FP16=1',
-                                                      '-D__CUDA_NO_HALF_OPERATORS__',
-                                                      '-D__CUDA_NO_HALF_CONVERSIONS__',
-                                                      '-D__CUDA_NO_HALF2_OPERATORS__'] + version_dependent_macros}))
-
-if "--xentropy" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--xentropy" in sys.argv:
-        sys.argv.remove("--xentropy")
-
-    if torch.utils.cpp_extension.CUDA_HOME is None and not IS_ROCM_PYTORCH:
-        raise RuntimeError("--xentropy was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, only images whose names contain 'devel' will provide nvcc.")
-    else:
-        print ("INFO: Building the xentropy extension.")
-        ext_modules.append(
-            CUDAExtension(name='xentropy_cuda',
-                          sources=['apex/contrib/csrc/xentropy/interface.cpp',
-                                   'apex/contrib/csrc/xentropy/xentropy_kernel.cu'],
-                          include_dirs=[os.path.join(this_dir, 'csrc'),
-                                        os.path.join(this_dir, 'apex/contrib/csrc/xentropy')],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
-                                              'nvcc':['-O3'] + version_dependent_macros}))
-
-if "--focal_loss" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--focal_loss" in sys.argv:
-        sys.argv.remove("--focal_loss")
-    ext_modules.append(
-        CUDAExtension(
-            name='focal_loss_cuda',
-            sources=[
-                'apex/contrib/csrc/focal_loss/focal_loss_cuda.cpp',
-                'apex/contrib/csrc/focal_loss/focal_loss_cuda_kernel.cu',
-            ],
-            include_dirs=[os.path.join(this_dir, 'csrc')],
-            extra_compile_args={
-                'cxx': ['-O3'] + version_dependent_macros,
-                'nvcc':(['-O3', '--use_fast_math', '--ftz=false'] if not IS_ROCM_PYTORCH else ['-O3']) + version_dependent_macros,
-            },
-        )
-    )
-
-if "--index_mul_2d" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--index_mul_2d" in sys.argv:
-        sys.argv.remove("--index_mul_2d")
-
-    args_index_mul_2d = ['-O3']
-    if not IS_ROCM_PYTORCH:
-        args_index_mul_2d += ['--use_fast_math', '--ftz=false']
-    if found_aten_atomic_header:
-        args_index_mul_2d += ['-DATEN_ATOMIC_HEADER']
-
-    ext_modules.append(
-        CUDAExtension(
-            name='fused_index_mul_2d',
-            sources=[
-                'apex/contrib/csrc/index_mul_2d/index_mul_2d_cuda.cpp',
-                'apex/contrib/csrc/index_mul_2d/index_mul_2d_cuda_kernel.cu',
-            ],
-            include_dirs=[os.path.join(this_dir, 'csrc')],
-            extra_compile_args={
-                'cxx': ['-O3'] + version_dependent_macros,
-                'nvcc': args_index_mul_2d + version_dependent_macros,
-            },
-        )
-    )
-
-if "--deprecated_fused_adam" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--deprecated_fused_adam" in sys.argv:
-        sys.argv.remove("--deprecated_fused_adam")
-
-    if torch.utils.cpp_extension.CUDA_HOME is None and not IS_ROCM_PYTORCH:
-        raise RuntimeError("--deprecated_fused_adam was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, only images whose names contain 'devel' will provide nvcc.")
-    else:
-        print ("INFO: Building deprecated fused adam extension.")
-        nvcc_args_fused_adam = ['-O3', '--use_fast_math'] + version_dependent_macros
-        hipcc_args_fused_adam = ['-O3'] + version_dependent_macros
-        ext_modules.append(
-            CUDAExtension(name='fused_adam_cuda',
-                          sources=['apex/contrib/csrc/optimizers/fused_adam_cuda.cpp',
-                                   'apex/contrib/csrc/optimizers/fused_adam_cuda_kernel.cu'],
-                          include_dirs=[os.path.join(this_dir, 'csrc'),
-                                        os.path.join(this_dir, 'apex/contrib/csrc/optimizers')],
-                          extra_compile_args={'cxx': ['-O3'] + version_dependent_macros,
-                                              'nvcc' : nvcc_args_fused_adam if not IS_ROCM_PYTORCH else hipcc_args_fused_adam}))
-
-if "--deprecated_fused_lamb" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--deprecated_fused_lamb" in sys.argv:
-        sys.argv.remove("--deprecated_fused_lamb")
-
-    if torch.utils.cpp_extension.CUDA_HOME is None and not IS_ROCM_PYTORCH:
-        raise RuntimeError("--deprecated_fused_lamb was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, only images whose names contain 'devel' will provide nvcc.")
-    else:
-        print ("INFO: Building deprecated fused lamb extension.")
-        nvcc_args_fused_lamb = ['-O3', '--use_fast_math'] + version_dependent_macros
-        hipcc_args_fused_lamb = ['-O3'] + version_dependent_macros
-        ext_modules.append(
-            CUDAExtension(name='fused_lamb_cuda',
-                          sources=['apex/contrib/csrc/optimizers/fused_lamb_cuda.cpp',
-                                   'apex/contrib/csrc/optimizers/fused_lamb_cuda_kernel.cu',
-                                   'csrc/multi_tensor_l2norm_kernel.cu'],
-                          include_dirs=[os.path.join(this_dir, 'csrc')],
-                          extra_compile_args = nvcc_args_fused_lamb if not IS_ROCM_PYTORCH else hipcc_args_fused_lamb))
-
-# Check, if ATen/CUDAGeneratorImpl.h is found, otherwise use ATen/cuda/CUDAGeneratorImpl.h
-# See https://github.com/pytorch/pytorch/pull/70650
-generator_flag = []
-torch_dir = torch.__path__[0]
-if os.path.exists(os.path.join(torch_dir, "include", "ATen", "CUDAGeneratorImpl.h")):
-    generator_flag = ["-DOLD_GENERATOR_PATH"]
-
-if "--fast_layer_norm" in sys.argv:
-    sys.argv.remove("--fast_layer_norm")
-    raise_if_cuda_home_none("--fast_layer_norm")
-    # Check, if CUDA11 is installed for compute capability 8.0
-    cc_flag = []
-    _, bare_metal_major, _ = get_cuda_bare_metal_version(CUDA_HOME)
-    if int(bare_metal_major) >= 11:
-        cc_flag.append("-gencode")
-        cc_flag.append("arch=compute_80,code=sm_80")
-
-    if CUDA_HOME is None and not IS_ROCM_PYTORCH:
-        raise RuntimeError("--fast_layer_norm was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, only images whose names contain 'devel' will provide nvcc.")
-    else:
-        # Check, if CUDA11 is installed for compute capability 8.0
-        cc_flag = []
-        _, bare_metal_major, _ = get_cuda_bare_metal_version(CUDA_HOME)
-        if int(bare_metal_major) >= 11:
-            cc_flag.append('-gencode')
-            cc_flag.append('arch=compute_80,code=sm_80')
-
-if "--fmha" in sys.argv:
-    sys.argv.remove("--fmha")
-    raise_if_cuda_home_none("--fmha")
-    # Check, if CUDA11 is installed for compute capability 8.0
-    cc_flag = []
-    _, bare_metal_major, _ = get_cuda_bare_metal_version(CUDA_HOME)
-    if int(bare_metal_major) < 11:
-        raise RuntimeError("--fmha only supported on SM80")
-    cc_flag.append("-gencode")
-    cc_flag.append("arch=compute_80,code=sm_80")
-
-    if CUDA_HOME is None and not IS_ROCM_PYTORCH:
-        raise RuntimeError("--fmha was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, only images whose names contain 'devel' will provide nvcc.")
-    else:
-        # Check, if CUDA11 is installed for compute capability 8.0
-        cc_flag = []
-        _, bare_metal_major, _ = get_cuda_bare_metal_version(CUDA_HOME)
-        if int(bare_metal_major) < 11:
-            raise RuntimeError("--fmha only supported on SM80")
-
-        ext_modules.append(
-            CUDAExtension(name='fmhalib',
-                          sources=[
-                                   'apex/contrib/csrc/fmha/fmha_api.cpp',
-                                   'apex/contrib/csrc/fmha/src/fmha_noloop_reduce.cu',
-                                   'apex/contrib/csrc/fmha/src/fmha_fprop_fp16_128_64_kernel.sm80.cu',
-                                   'apex/contrib/csrc/fmha/src/fmha_fprop_fp16_256_64_kernel.sm80.cu',
-                                   'apex/contrib/csrc/fmha/src/fmha_fprop_fp16_384_64_kernel.sm80.cu',
-                                   'apex/contrib/csrc/fmha/src/fmha_fprop_fp16_512_64_kernel.sm80.cu',
-                                   'apex/contrib/csrc/fmha/src/fmha_dgrad_fp16_128_64_kernel.sm80.cu',
-                                   'apex/contrib/csrc/fmha/src/fmha_dgrad_fp16_256_64_kernel.sm80.cu',
-                                   'apex/contrib/csrc/fmha/src/fmha_dgrad_fp16_384_64_kernel.sm80.cu',
-                                   'apex/contrib/csrc/fmha/src/fmha_dgrad_fp16_512_64_kernel.sm80.cu',
-                                   ],
-                          extra_compile_args={'cxx': ['-O3',
-                                                      ] + version_dependent_macros + generator_flag,
-                                              'nvcc':['-O3',
-                                                      '-gencode', 'arch=compute_80,code=sm_80',
-                                                      '-U__CUDA_NO_HALF_OPERATORS__',
-                                                      '-U__CUDA_NO_HALF_CONVERSIONS__',
-                                                      '--expt-relaxed-constexpr',
-                                                      '--expt-extended-lambda',
-                                                      '--use_fast_math'] + version_dependent_macros + generator_flag + cc_flag},
-                          include_dirs=[os.path.join(this_dir, "apex/contrib/csrc"), os.path.join(this_dir, "apex/contrib/csrc/fmha/src")]))
-
-
-if "--fast_multihead_attn" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--fast_multihead_attn" in sys.argv:
-        sys.argv.remove("--fast_multihead_attn")
-
-    if torch.utils.cpp_extension.CUDA_HOME is None and not IS_ROCM_PYTORCH:
-        raise RuntimeError("--fast_multihead_attn was requested, but nvcc was not found.  Are you sure your environment has nvcc available?  If you're installing within a container from https://hub.docker.com/r/pytorch/pytorch, only images whose names contain 'devel' will provide nvcc.")
-    else:
-        # Check, if CUDA11 is installed for compute capability 8.0
-        cc_flag = []
-        if not IS_ROCM_PYTORCH:
-            _, bare_metal_major, _ = get_cuda_bare_metal_version(torch.utils.cpp_extension.CUDA_HOME)
-            if int(bare_metal_major) >= 11:
-                cc_flag.append('-gencode')
-                cc_flag.append('arch=compute_80,code=sm_80')
-                cc_flag.append('-gencode')
-                cc_flag.append('arch=compute_86,code=sm_86')
-
-        subprocess.run(["git", "submodule", "update", "--init", "apex/contrib/csrc/multihead_attn/cutlass"])
-        nvcc_args_mha = ['-O3',
-                         '-gencode',
-                         'arch=compute_70,code=sm_70',
-                         '-Iapex/contrib/csrc/multihead_attn/cutlass',
-                         '-U__CUDA_NO_HALF_OPERATORS__',
-                         '-U__CUDA_NO_HALF_CONVERSIONS__',
-                         '--expt-relaxed-constexpr',
-                         '--expt-extended-lambda',
-                         '--use_fast_math'] + version_dependent_macros + generator_flag + cc_flag
-        hipcc_args_mha = ['-O3',
-                          '-Iapex/contrib/csrc/multihead_attn/cutlass',
-                          '-I/opt/rocm/include/hiprand',
-                          '-I/opt/rocm/include/rocrand',
-                          '-U__HIP_NO_HALF_OPERATORS__',
-                          '-U__HIP_NO_HALF_CONVERSIONS__'] + version_dependent_macros + generator_flag
-        if found_Backward_Pass_Guard:
-            hipcc_args_mha = hipcc_args_mha + ['-DBACKWARD_PASS_GUARD'] + ['-DBACKWARD_PASS_GUARD_CLASS=BackwardPassGuard']
-        if found_ROCmBackward_Pass_Guard:
-            hipcc_args_mha = hipcc_args_mha + ['-DBACKWARD_PASS_GUARD'] + ['-DBACKWARD_PASS_GUARD_CLASS=ROCmBackwardPassGuard']
-
-        ext_modules.append(
-            CUDAExtension(
-                name='fast_multihead_attn',
-                sources=[
-                    'apex/contrib/csrc/multihead_attn/multihead_attn_frontend.cpp',
-                    'apex/contrib/csrc/multihead_attn/additive_masked_softmax_dropout_cuda.cu',
-                    "apex/contrib/csrc/multihead_attn/masked_softmax_dropout_cuda.cu",
-                    "apex/contrib/csrc/multihead_attn/encdec_multihead_attn_cuda.cu",
-                    "apex/contrib/csrc/multihead_attn/encdec_multihead_attn_norm_add_cuda.cu",
-                    "apex/contrib/csrc/multihead_attn/self_multihead_attn_cuda.cu",
-                    "apex/contrib/csrc/multihead_attn/self_multihead_attn_bias_additive_mask_cuda.cu",
-                    "apex/contrib/csrc/multihead_attn/self_multihead_attn_bias_cuda.cu",
-                    "apex/contrib/csrc/multihead_attn/self_multihead_attn_norm_add_cuda.cu",
-                ],
-                include_dirs=[os.path.join(this_dir, 'csrc'),
-                                        os.path.join(this_dir, 'apex/contrib/csrc/multihead_attn')],
-                          extra_compile_args={'cxx': ['-O3',] + version_dependent_macros + generator_flag,
-                                              'nvcc':nvcc_args_mha if not IS_ROCM_PYTORCH else hipcc_args_mha}
-            )
-        )
-
-if "--transducer" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--transducer" in sys.argv:
-        sys.argv.remove("--transducer")
-    
-    if not IS_ROCM_PYTORCH:
-        raise_if_cuda_home_none("--transducer")
-
-    ext_modules.append(
-        CUDAExtension(
-            name="transducer_joint_cuda",
-            sources=[
-                "apex/contrib/csrc/transducer/transducer_joint.cpp",
-                "apex/contrib/csrc/transducer/transducer_joint_kernel.cu",
-            ],
-            extra_compile_args={
-                "cxx": ["-O3"] + version_dependent_macros + generator_flag,
-                "nvcc": append_nvcc_threads(["-O3"] + version_dependent_macros + generator_flag) if not IS_ROCM_PYTORCH
-                        else ["-O3"] + version_dependent_macros + generator_flag,
-            },
-            include_dirs=[os.path.join(this_dir, "csrc"), os.path.join(this_dir, "apex/contrib/csrc/multihead_attn")],
-        )
-    )
-    ext_modules.append(
-        CUDAExtension(
-            name="transducer_loss_cuda",
-            sources=[
-                "apex/contrib/csrc/transducer/transducer_loss.cpp",
-                "apex/contrib/csrc/transducer/transducer_loss_kernel.cu",
-            ],
-            include_dirs=[os.path.join(this_dir, "csrc")],
-            extra_compile_args={
-                "cxx": ["-O3"] + version_dependent_macros,
-                "nvcc": append_nvcc_threads(["-O3"] + version_dependent_macros) if not IS_ROCM_PYTORCH
-                        else ["-O3"] + version_dependent_macros,
-            },
-        )
-    )
-
-# note (mkozuki): Now `--fast_bottleneck` option (i.e. apex/contrib/bottleneck) depends on `--peer_memory` and `--nccl_p2p`.
-if "--fast_bottleneck" in sys.argv:
-    sys.argv.remove("--fast_bottleneck")
-    raise_if_cuda_home_none("--fast_bottleneck")
-    if check_cudnn_version_and_warn("--fast_bottleneck", 8400):
-        subprocess.run(["git", "submodule", "update", "--init", "apex/contrib/csrc/cudnn-frontend/"])
-        ext_modules.append(
-            CUDAExtension(
-                name="fast_bottleneck",
-                sources=["apex/contrib/csrc/bottleneck/bottleneck.cpp"],
-                include_dirs=[os.path.join(this_dir, "apex/contrib/csrc/cudnn-frontend/include")],
-                extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
-            )
-        )
-
-if "--peer_memory" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--peer_memory" in sys.argv:
-        sys.argv.remove("--peer_memory")
-
-    if not IS_ROCM_PYTORCH:
-        raise_if_cuda_home_none("--peer_memory")
-
-    ext_modules.append(
-        CUDAExtension(
-            name="peer_memory_cuda",
-            sources=[
-                "apex/contrib/csrc/peer_memory/peer_memory_cuda.cu",
-                "apex/contrib/csrc/peer_memory/peer_memory.cpp",
-            ],
-            extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
-        )
-    )
-
-if "--nccl_p2p" in sys.argv or "--cuda_ext" in sys.argv:
-    if "--nccl_p2p" in sys.argv:
-        sys.argv.remove("--nccl_p2p")
-
-    if not IS_ROCM_PYTORCH:
-        raise_if_cuda_home_none("--nccl_p2p")
-
-    ext_modules.append(
-        CUDAExtension(
-            name="nccl_p2p_cuda",
-            sources=[
-                "apex/contrib/csrc/nccl_p2p/nccl_p2p_cuda.cu",
-                "apex/contrib/csrc/nccl_p2p/nccl_p2p.cpp",
-            ],
-            extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
-        )
-    )
-
-
-if "--fused_conv_bias_relu" in sys.argv:
-    sys.argv.remove("--fused_conv_bias_relu")
-    raise_if_cuda_home_none("--fused_conv_bias_relu")
-    if check_cudnn_version_and_warn("--fused_conv_bias_relu", 8400):
-        subprocess.run(["git", "submodule", "update", "--init", "apex/contrib/csrc/cudnn-frontend/"])
-        ext_modules.append(
-            CUDAExtension(
-                name="fused_conv_bias_relu",
-                sources=["apex/contrib/csrc/conv_bias_relu/conv_bias_relu.cpp"],
-                include_dirs=[os.path.join(this_dir, "apex/contrib/csrc/cudnn-frontend/include")],
-                extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
-            )
-        )
-
-#NCCL allocator is supported for apex 1.6 version and onwards
-if TORCH_MAJOR == 2 and TORCH_MINOR >= 6:
-    if "--nccl_allocator" in sys.argv or "--cuda_ext" in sys.argv:
-        if "--nccl_allocator" in sys.argv:
-            sys.argv.remove("--nccl_allocator")
-        raise_if_cuda_home_none("--nccl_allocator")
-        _nccl_version_getter = load(
-            name="_nccl_version_getter",
-            sources=["apex/contrib/csrc/nccl_p2p/nccl_version.cpp", "apex/contrib/csrc/nccl_p2p/nccl_version_check.cu"],
-        )
-        ccl_library = ["nccl"]
-        if IS_ROCM_PYTORCH:
-            ccl_library = ["rccl"]
-        _available_nccl_version = _nccl_version_getter.get_nccl_version()
-        if _available_nccl_version >= (2, 19):
-            ext_modules.append(
-                CUDAExtension(
-                    name="_apex_nccl_allocator",
-                    sources=[
-                        "apex/contrib/csrc/nccl_allocator/NCCLAllocator.cpp",
-                    ],
-                    include_dirs=[os.path.join(this_dir, "apex/apex/contrib/csrc/nccl_allocator")],
-                    libraries=ccl_library,
-                    extra_compile_args={"cxx": ["-O3"] + version_dependent_macros + generator_flag},
-                )
-            )
-        else:
-            warnings.warn(
-                f"Skip `--nccl_allocator` as it requires NCCL 2.19 or later, but {_available_nccl_version[0]}.{_available_nccl_version[1]}"
-            )
-
-
 
 if "--cuda_ext" in sys.argv:
     sys.argv.remove("--cuda_ext")
@@ -982,16 +269,67 @@ if "--cuda_ext" in sys.argv:
 with open('requirements.txt') as f:
     required = f.read().splitlines()
 
+# Find python files in compatibility folder
+compatibility_dir = os.path.join(this_dir, 'compatibility')
+py_modules = []
+
+if os.path.exists(compatibility_dir):
+    for file in os.listdir(compatibility_dir):
+        if file.endswith('.py') and file != '__init__.py':
+            module_name = f"{file[:-3]}"
+            py_modules.append(module_name)
+
+            #copy outside temporarily
+            src_file = os.path.join(compatibility_dir, file)
+            dst_file = os.path.join(this_dir, file)
+            shutil.copy2(src_file, dst_file)
+else:
+    print("Warning: compatibility folder not found")
+
+class BinaryDistribution(Distribution):
+    """Force wheel to be platform-specific even without ext_modules."""
+    def has_ext_modules(self):
+        return True
+
+
+# Resolve symlinks for packaging - auto-detect symlinks in apex folder
+def resolve_symlinks_in_dir(base_dir):
+    """Find and resolve all symlink directories inside a directory."""
+
+    symbolic_link_folders = []
+    for entry in os.listdir(base_dir):
+        entry_path = os.path.join(base_dir, entry)
+        if os.path.islink(entry_path) and os.path.isdir(os.path.realpath(entry_path)):
+            target = os.path.realpath(entry_path)
+            symbolic_link_folders.append([entry_path, target])
+
+    print(f"Symbolic link folders: {symbolic_link_folders}")
+
+    for entry_path, target in symbolic_link_folders:
+        print(f"Resolving symlink {entry_path} -> {target}")
+        os.unlink(entry_path)
+        shutil.copytree(target, entry_path)
+
+resolve_symlinks_in_dir(os.path.join(this_dir, 'apex'))
+
 setup(
     name="apex",
     version=get_apex_version(),
     packages=find_packages(
-        exclude=("build", "csrc", "include", "tests", "dist", "docs", "tests", "examples", "apex.egg-info",)
+        exclude=("build", "include", "tests", "dist", "docs", "tests", "examples", "apex.egg-info", "op_builder", "compatibility")
     ),
     description="PyTorch Extensions written by NVIDIA",
     ext_modules=ext_modules,
     cmdclass={'build_ext': BuildExtension} if ext_modules else {},
     extras_require=extras,
-    install_requires=required
+    install_requires=required,
+    include_package_data=True,
+    py_modules=py_modules,
+    distclass=BinaryDistribution
 )
 
+#delete the temporarily copied compatibility files
+for py_module in py_modules:
+    path = dst_file = os.path.join(this_dir, py_module + ".py")
+    if os.path.exists(path):
+        os.remove(path)
