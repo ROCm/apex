@@ -4,3 +4,12 @@ numpy>=1.15.3
 PyYAML>=5.1
 pytest>=3.5.1
 packaging>=14.0
+<<<<<<< HEAD
+=======
+matplotlib>=3.8
+pandas>=2.2.2
+py-cpuinfo
+build
+ninja
+wheel
+>>>>>>> 95043e3 ([REDUX] Refactor Apex build process to use the PyTorch JIT extension flow (#291))
