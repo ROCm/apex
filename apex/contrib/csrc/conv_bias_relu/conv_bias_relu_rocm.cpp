@@ -20,11 +20,7 @@
 
 // Plan Cache for MIOpen Fusion
 struct FusionPlanEntry {
-<<<<<<< HEAD
     miopenFusionPlanDescriptor_t fusion_plan;
-=======
-    miopenFusionPlan_t fusion_plan;
->>>>>>> 46436a8 (Fix crash for ConvBias)
     miopenFusionOpDescriptor_t conv_op;
     miopenFusionOpDescriptor_t bias_op;
     miopenFusionOpDescriptor_t activ_op;
@@ -157,17 +153,12 @@ std::vector<at::Tensor> conv_bias_relu_forward_impl(std::vector<at::Tensor> inpu
     
     float alpha = 1.0f, beta = 0.0f;
     MIOPEN_CHECK(miopenSetOpArgsConvForward(args, entry.conv_op, &alpha, &beta, weight.data_ptr()));
-<<<<<<< HEAD
-    MIOPEN_CHECK(miopenSetOpArgsBiasForward(args, entry.bias_op, &alpha, &beta, bias.data_ptr()));
-    MIOPEN_CHECK(miopenSetOpArgsActivForward(args, entry.activ_op, &alpha, &beta, 0, 0, 0));
-=======
     if (entry.bias_op && bias.defined()) {
         MIOPEN_CHECK(miopenSetOpArgsBiasForward(args, entry.bias_op, &alpha, &beta, bias.data_ptr()));
     }
     if (entry.activ_op) {
-        MIOPEN_CHECK(miopenSetOpArgsActivationForward(args, entry.activ_op, &alpha, &beta, 0.0, 0.0, 0.0));
+        MIOPEN_CHECK(miopenSetOpArgsActivForward(args, entry.activ_op, &alpha, &beta, 0.0, 0.0, 0.0));
     }
->>>>>>> 46436a8 (Fix crash for ConvBias)
 
     MIOPEN_CHECK(miopenExecuteFusionPlan(handle, entry.fusion_plan, 
         input_desc, x.data_ptr(),
