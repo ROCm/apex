@@ -356,11 +356,7 @@ std::vector<at::Tensor> conv_bias_backward(std::vector<at::Tensor> inputs, int64
     int64_t bias_size = weight.size(0);
     std::vector<int64_t> bias_sizes = {bias_size};
     
-    // Workaround for ROCm segfault: Ensure grad_output is in a layout that dispatcher handles well.
-    // Making it contiguous (NCHW) is the safest baseline.
-    auto grad_output_c = grad_output.contiguous();
-    
-    auto grads = at::convolution_backward(grad_output_c, x, weight, 
+    auto grads = at::convolution_backward(grad_output, x, weight,
                                          bias_sizes,
                                          {stride, stride}, {padding, padding}, {1, 1}, 
                                          false, {0, 0}, 1,

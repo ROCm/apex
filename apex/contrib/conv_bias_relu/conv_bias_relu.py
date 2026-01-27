@@ -85,7 +85,7 @@ class ConvBias_(torch.autograd.Function):
         bwd_args = [*ctx.saved_tensors, grad_output]
         padding = ctx.padding
         stride = ctx.stride
-        grads = fused_conv_bias_relu.backward(bwd_args, padding, stride)
+        grads = fused_conv_bias_relu.backward_no_relu(bwd_args, padding, stride)
 
         grad_bias = grads[2]
         if grad_bias is not None and ctx.bias_shape is not None and grad_bias.shape != ctx.bias_shape:
