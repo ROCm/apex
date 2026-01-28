@@ -213,7 +213,24 @@ std::vector<at::Tensor> focal_loss_forward_cuda(
   cudaDeviceProp props;
   cudaGetDeviceProperties(&props, at::cuda::current_device());
   dim3 block(512);
-  dim3 grid(2 * props.multiProcessorCount);
+
+  int cta_per_sm = 2; // 2 CTA per SM
+  // AMD architectures (gcnArchName field)
+  // Examples: "gfx906" (MI50/MI60), "gfx908" (MI100), "gfx90a" (MI210/MI250), 
+  //           "gfx940/gfx941/gfx942" (MI300 series)
+  std::string arch_name = props.gcnArchName;
+
+  if (arch_name.find("gfx94") == 0) {
+    // MI300 series - most advanced, can handle more CTAs
+    cta_per_sm = 8;
+  } else if (arch_name.find("gfx90a") == 0) {
+    // MI210/MI250 series
+    cta_per_sm = 4;
+  } else if (arch_name.find("gfx908") == 0 || arch_name.find("gfx90c") == 0) {
+    // MI100 or APUs
+    cta_per_sm = 4;
+  }
+  dim3 grid(cta_per_sm * props.multiProcessorCount);
 
   // Specialize on label smoothing or not to reduce redundant operations
   cudaStream_t stream = at::cuda::getCurrentCUDAStream();
