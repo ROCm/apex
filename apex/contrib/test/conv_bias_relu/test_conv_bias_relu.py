@@ -100,6 +100,41 @@ class FusedDenseTest(unittest.TestCase):
         self.assertTrue(torch.allclose(self.x_.grad, self.x.grad, atol=1e-3, rtol=1e-3, equal_nan=True))
 
 
+    def test_conv_bias_retinanet(self):
+        # RetinaNet configuration
+        batch_size = 32
+        in_channels = 256
+        out_channels = 2376
+        h, w = 100, 100
+        
+        # Input in NHWC format with HALF precision
+        x = torch.randn(batch_size, in_channels, h, w).cuda()\
+            .to(memory_format=torch.channels_last).half()
+        x_ = x.clone()
+        x.requires_grad_()
+        x_.requires_grad_()
+        
+        # Conv layer
+        conv = torch.nn.Conv2d(in_channels, out_channels, 3, 
+                            stride=1, padding=1).cuda()\
+                            .to(memory_format=torch.channels_last)
+        conv_ = copy.deepcopy(conv)
+        
+        # Test with FP16
+        with torch.cuda.amp.autocast(dtype=torch.half):
+            out = ConvBias(x, conv.weight, conv.bias.reshape(1, -1, 1, 1), 1, 1)
+            loss = (out.float()**2).sum() / out.numel()
+        loss.backward()
+        
+        # Reference with FP16
+        with torch.cuda.amp.autocast(dtype=torch.half):
+            out_ = conv_(x_)
+            loss_ = (out_**2).sum() / out_.numel()
+        loss_.backward()
+
+        self.assertTrue(torch.allclose(out, out_, atol=1e-2, rtol=1e-2))
+
+
 if __name__ == '__main__':
     unittest.main()
 

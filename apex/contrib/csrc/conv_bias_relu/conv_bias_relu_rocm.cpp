@@ -165,7 +165,7 @@ static std::vector<at::Tensor> conv_bias_forward_dispatch(const at::Tensor& x,
                                                           bool use_relu,
                                                           bool use_fusion) {
     if (x.is_cuda()) {
-        if (use_fusion && use_relu) {
+        if (use_fusion) {
             return conv_bias_relu_forward_fused(x, weight, bias, padding, stride, use_relu);
         }
         return conv_bias_forward(x, weight, bias, padding, stride, use_relu);
@@ -241,7 +241,10 @@ static std::vector<at::Tensor> conv_bias_relu_forward_fused(const at::Tensor& x,
         if (bias.defined()) {
             miopenTensorDescriptor_t bias_desc = nullptr;
             MIOPEN_CHECK(miopenCreateTensorDescriptor(&bias_desc));
-            MIOPEN_CHECK(miopenSet4dTensorDescriptor(bias_desc, dtype, 1, (int)x.size(1), 1, 1));
+            if(is_nhwc)
+                MIOPEN_CHECK(miopenSet4dTensorDescriptor(bias_desc, dtype, 1, (int)x.size(3), 1, 1));
+            else
+                MIOPEN_CHECK(miopenSet4dTensorDescriptor(bias_desc, dtype, 1, (int)x.size(1), 1, 1));
             MIOPEN_CHECK(miopenCreateOpBiasForward(plan, &bias_op, bias_desc));
             miopenDestroyTensorDescriptor(bias_desc);
         }
@@ -250,6 +253,9 @@ static std::vector<at::Tensor> conv_bias_relu_forward_fused(const at::Tensor& x,
         miopenFusionOpDescriptor_t activ_op = nullptr;
         if (use_relu) {
             MIOPEN_CHECK(miopenCreateOpActivationForward(plan, &activ_op, miopenActivationRELU));
+        }else
+        {
+            MIOPEN_CHECK(miopenCreateOpActivationForward(plan, &activ_op, miopenActivationCLAMP)); 
         }
 
         // Compile
@@ -304,7 +310,12 @@ static std::vector<at::Tensor> conv_bias_relu_forward_fused(const at::Tensor& x,
         MIOPEN_CHECK(miopenSetOpArgsBiasForward(args, entry.bias_op, &alpha, &beta, bias.data_ptr()));
     }
     if (entry.activ_op) {
-        MIOPEN_CHECK(miopenSetOpArgsActivForward(args, entry.activ_op, &alpha, &beta, 0.0, 0.0, 0.0));
+        if (use_relu)
+            MIOPEN_CHECK(miopenSetOpArgsActivForward(args, entry.activ_op, &alpha, &beta, 0.0, 0.0, 0.0));
+        else{
+            float alpha1 = -3.402823466e+38F, beta1 = 3.402823466e+38F;
+            MIOPEN_CHECK(miopenSetOpArgsActivForward(args, entry.activ_op, &alpha, &beta, alpha1, beta1, 0.0));
+        }
     }
 
     MIOPEN_CHECK(miopenExecuteFusionPlan(handle, entry.fusion_plan,
@@ -346,7 +357,7 @@ std::vector<at::Tensor> conv_bias_forward_api(std::vector<at::Tensor> inputs, in
     auto x = inputs[0];
     auto weight = inputs[1];
     auto bias = inputs[2];
-    return conv_bias_forward_dispatch(x, weight, bias, padding, stride, false, false);
+    return conv_bias_forward_dispatch(x, weight, bias, padding, stride, false, true);
 }
 
 std::vector<at::Tensor> conv_bias_backward(std::vector<at::Tensor> inputs, int64_t padding, int64_t stride) {
