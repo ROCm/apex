@@ -9,7 +9,7 @@ except ImportError:
 
 class ConvBiasReLU_(torch.autograd.Function):
     @staticmethod
-    @torch.cuda.amp.custom_fwd(cast_inputs=torch.half)
+    @torch.amp.custom_fwd(cast_inputs=torch.half, device_type="cuda")
     def forward(ctx, x, weight, bias, padding, stride):
         ctx.bias_shape = bias.shape if bias is not None else None
         if bias is not None and bias.dim() != 1:
@@ -22,7 +22,7 @@ class ConvBiasReLU_(torch.autograd.Function):
         return outputs[0]
 
     @staticmethod
-    @torch.cuda.amp.custom_bwd
+    @torch.amp.custom_bwd(device_type="cuda")
     def backward(ctx, grad_output):
         bwd_args = [*ctx.saved_tensors, grad_output]
         padding = ctx.padding
@@ -38,7 +38,7 @@ class ConvBiasReLU_(torch.autograd.Function):
 
 class ConvBiasMaskReLU_(torch.autograd.Function):
     @staticmethod
-    @torch.cuda.amp.custom_fwd(cast_inputs=torch.half)
+    @torch.amp.custom_fwd(cast_inputs=torch.half, device_type="cuda")
     def forward(ctx, x, weight, bias, mask, padding, stride):
         ctx.bias_shape = bias.shape if bias is not None else None
         if bias is not None and bias.dim() != 1:
@@ -51,7 +51,7 @@ class ConvBiasMaskReLU_(torch.autograd.Function):
         return outputs[0]
 
     @staticmethod
-    @torch.cuda.amp.custom_bwd
+    @torch.amp.custom_bwd(device_type="cuda")
     def backward(ctx, grad_output):
         bwd_args = [*ctx.saved_tensors, grad_output]
         padding = ctx.padding
@@ -67,7 +67,7 @@ class ConvBiasMaskReLU_(torch.autograd.Function):
 
 class ConvBias_(torch.autograd.Function):
     @staticmethod
-    @torch.cuda.amp.custom_fwd(cast_inputs=torch.half)
+    @torch.amp.custom_fwd(cast_inputs=torch.half, device_type="cuda")
     def forward(ctx, x, weight, bias, padding, stride):
         ctx.bias_shape = bias.shape if bias is not None else None
         if bias is not None and bias.dim() != 1:
@@ -80,7 +80,7 @@ class ConvBias_(torch.autograd.Function):
         return outputs[0]
 
     @staticmethod
-    @torch.cuda.amp.custom_bwd
+    @torch.amp.custom_bwd(device_type="cuda")
     def backward(ctx, grad_output):
         bwd_args = [*ctx.saved_tensors, grad_output]
         padding = ctx.padding
