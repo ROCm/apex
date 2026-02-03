@@ -183,8 +183,6 @@ APEX_BUILD_FUSED_DENSE​=1 pip install . --no-build-isolation
 ```
 This will pre-build and install FUSED_DENSE​ module and rest of the modules are installed to be JIT built and loaded at runtime. 
 
-
-
 Aiter backend can be built and used for fused rope. To install aiter:
 ```
 make aiter
