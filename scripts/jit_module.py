@@ -82,7 +82,7 @@ class JitModule:
             f.write(f"                self._loaded_module = builder().load()\n")
             f.write(f"            except Exception as e:\n")
             f.write(f"                self._loading = False\n")
-            f.write(f"                raise ImportError(Failed to load " + builder_name + " : + str(e) + )\n")
+            f.write(f"                raise ImportError('Failed to load " + builder_name + " :' + str(e))\n")
             f.write(f"            finally:\n")
             f.write(f"                self._loading = False\n")
             f.write(f"        return self._loaded_module\n")
