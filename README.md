@@ -190,6 +190,25 @@ make aiter
 
 To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=1```.
 
+### To add a new module into jit loader
+
+The script scripts/jit_module.py can help to integrate a new apex extension to jit loader system. It creates a loader module in compatibility folder for an apex module. The module must already have a builder in op_builder folder.  
+
+The builder module must override either CPUOpBuilder or CUDAOpBuilder class and define the following methods: 
+
+To create a jit loader module for an apex extension: 
+
+```
+python scripts/jit_module.py <apex_module_name> <apex_builder_name>
+```
+where apex_module_name is the apex module name and apex_builder_name is the file name of the builder file in op_builder folder. apex_module_name, apex_builder_name may or may not be the same. 
+
+e.g.  
+```
+python scripts/jit_module.py fused_dense_cuda fused_dense 
+python scripts/jit_module.py syncbn syncbn 
+```
+
 ### To create a wheel and then install apex using the wheel, use the following command in apex folder:
 ```
 python -m build --wheel --no-isolation (can use the same environment variables to build specific extensions, cpp extensions and cuda extensions)
