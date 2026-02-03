@@ -45,10 +45,10 @@ class JitModule:
             return
 
         #create a loader module in compatability folder
-        with open(os.path.join(self.compatability_folder, f"{builder_module_name}.py"), "w") as f:
+        with open(os.path.join(self.compatability_folder, f"{module_name}.py"), "w") as f:
             f.write(f"import sys\n")
             f.write(f"import importlib\n")
-            f.write(f"class _{builder_module_name}Module:\n")
+            f.write(f"class _{module_name}Module:\n")
             f.write(f"    def __init__(self):\n")
             f.write(f"        self._loaded_module = None\n")
             f.write(f"        self._loading = False\n")
@@ -57,7 +57,7 @@ class JitModule:
             f.write(f"            self._loading = True\n")
             f.write(f"            try:\n")
             f.write(f"                apex_op_builder = importlib.import_module('apex.op_builder')\n")
-            f.write(f"                builder = getattr(apex_op_builder, '{builder_module_name}Builder')\n")
+            f.write(f"                builder = getattr(apex_op_builder, '{module_name}Builder')\n")
             f.write(f"                self._loaded_module = builder().load()\n")
             f.write(f"            except Exception as e:\n")
             f.write(f"                self._loading = False\n")
@@ -67,7 +67,7 @@ class JitModule:
             f.write(f"        return self._loaded_module\n")
             f.write(f"    def __getattr__(self, name):\n")
             f.write(f"        if name.startswith('_'):\n")
-            f.write(f"            raise AttributeError(f'module {builder_module_name} has no attribute {name}')\n")
+            f.write(f"            raise AttributeError(f'module {module_name} has no attribute ' + name)\n")
             f.write(f"        return getattr(self._loaded_module, name)\n") #dynamic loading of the module
 
             f.write(f"    def __dir__(self):\n")
@@ -76,11 +76,11 @@ class JitModule:
             f.write(f"        except:\n")
             f.write(f"            return []\n")
             f.write(f"    def __repr__(self):\n")
-            f.write(f"        return f'<module {builder_module_name}>'\n")
+            f.write(f"        return f'<module {module_name}>'\n")
 
-            f.write(f"sys.modules[__name__] = _{builder_module_name}Module()\n")
+            f.write(f"sys.modules[__name__] = _{module_name}Module()\n")
 
-        print(f"Loader module {builder_module_name} created")
+        print(f"Loader module {module_name} created")
         return True
 
 
