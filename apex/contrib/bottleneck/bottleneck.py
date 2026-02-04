@@ -5,11 +5,11 @@ import torch.distributed as dist
 from torch import nn
 
 from apex import check_cudnn_version_and_warn
-import fast_bottleneck
+if check_cudnn_version_and_warn(__name__, 8400):
+    import fast_bottleneck
+else:
+    fast_bottleneck = None
 import nccl_p2p_cuda as inc
-
-
-assert check_cudnn_version_and_warn(__name__, 8400)
 
 
 def kaiming_uniform_(tensor, a=0, mode='fan_in', nonlinearity='leaky_relu'):
