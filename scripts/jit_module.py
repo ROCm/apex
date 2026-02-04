@@ -11,6 +11,15 @@ class JitModule:
         self.op_builder_folder = "op_builder"
         self.compatability_folder = "compatibility"
 
+    def get_module_name(self, builder_file_name):
+        #open builder file and read the NAME attribute  
+        with open(os.path.join(self.op_builder_folder, f"{builder_file_name}.py"), "r") as f:
+            contents = f.read()
+        for line in contents.split("\n"):
+            if "NAME = " in line:
+                return line.split("NAME = ")[1].strip()[1:-1]
+        return None
+
 
     def create_loader_class_name(self, module_name):
         parts = module_name.split("_")
@@ -44,12 +53,19 @@ class JitModule:
         return None
 
 
-    def add_jit_module(self, module_name, builder_name):
+    def add_jit_module(self, builder_name):
 
         is_builder_exists = self.check_if_builder_module_exists(builder_name)
         if not is_builder_exists:
             print(f"Builder module {builder_name} does not exist")
             return
+
+        #get module name from builder name
+        module_name = self.get_module_name(builder_name)
+        if module_name is None:
+            print(f"Module name for builder {builder_name} not found")
+            return
+        print(f"Module name for builder {builder_name} is {module_name}")
 
         #check if a loader module in compatability folder
         is_loader_exists = self.check_if_loader_module_exists(module_name)
@@ -109,9 +125,8 @@ class JitModule:
 
 def main():
     jit_module = JitModule()
-    module_name = sys.argv[1]
-    builder_name = sys.argv[2]
-    success = jit_module.add_jit_module(module_name, builder_name)
+    builder_name = sys.argv[1]
+    success = jit_module.add_jit_module(builder_name)
     if success:
         print("JIT module added")
 

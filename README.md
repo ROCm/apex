@@ -205,23 +205,23 @@ The builder module must override either CPUOpBuilder or CUDAOpBuilder class and 
 | Method | Purpose | Necessary to override | 
 |-----------|-----------|-----------|
 | absolute_name | return the namespace where the module will be installed | Yes |
-| sources | list of C++/CUDA source files for the module |
+| sources | list of C++/CUDA source files for the module | Yes |
 | include_paths | list of folders where the included headers mentioned in the source files are placed | No |
 | cxx_args | list of folders where the included headers mentioned in the source files are placed | No |
 | nvcc_args | list of folders where the included headers mentioned in the source files are placed | No |
 | is_compatible | can this module be installed and loaded considering the environment e.g.minimum torch version supported | No |
+| libraries_args  | list of libraries to compile against e.g. MIOpen | No |
 
 To create a jit loader module for an apex extension: 
 
 ```
-python scripts/jit_module.py <apex_module_name> <apex_builder_name>
+python scripts/jit_module.py <apex_builder_name>
 ```
-where apex_module_name is the apex module name and apex_builder_name is the file name of the builder file in op_builder folder. apex_module_name, apex_builder_name may or may not be the same. 
+where apex_builder_name is the file name of the builder file (without .py extension) in op_builder folder. 
 
 e.g.  
 ```
-python scripts/jit_module.py fused_dense_cuda fused_dense 
-python scripts/jit_module.py syncbn syncbn 
+python scripts/jit_module.py fused_dense
 ```
 
 ### To create a wheel and then install apex using the wheel, use the following command in apex folder:
