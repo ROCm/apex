@@ -183,14 +183,46 @@ APEX_BUILD_FUSED_DENSE​=1 pip install . --no-build-isolation
 ```
 This will pre-build and install FUSED_DENSE​ module and rest of the modules are installed to be JIT built and loaded at runtime. 
 
-
-
 Aiter backend can be built and used for fused rope. To install aiter:
 ```
 make aiter
 ```
 
 To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=1```.
+
+### To add a new module into jit loader
+
+The script scripts/jit_module.py can help to integrate a new apex extension to jit loader system. It creates a loader module in compatibility folder for an apex module. The module must already have a builder in op_builder folder.  
+
+The builder module must override either CPUOpBuilder or CUDAOpBuilder class and define the following attributes and methods:
+
+| Attribute | Purpose |
+|-----------|-----------|
+| BUILD_VAR | The environment variable to indicate prebuilding the module when installing apex e.g. APEX_BUILD_FUSED_DENSE for fused_dense_cuda|
+| INCLUDE_FLAG | Either APEX_BUILD_CUDA_OPS or APEX_BUILD_CPU_OPS to indicate whether the module will be built for gpu or cpu |
+| NAME | name of module e.g. fused_dense_cuda |
+
+| Method | Purpose | Necessary to override | 
+|-----------|-----------|-----------|
+| absolute_name | return the namespace where the module will be installed | Yes |
+| sources | list of C++/CUDA source files for the module | Yes |
+| include_paths | list of folders where the included headers mentioned in the source files are placed | No |
+| cxx_args | list of folders where the included headers mentioned in the source files are placed | No |
+| nvcc_args | list of folders where the included headers mentioned in the source files are placed | No |
+| is_compatible | can this module be installed and loaded considering the environment e.g.minimum torch version supported | No |
+| libraries_args  | list of libraries to compile against e.g. MIOpen | No |
+
+To create a jit loader module for an apex extension: 
+
+```
+python scripts/jit_module.py <apex_builder_name>
+```
+where apex_builder_name is the file name of the builder file (without .py extension) in op_builder folder. 
+
+e.g.  
+```
+python scripts/jit_module.py fused_dense
+```
 
 ### To create a wheel and then install apex using the wheel, use the following command in apex folder:
 ```
