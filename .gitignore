@@ -148,3 +148,7 @@ cython_debug/
 *.hip
 *_hip.*
 *hip* 
+
+
+#file temporarily created for build process
+apex/git_version_info_installed.py
