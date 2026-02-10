@@ -212,6 +212,8 @@ python scripts/jit_module.py fused_dense_cuda
 
 **Directory structure (fused_dense_cuda example):**
 
+The above example creates a builder in op_builder folder and a loader in compatibity folder.
+
 ```
 apex/                                    # repo root
 ├── csrc/                                # C++/CUDA source (or apex/contrib/csrc)
@@ -227,11 +229,10 @@ apex/                                    # repo root
         └── fused_dense.py               # imports fused_dense_cuda, wraps linear_bias_forward/backward, etc.
 ```
 
-- **Source (csrc):** `fused_dense_base.cpp` declares the ops and defines the PyBind11 module (`PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)`); `fused_dense_cuda.cu` implements them (e.g. `linear_bias_forward`, `linear_bias_backward`).
-- **op_builder:** `op_builder/fused_dense.py` subclasses `CUDAOpBuilder`, sets `BUILD_VAR`, `INCLUDE_FLAG`, `NAME`, and implements `absolute_name()` and `sources()` (list of csrc files).
-- **Compatibility (loader):** `compatibility/fused_dense_cuda.py` defines a proxy module that, on first attribute access, imports `apex.op_builder.FusedDenseBuilder`, calls `builder().load()`, and forwards attribute lookups to the loaded .so (e.g. `linear_bias_forward`). Generate it with `python scripts/jit_module.py fused_dense`.
 
-The follow section describes the builder in case the automation script is not sufficient to define all methods.
+The user must not edit the loader code. 
+
+The automation script creates a dummy builder code and it provides description of the fields and methods to help the user to define them.
 
 The builder module is created in op_builder folder and must override either CPUOpBuilder or CUDAOpBuilder class and define the following attributes and methods:
 
