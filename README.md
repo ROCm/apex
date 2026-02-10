@@ -192,9 +192,15 @@ To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=
 
 ### To add a new module into jit loader
 
-The script scripts/jit_module.py can help to integrate a new apex extension to jit loader system. It creates a loader module in compatibility folder for an apex module. The module must already have a builder in op_builder folder.  
+A user must create C++/CUDA source code for a new apex module in either csrc or apex/contrib/csrc folder. 
+After writing the source code, the user must create a builder and a loader for the apex module.
+The builder creates the .so file for the apex module (during installation or jit load time) and the loader loads the .so file when the module is imported.
 
-The builder module must override either CPUOpBuilder or CUDAOpBuilder class and define the following attributes and methods:
+
+
+1. Builder
+
+The builder module is created in op_builder folder and must override either CPUOpBuilder or CUDAOpBuilder class and define the following attributes and methods:
 
 | Attribute | Purpose |
 |-----------|-----------|
@@ -211,6 +217,10 @@ The builder module must override either CPUOpBuilder or CUDAOpBuilder class and 
 | nvcc_args | list of folders where the included headers mentioned in the source files are placed | No |
 | is_compatible | can this module be installed and loaded considering the environment e.g.minimum torch version supported | No |
 | libraries_args  | list of libraries to compile against e.g. MIOpen | No |
+
+2. Loader
+
+The script scripts/jit_module.py creates a loader module in compatibility folder for an apex module. The module must already have a builder in op_builder folder.  
 
 To create a jit loader module for an apex extension: 
 
