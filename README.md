@@ -192,13 +192,46 @@ To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=
 
 ### To add a new module into jit loader
 
-A user must create C++/CUDA source code for a new apex module in either csrc or apex/contrib/csrc folder. 
-After writing the source code, the user must create a builder and a loader for the apex module.
+What is JIT (just-in-time) load? Just-in-time load helps to build the specific modules that are used without needing to build all modules during installation time. This helps to significantly reduce installation time. Without JIT load, it would take roughtly 30 minutes to install apex. With JIT load, it takes less than 1 minute to install apex. 
+
+An automation script is provided to ease the process of adding a new module to JIT load. 
+For this, the user must create C++/CUDA source code for a new apex module in either csrc or apex/contrib/csrc folder. 
+The automation script helps to create a builder and a loader for the apex module.
 The builder creates the .so file for the apex module (during installation or jit load time) and the loader loads the .so file when the module is imported.
 
+To run the automation script:
 
+```
+python scripts/jit_module.py <apex_module_name>
+``` 
 
-1. Builder
+e.g.  
+```
+python scripts/jit_module.py fused_dense_cuda
+```
+
+**Directory structure (fused_dense_cuda example):**
+
+```
+apex/                                    # repo root
+├── csrc/                                # C++/CUDA source (or apex/contrib/csrc)
+│   ├── fused_dense_base.cpp             # PyBind11 module defs, declarations
+│   └── fused_dense_cuda.cu              # CUDA kernels / implementation
+├── op_builder/                          # Builder: compiles sources → .so
+│   └── fused_dense.py                   # FusedDenseBuilder (NAME = "fused_dense_cuda", sources(), etc.)
+├── compatibility/                       # Loader: JIT-loads .so when module is imported
+│   └── fused_dense_cuda.py              # _FusedDenseCudaModule (loads via apex.op_builder.FusedDenseBuilder)
+└── apex/                                # Python package
+    └── fused_dense/                     # User-facing API (import apex.fused_dense)
+        ├── __init__.py
+        └── fused_dense.py               # imports fused_dense_cuda, wraps linear_bias_forward/backward, etc.
+```
+
+- **Source (csrc):** `fused_dense_base.cpp` declares the ops and defines the PyBind11 module (`PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)`); `fused_dense_cuda.cu` implements them (e.g. `linear_bias_forward`, `linear_bias_backward`).
+- **op_builder:** `op_builder/fused_dense.py` subclasses `CUDAOpBuilder`, sets `BUILD_VAR`, `INCLUDE_FLAG`, `NAME`, and implements `absolute_name()` and `sources()` (list of csrc files).
+- **Compatibility (loader):** `compatibility/fused_dense_cuda.py` defines a proxy module that, on first attribute access, imports `apex.op_builder.FusedDenseBuilder`, calls `builder().load()`, and forwards attribute lookups to the loaded .so (e.g. `linear_bias_forward`). Generate it with `python scripts/jit_module.py fused_dense`.
+
+The follow section describes the builder in case the automation script is not sufficient to define all methods.
 
 The builder module is created in op_builder folder and must override either CPUOpBuilder or CUDAOpBuilder class and define the following attributes and methods:
 
@@ -218,21 +251,9 @@ The builder module is created in op_builder folder and must override either CPUO
 | is_compatible | can this module be installed and loaded considering the environment e.g.minimum torch version supported | No |
 | libraries_args  | list of libraries to compile against e.g. MIOpen | No |
 
-2. Loader
 
-The script scripts/jit_module.py creates a loader module in compatibility folder for an apex module. The module must already have a builder in op_builder folder.  
 
-To create a jit loader module for an apex extension: 
 
-```
-python scripts/jit_module.py <apex_builder_name>
-```
-where apex_builder_name is the file name of the builder file (without .py extension) in op_builder folder. 
-
-e.g.  
-```
-python scripts/jit_module.py fused_dense
-```
 
 ### To create a wheel and then install apex using the wheel, use the following command in apex folder:
 ```
