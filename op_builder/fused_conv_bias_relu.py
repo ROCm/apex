@@ -29,6 +29,13 @@ class FusedConvBiasReluBuilder(CUDAOpBuilder):
         args = super().cxx_args()
         return args + self.generator_args() + self.version_dependent_macros()
 
+    def nvcc_args(self):
+        if self.is_rocm_pytorch():
+            nvcc_flags = ['-O3'] + self.version_dependent_macros()
+        else:
+            nvcc_flags = ['-O3']
+        return nvcc_flags
+
     def libraries_args(self):
         if self.is_rocm_pytorch():
             return self.libraries_args() + ['MIOpen']
