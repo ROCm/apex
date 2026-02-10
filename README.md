@@ -266,8 +266,8 @@ The builder module is created in op_builder folder and must override either CPUO
 | absolute_name | return the namespace where the module will be installed | Yes |
 | sources | list of C++/CUDA source files for the module | Yes |
 | include_paths | list of folders where the included headers mentioned in the source files are placed | No |
-| cxx_args | list of folders where the included headers mentioned in the source files are placed | No |
-| nvcc_args | list of folders where the included headers mentioned in the source files are placed | No |
+| cxx_args | return a list of extra compiler flags for the C++ compiler when building C++ sources (e.g. optimization level, preprocessor macros) | No |
+| nvcc_args | return a list of extra compiler flags for nvcc when building CUDA sources (e.g. -O3, architecture flags, preprocessor macros) | No |
 | is_compatible | can this module be installed and loaded considering the environment e.g.minimum torch version supported | No |
 | libraries_args  | list of libraries to compile against e.g. MIOpen | No |
 
