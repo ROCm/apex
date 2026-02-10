@@ -205,28 +205,46 @@ To run the automation script:
 python scripts/jit_module.py <apex_module_name>
 ``` 
 
+The user should provide the name used to import the module i.e. import fused_bias_swiglu.
+If the user does not provide the module name, the automation script will ask for the module name
+```
+What is the name of the module?
+``` 
+
+The automation scripts is interactive and asks two questions 
+1. Is this a CUDA module? (Y/n)
+2. Enter the sources (comma separated)
+
+If the user answers yes to cuda module, it builds with CUDAOpBuilder otherwise it builds as a cpu operation with CPUOpBuilder. The default is cuda operation.
+The user must mention the list of .cpp, .h, .cu files used to compile the module as a comma separated list.
+This argument is used to define the return value of sources() method in the builder module.
+This will be used to also find the list of directories (include_paths() method) i.e. -I flag in g++ compiler. 
+
 e.g.  
 ```
-python scripts/jit_module.py fused_dense_cuda
+python scripts/jit_module.py fused_bias_swiglu
+1. Is this a CUDA module? (Y/n) y
+2. Enter the sources (comma separated) csrc/megatron/fused_bias_swiglu.cpp,csrc/megatron/fused_bias_swiglu_cuda.cu
 ```
 
-**Directory structure (fused_dense_cuda example):**
+**Directory structure (fused_bias_swiglu example):**
 
-The above example creates a builder in op_builder folder and a loader in compatibity folder.
+The above example creates a builder - [op_builder/fused_bias_swiglu.py](op_builder/fused_bias_swiglu.py) and a loader - [compatibility/fused_bias_swiglu.py](compatibility/fused_bias_swiglu.py).
 
 ```
 apex/                                    # repo root
 ├── csrc/                                # C++/CUDA source (or apex/contrib/csrc)
-│   ├── fused_dense_base.cpp             # PyBind11 module defs, declarations
-│   └── fused_dense_cuda.cu              # CUDA kernels / implementation
+│   └── megatron/
+│       ├── fused_bias_swiglu.cpp        # PyBind11 module defs, declarations
+│       └── fused_bias_swiglu_cuda.cu    # CUDA kernels / implementation
 ├── op_builder/                          # Builder: compiles sources → .so
-│   └── fused_dense.py                   # FusedDenseBuilder (NAME = "fused_dense_cuda", sources(), etc.)
+│   └── fused_bias_swiglu.py             # FusedBiasSwiGLUBuilder (NAME = "fused_bias_swiglu", sources(), etc.)
 ├── compatibility/                       # Loader: JIT-loads .so when module is imported
-│   └── fused_dense_cuda.py              # _FusedDenseCudaModule (loads via apex.op_builder.FusedDenseBuilder)
+│   └── fused_bias_swiglu.py             # _FusedBiasSwiGLUModule (loads via apex.op_builder.FusedBiasSwiGLUBuilder)
 └── apex/                                # Python package
-    └── fused_dense/                     # User-facing API (import apex.fused_dense)
+    └── fused_bias_swiglu/               # User-facing API (import apex.fused_bias_swiglu)
         ├── __init__.py
-        └── fused_dense.py               # imports fused_dense_cuda, wraps linear_bias_forward/backward, etc.
+        └── fused_bias_swiglu.py         # imports fused_bias_swiglu, wraps forward/backward, etc.
 ```
 
 
@@ -238,9 +256,9 @@ The builder module is created in op_builder folder and must override either CPUO
 
 | Attribute | Purpose |
 |-----------|-----------|
-| BUILD_VAR | The environment variable to indicate prebuilding the module when installing apex e.g. APEX_BUILD_FUSED_DENSE for fused_dense_cuda|
+| BUILD_VAR | The environment variable to indicate prebuilding the module when installing apex e.g. APEX_BUILD_FUSED_BIAS_SWIGLU for fused_bias_swiglu|
 | INCLUDE_FLAG | Either APEX_BUILD_CUDA_OPS or APEX_BUILD_CPU_OPS to indicate whether the module will be built for gpu or cpu |
-| NAME | name of module e.g. fused_dense_cuda |
+| NAME | name of module e.g. fused_bias_swiglu |
 
 | Method | Purpose | Necessary to override | 
 |-----------|-----------|-----------|
