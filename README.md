@@ -194,37 +194,38 @@ To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=
 
 What is JIT (just-in-time) load? Just-in-time load helps to build the specific modules that are used without needing to build all modules during installation time. This helps to significantly reduce installation time. Without JIT load, it would take roughtly 30 minutes to install apex. With JIT load, it takes less than 1 minute to install apex. 
 
-An automation script is provided to ease the process of adding a new module to JIT load. 
+A python script is provided to ease the process of adding a new module to JIT load. 
 For this, the user must create C++/CUDA source code for a new apex module in either csrc or apex/contrib/csrc folder. 
-The automation script helps to create a builder and a loader for the apex module.
+This script helps to create a builder and a loader for the apex module.
 The builder creates the .so file for the apex module (during installation or jit load time) and the loader loads the .so file when the module is imported.
 
-To run the automation script:
+To run the script:
 
 ```
 python scripts/jit_module.py <apex_module_name>
 ``` 
 
 The user should provide the name used to import the module i.e. import fused_bias_swiglu.
-If the user does not provide the module name, the automation script will ask for the module name
+If the user does not provide the module name, the script will ask for the module name
 ```
 What is the name of the module?
 ``` 
 
-The automation scripts is interactive and asks two questions 
+The script is interactive and asks two questions 
 1. Is this a CUDA module? (Y/n)
-2. Enter the sources (comma separated)
+2. Enter the sources (comma separated) Press Enter to skip 
 
 If the user answers yes to cuda module, it builds with CUDAOpBuilder otherwise it builds as a cpu operation with CPUOpBuilder. The default is cuda operation.
 The user must mention the list of .cpp, .h, .cu files used to compile the module as a comma separated list.
 This argument is used to define the return value of sources() method in the builder module.
 This will be used to also find the list of directories (include_paths() method) i.e. -I flag in g++ compiler. 
+The user can decide to skip the list of sources and add it manually to the builder file created by the script. 
 
 e.g.  
 ```
 python scripts/jit_module.py fused_bias_swiglu
 1. Is this a CUDA module? (Y/n) y
-2. Enter the sources (comma separated) csrc/megatron/fused_bias_swiglu.cpp,csrc/megatron/fused_bias_swiglu_cuda.cu
+2. Enter the sources (comma separated) Press Enter to skip csrc/megatron/fused_bias_swiglu.cpp,csrc/megatron/fused_bias_swiglu_cuda.cu
 ```
 
 **Directory structure (fused_bias_swiglu example):**
@@ -250,7 +251,7 @@ apex/                                    # repo root
 
 The user must not edit the loader code. 
 
-The automation script creates a dummy builder code and it provides description of the fields and methods to help the user to define them.
+The script creates an initial builder code and the users can edit the methods in the module.
 
 The builder module is created in op_builder folder and must override either CPUOpBuilder or CUDAOpBuilder class and define the following attributes and methods:
 

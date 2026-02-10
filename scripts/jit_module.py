@@ -125,7 +125,7 @@ class JitModule:
     def create_builder(self, module_name):
         #Interactively prompt for builder details and create the builder module.
         if_cuda_module = input("Is this a CUDA module? (Y/n) ").strip() or "y"
-        sources = input("Enter the sources (comma separated) ").strip()
+        sources = input("Enter the sources (comma separated). Press Enter to skip ").strip()
 
 
         if if_cuda_module == "y":
@@ -172,9 +172,17 @@ class JitModule:
             f.write(f"        return f'apex.{{self.NAME}}'\n")
             f.write(f"\n")  
             f.write(f"    def sources(self):\n")
+            if len(sources) == 0:
+                f.write(f"        #This method returns the list of source files to be compiled\n")
+                f.write(f"        #Please mention the full path of the source files\n")
+                f.write(f"        #e.g. ['csrc/fused_dense_base.cpp', 'csrc/fused_dense_cuda.cu']\n")
             f.write(f"        return {sources_list_string}\n")  
             f.write(f"\n")
             f.write(f"    def include_paths(self):\n")
+            if len(sources) == 0:
+                f.write(f"        #This method returns the list of include directories\n")
+                f.write(f"        #Please mention the full path of the include directories\n")
+                f.write(f"        #e.g. ['csrc', 'contrib/csrc']\n")
             f.write(f"        return {include_paths_string}\n")
             f.write(f"\n")
             f.write(f"    def cxx_args(self):\n")
