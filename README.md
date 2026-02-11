@@ -158,6 +158,7 @@ The following extensions are supported:
 | focal_loss_cuda | APEX_BUILD_FOCAL_LOSS=1 | APEX_BUILD_CUDA_OPS=1 |
 | fused_adam_cuda | APEX_BUILD_FUSED_ADAM=1 | APEX_BUILD_CUDA_OPS=1 |
 | fused_bias_swiglu | APEX_BUILD_FUSED_BIAS_SWIGLU=1 | APEX_BUILD_CUDA_OPS=1 |
+| fused_conv_bias_relu | APEX_BUILD_FUSED_CONV_BIAS_RELU=1 | APEX_BUILD_CUDA_OPS=1 |
 | fused_dense_cuda | APEX_BUILD_FUSED_DENSE=1 | APEX_BUILD_CUDA_OPS=1 |
 | fused_index_mul_2d | APEX_BUILD_FUSED_INDEX_MUL_2D=1 | APEX_BUILD_CUDA_OPS=1 |
 | fused_lamb_cuda | APEX_BUILD_FUSED_LAMB=1 | APEX_BUILD_CUDA_OPS=1 |
