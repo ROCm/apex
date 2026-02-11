@@ -31,6 +31,6 @@ class FusedConvBiasReluBuilder(CUDAOpBuilder):
 
     def libraries_args(self):
         if self.is_rocm_pytorch():
-            return self.libraries_args() + ['MIOpen']
+            return super().libraries_args() + ['MIOpen']
         else:
-            return self.libraries_args()
+            return super().libraries_args()
