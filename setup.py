@@ -71,7 +71,7 @@ def get_rocm_bare_metal_version(rocm_dir):
     release_idx = output.index("version:") + 1
     release = output[release_idx].split(".")
     bare_metal_major = release[0]
-    bare_metal_minor = release[1][0]
+    bare_metal_minor = release[1]
     return raw_output, bare_metal_major, bare_metal_minor
 
 def check_cuda_torch_binary_vs_bare_metal(cuda_dir):
@@ -102,9 +102,9 @@ def check_rocm_torch_binary_vs_bare_metal(rocm_dir):
 
     if (bare_metal_major != torch_binary_major) or (bare_metal_minor != torch_binary_minor):
         raise RuntimeError(
-            "Cuda extensions are being compiled with a version of Cuda that does "
+            "ROCm extensions are being compiled with a version of ROCm that does "
             "not match the version used to compile Pytorch binaries.  "
-            "Pytorch binaries were compiled with Cuda {}.\n".format(torch.version.cuda)
+            "Pytorch binaries were compiled with ROCm {}.\n".format(torch.version.hip)
             + "In some cases, a minor-version mismatch will not cause later errors:  "
             "https://github.com/NVIDIA/apex/pull/323#discussion_r287021798.  "
             "You can try commenting out this check (at your own risk)."
