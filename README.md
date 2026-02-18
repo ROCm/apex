@@ -184,14 +184,97 @@ APEX_BUILD_FUSED_DENSE​=1 pip install . --no-build-isolation
 ```
 This will pre-build and install FUSED_DENSE​ module and rest of the modules are installed to be JIT built and loaded at runtime. 
 
-
-
 Aiter backend can be built and used for fused rope. To install aiter:
 ```
 make aiter
 ```
 
 To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=1```.
+
+### To add a new module into jit loader
+
+What is JIT (just-in-time) load? Just-in-time load helps to build the specific modules that are used without needing to build all modules during installation time. This helps to significantly reduce installation time. Without JIT load, it would take roughtly 30 minutes to install apex. With JIT load, it takes less than 1 minute to install apex. 
+
+A python script is provided to ease the process of adding a new module to JIT load. 
+For this, the user must create C++/CUDA source code for a new apex module in either csrc or apex/contrib/csrc folder. 
+This script helps to create a builder and a loader for the apex module.
+The builder creates the .so file for the apex module (during installation or jit load time) and the loader loads the .so file when the module is imported.
+
+To run the script:
+
+```
+python scripts/jit_module.py <apex_module_name>
+``` 
+
+The user should provide the name used to import the module i.e. import fused_bias_swiglu.
+If the user does not provide the module name, the script will ask for the module name
+```
+What is the name of the module?
+``` 
+
+The script is interactive and asks two questions 
+1. Is this a CUDA module? (Y/n)
+2. Enter the sources (comma separated) Press Enter to skip 
+
+If the user answers yes to cuda module, it builds with CUDAOpBuilder otherwise it builds as a cpu operation with CPUOpBuilder. The default is cuda operation.
+The user must mention the list of .cpp, .h, .cu files used to compile the module as a comma separated list.
+This argument is used to define the return value of sources() method in the builder module.
+This will be used to also find the list of directories (include_paths() method) i.e. -I flag in g++ compiler. 
+The user can decide to skip the list of sources and add it manually to the builder file created by the script. 
+
+e.g.  
+```
+python scripts/jit_module.py fused_bias_swiglu
+1. Is this a CUDA module? (Y/n) y
+2. Enter the sources (comma separated) Press Enter to skip csrc/megatron/fused_bias_swiglu.cpp,csrc/megatron/fused_bias_swiglu_cuda.cu
+```
+
+**Directory structure (fused_bias_swiglu example):**
+
+The above example creates a builder - [op_builder/fused_bias_swiglu.py](op_builder/fused_bias_swiglu.py) and a loader - [compatibility/fused_bias_swiglu.py](compatibility/fused_bias_swiglu.py).
+
+```
+apex/                                    # repo root
+├── csrc/                                # C++/CUDA source (or apex/contrib/csrc)
+│   └── megatron/
+│       ├── fused_bias_swiglu.cpp        # PyBind11 module defs, declarations
+│       └── fused_bias_swiglu_cuda.cu    # CUDA kernels / implementation
+├── op_builder/                          # Builder: compiles sources → .so
+│   └── fused_bias_swiglu.py             # FusedBiasSwiGLUBuilder (NAME = "fused_bias_swiglu", sources(), etc.)
+├── compatibility/                       # Loader: JIT-loads .so when module is imported
+│   └── fused_bias_swiglu.py             # _FusedBiasSwiGLUModule (loads via apex.op_builder.FusedBiasSwiGLUBuilder)
+└── apex/                                # Python package
+    └── fused_bias_swiglu/               # User-facing API (import apex.fused_bias_swiglu)
+        ├── __init__.py
+        └── fused_bias_swiglu.py         # imports fused_bias_swiglu, wraps forward/backward, etc.
+```
+
+
+The user must not edit the loader code. 
+
+The script creates an initial builder code and the users can edit the methods in the module.
+
+The builder module is created in op_builder folder and must override either CPUOpBuilder or CUDAOpBuilder class and define the following attributes and methods:
+
+| Attribute | Purpose |
+|-----------|-----------|
+| BUILD_VAR | The environment variable to indicate prebuilding the module when installing apex e.g. APEX_BUILD_FUSED_BIAS_SWIGLU for fused_bias_swiglu|
+| INCLUDE_FLAG | Either APEX_BUILD_CUDA_OPS or APEX_BUILD_CPU_OPS to indicate whether the module will be built for gpu or cpu |
+| NAME | name of module e.g. fused_bias_swiglu |
+
+| Method | Purpose | Necessary to override | 
+|-----------|-----------|-----------|
+| absolute_name | return the namespace where the module will be installed | Yes |
+| sources | list of C++/CUDA source files for the module | Yes |
+| include_paths | list of folders where the included headers mentioned in the source files are placed | No |
+| cxx_args | return a list of extra compiler flags for the C++ compiler when building C++ sources (e.g. optimization level, preprocessor macros) | No |
+| nvcc_args | return a list of extra compiler flags for nvcc when building CUDA sources (e.g. -O3, architecture flags, preprocessor macros) | No |
+| is_compatible | can this module be installed and loaded considering the environment e.g.minimum torch version supported | No |
+| libraries_args  | list of libraries to compile against e.g. MIOpen | No |
+
+
+
+
 
 ### To create a wheel and then install apex using the wheel, use the following command in apex folder:
 ```
