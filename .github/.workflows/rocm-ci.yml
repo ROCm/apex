@@ -1,14 +1,14 @@
-name: rocm-nightly-ci
+name: rocm-ci
 
 on:
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"
 
 concurrency:
-  group: rocm-nightly-${{ github.event.pull_request.number || github.ref }}
+  group: rocm-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
