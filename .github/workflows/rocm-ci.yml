@@ -36,6 +36,19 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Create venv + base tooling
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m venv .venv
+          echo "${GITHUB_WORKSPACE}/.venv/bin" >> "${GITHUB_PATH}"
+          python -m pip install -U pip setuptools wheel
+
       - name: Print ROCm info (runner sanity)
         shell: bash
         run: |
@@ -144,6 +157,19 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Create venv + base tooling
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m venv .venv
+          echo "${GITHUB_WORKSPACE}/.venv/bin" >> "${GITHUB_PATH}"
+          python -m pip install -U pip setuptools wheel
 
       - name: Download wheels
         uses: actions/download-artifact@v4
