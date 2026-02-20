@@ -1,0 +1,234 @@
+name: ROCm CI
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: rocm-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTORCH_ROCM_ARCH: "gfx942"
+
+jobs:
+  build:
+    name: Build (PyTorch main + apex wheel)
+    runs-on: build-only-apex
+    timeout-minutes: 720
+
+    steps:
+      - name: Checkout apex (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Resolve latest PyTorch main SHA
+        id: pytorch
+        shell: bash
+        run: |
+          SHA="$(git ls-remote https://github.com/pytorch/pytorch.git refs/heads/main | awk '{print $1}')"
+          echo "sha=${SHA}" >> "${GITHUB_OUTPUT}"
+          echo "PyTorch main SHA: ${SHA}"
+
+      - name: Restore cached PyTorch wheel
+        id: cache-torch
+        uses: actions/cache@v4
+        with:
+          path: .ci/torch-wheel
+          key: torch-rocm72-py312-${{ steps.pytorch.outputs.sha }}
+
+      - name: Build PyTorch
+        if: steps.cache-torch.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          
+          # Clone PyTorch locally
+          git clone --recursive https://github.com/pytorch/pytorch.git pytorch-src
+          cd pytorch-src
+          git checkout "${{ steps.pytorch.outputs.sha }}"
+          git submodule update --init --recursive
+          cd ..
+
+          # Create build script for the container
+          cat << 'EOF' > build_torch.sh
+          #!/bin/bash
+          set -euxo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update && apt-get install -y python3-venv python3-dev python-is-python3 build-essential cmake ninja-build git
+          
+          python3 -m venv /venv
+          export PATH="/venv/bin:$PATH"
+          pip install -U pip setuptools wheel
+          
+          cd /workspace/pytorch-src
+          pip install -r requirements.txt
+          
+          export ROCM_HOME=/opt/rocm
+          export PYTORCH_ROCM_ARCH=gfx942
+          export CMAKE_PREFIX_PATH="/venv:/opt/rocm"
+          export USE_ROCM=1
+          export USE_CUDA=0
+          export BUILD_TEST=0
+          export MAX_JOBS=16
+          
+          python setup.py bdist_wheel
+          
+          mkdir -p /workspace/dist
+          cp dist/*.whl /workspace/dist/
+          EOF
+          chmod +x build_torch.sh
+
+          # Run container in background, inject files, build, extract wheels
+          docker rm -f rocm-builder || true
+          docker run -d --name rocm-builder rocm/dev-ubuntu-24.04:7.2-complete sleep infinity
+          
+          docker exec rocm-builder mkdir -p /workspace
+          docker cp pytorch-src rocm-builder:/workspace/pytorch-src
+          docker cp build_torch.sh rocm-builder:/workspace/build_torch.sh
+          
+          docker exec rocm-builder /workspace/build_torch.sh
+          
+          mkdir -p .ci/torch-wheel
+          docker cp rocm-builder:/workspace/dist/. .ci/torch-wheel/
+          docker rm -f rocm-builder
+
+      - name: Build Apex
+        shell: bash
+        run: |
+          set -euxo pipefail
+          
+          cat << 'EOF' > build_apex.sh
+          #!/bin/bash
+          set -euxo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update && apt-get install -y python3-venv python3-dev python-is-python3 build-essential cmake git
+          
+          python3 -m venv /venv
+          export PATH="/venv/bin:$PATH"
+          pip install -U pip setuptools wheel build
+          
+          cd /workspace
+          pip install .ci/torch-wheel/*.whl
+          pip install -r requirements.txt
+          
+          export PYTORCH_ROCM_ARCH=gfx942
+          export APEX_BUILD_CPP_OPS=1
+          export APEX_BUILD_CUDA_OPS=1
+          
+          make clean || true
+          python -m build --wheel --no-isolation .
+          EOF
+          chmod +x build_apex.sh
+
+          docker rm -f rocm-builder || true
+          docker run -d --name rocm-builder rocm/dev-ubuntu-24.04:7.2-complete sleep infinity
+          
+          docker exec rocm-builder mkdir -p /workspace
+          docker cp . rocm-builder:/workspace/
+          
+          docker exec rocm-builder /workspace/build_apex.sh
+          
+          mkdir -p dist
+          docker cp rocm-builder:/workspace/dist/. dist/
+          docker rm -f rocm-builder
+
+      - name: Upload wheels (torch + apex)
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-py312-rocm72
+          if-no-files-found: error
+          path: |
+            .ci/torch-wheel/*.whl
+            dist/*.whl
+
+  test:
+    name: Test
+    runs-on: linux-apex-mi325-8
+    needs: build
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout apex
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-py312-rocm72
+          path: .ci/wheels
+
+      - name: Run Tests
+        shell: bash
+        run: |
+          set -euxo pipefail
+          
+          cat << 'EOF' > run_tests_docker.sh
+          #!/bin/bash
+          set -euxo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update && apt-get install -y python3-venv python3-dev python-is-python3 build-essential cmake git
+          
+          python3 -m venv /venv
+          export PATH="/venv/bin:$PATH"
+          pip install -U pip setuptools wheel
+          
+          cd /workspace
+          pip install .ci/wheels/torch*.whl
+          pip install -r requirements.txt
+          pip install .ci/wheels/apex*.whl
+          
+          python -c "import torch; print('torch:', torch.__version__, 'hip:', torch.version.hip)"
+          python -c "import apex; print('apex import OK')"
+          
+          export PYTORCH_ROCM_ARCH=gfx942
+          export TORCH_EXTENSIONS_DIR=/workspace/.torch_extensions
+          export NPROC_PER_NODE=8
+          export MASTER_ADDR=127.0.0.1
+          export MASTER_PORT="$((10000 + RANDOM % 20000))"
+          
+          mkdir -p test-artifacts
+          bash tests/jit_build/run_tests.sh "condition" "11" 2>&1 | tee test-artifacts/ci-console.log
+          
+          # Manually move script logs so we can copy them out
+          cp results_jit_unit_test*.log test-artifacts/ || true
+          cp results_jit_unit_test*.csv test-artifacts/ || true
+          EOF
+          chmod +x run_tests_docker.sh
+
+          docker rm -f rocm-tester || true
+          docker run -d --name rocm-tester --device=/dev/kfd --device=/dev/dri --group-add video rocm/dev-ubuntu-24.04:7.2-complete sleep infinity
+          
+          docker exec rocm-tester mkdir -p /workspace
+          docker cp . rocm-tester:/workspace/
+          
+          # Run tests and capture exit code
+          set +e 
+          docker exec rocm-tester /workspace/run_tests_docker.sh
+          EXIT_CODE=$?
+          set -e
+          
+          # Extract logs
+          mkdir -p test-artifacts
+          docker cp rocm-tester:/workspace/test-artifacts/. test-artifacts/
+          docker rm -f rocm-tester
+          
+          # Fail CI if tests failed
+          exit $EXIT_CODE
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-py312-rocm
+          if-no-files-found: warn
+          path: test-artifacts/**
