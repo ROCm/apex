@@ -47,11 +47,12 @@ jobs:
       
       - name: Sanity check
         run: |
+          set -euxo pipefail
           which hipcc || true
           hipcc --version || true
           echo "ROCM_HOME=$ROCM_HOME ROCM_PATH=$ROCM_PATH"
           ls -la /opt | sed -n '1,200
-          
+
       - name: Ensure ROCm is on PATH
         shell: bash
         run: |
