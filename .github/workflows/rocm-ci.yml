@@ -105,11 +105,11 @@ jobs:
             if base in {"cmake", "ninja"}:
               continue
             out.append(line)
-          Path("/tmp/requirements.no-cmake-ninja.txt").write_text(
+          Path("requirements.no-cmake-ninja.txt").write_text(
             "\n".join(out) + "\n"
           )
           PY
-          pip install -r /tmp/requirements.no-cmake-ninja.txt
+          pip install -r requirements.no-cmake-ninja.txt
 
           # Defensive: if anything still pulled them in, remove venv-provided binaries.
           pip uninstall -y cmake ninja || true
