@@ -48,18 +48,13 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          
-          # Clone PyTorch locally (ensure deep clone)
-          git clone --recursive https://github.com/pytorch/pytorch.git pytorch-src
-          cd pytorch-src
-          git checkout "${{ steps.pytorch.outputs.sha }}"
-          git submodule update --init --recursive
-          cd ..
 
           # Create build script for the container
           cat << 'EOF' > build_torch.sh
           #!/bin/bash
           set -euxo pipefail
+          : "${PYTORCH_SHA:?PYTORCH_SHA env var not set}"
+
           export DEBIAN_FRONTEND=noninteractive
           apt-get update && apt-get install -y \
             ca-certificates \
@@ -77,14 +72,25 @@ jobs:
             zlib1g-dev \
             libffi-dev
           
-          # Tell Git to trust the copied directories
-          git config --global --add safe.directory /workspace/pytorch-src
+          git config --global --add safe.directory '*'
+
+          rm -rf /workspace/pytorch-src
+          git clone --recursive https://github.com/pytorch/pytorch.git /workspace/pytorch-src
+          cd /workspace/pytorch-src
+          git checkout "${PYTORCH_SHA}"
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+          # Fail early with a clear error if the checkout is missing ROCm/HIP bits
+          test -f c10/hip/impl/hip_cmake_macros.h.in
+          test -f aten/src/ATen/hip/HIPConfig.h.in
+          test -d aten/src/THH
+          git rev-parse HEAD
+          git show -s --oneline
           
           python3 -m venv /venv
           export PATH="/venv/bin:$PATH"
           pip install -U pip setuptools wheel
-          
-          cd /workspace/pytorch-src
 
           # PyTorch's requirements.txt may pull in the Python "cmake" package which
           # ships CMake 4.x into /venv/bin. CMake 4 breaks third_party projects
@@ -143,11 +149,10 @@ jobs:
           docker run -d --name rocm-builder rocm/dev-ubuntu-24.04:7.2-complete sleep infinity
           
           docker exec rocm-builder mkdir -p /workspace
-          # Ensure we copy the hidden .git directory as well
-          docker cp pytorch-src/. rocm-builder:/workspace/pytorch-src/
           docker cp build_torch.sh rocm-builder:/workspace/build_torch.sh
           
-          docker exec rocm-builder /workspace/build_torch.sh
+          docker exec -e PYTORCH_SHA='${{ steps.pytorch.outputs.sha }}' \
+            rocm-builder /workspace/build_torch.sh
           
           mkdir -p .ci/torch-wheel
           docker cp rocm-builder:/workspace/dist/. .ci/torch-wheel/
