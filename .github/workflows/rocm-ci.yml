@@ -4,6 +4,13 @@ on:
   pull_request:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      pytorch_index_url:
+        description: >-
+          PyTorch nightly wheel index URL (e.g.
+          https://download.pytorch.org/whl/nightly/rocm7.2)
+        required: false
+        default: "https://download.pytorch.org/whl/nightly/rocm7.2"
 
 concurrency:
   group: rocm-${{ github.event.pull_request.number || github.ref }}
@@ -17,332 +24,197 @@ env:
 
 jobs:
   build:
-    name: Build (PyTorch main + apex wheel)
+    name: Build apex wheel (ROCm)
     runs-on: build-only-apex
-    timeout-minutes: 720
+    timeout-minutes: 180
 
     steps:
-      - name: Checkout apex
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Resolve latest PyTorch main SHA
-        id: pytorch
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Ensure ROCm is on PATH
         shell: bash
         run: |
           set -euxo pipefail
+          echo "${ROCM_HOME}/bin" >> "${GITHUB_PATH}"
+          echo "${ROCM_HOME}/llvm/bin" >> "${GITHUB_PATH}"
+          test -x "${ROCM_HOME}/bin/hipcc"
 
-          PROBE_DIR="$(mktemp -d)"
-          git init "${PROBE_DIR}"
-          cd "${PROBE_DIR}"
-          git remote add origin https://github.com/pytorch/pytorch.git
-
-          # Fetch a window of recent commits from main (no blobs needed for path checks)
-          git -c protocol.version=2 fetch --depth=500 --filter=blob:none origin main
-          TIP_SHA="$(git rev-parse FETCH_HEAD)"
-          echo "tip_sha=${TIP_SHA}" >> "${GITHUB_OUTPUT}"
-          echo "PyTorch main tip SHA: ${TIP_SHA}"
-
-          has_path() {
-            local sha="$1"
-            local path="$2"
-            git ls-tree "${sha}" -- "${path}" | grep -q .
-          }
-
-          GOOD_SHA=""
-          for sha in $(git rev-list FETCH_HEAD); do
-            if has_path "${sha}" "c10/hip/impl/hip_cmake_macros.h.in" && \
-              has_path "${sha}" "aten/src/ATen/hip/HIPConfig.h.in" && \
-              has_path "${sha}" "aten/src/THH"; then
-              GOOD_SHA="${sha}"
-              break
+      - name: Install build deps (best-effort)
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if command -v apt-get >/dev/null; then
+            SUDO=""
+            if command -v sudo >/dev/null && sudo -n true 2>/dev/null; then
+              SUDO="sudo -n"
             fi
-          done
-
-          if [ -z "${GOOD_SHA}" ]; then
-            echo "ERROR: No ROCm-buildable SHA found in the last 500 commits of main" >&2
-            exit 1
+            ${SUDO} apt-get update
+            ${SUDO} apt-get install -y \
+              build-essential \
+              cmake \
+              ninja-build \
+              python3-dev \
+              pkg-config \
+              libopenblas-dev \
+              libffi-dev \
+              libssl-dev
           fi
 
-          echo "sha=${GOOD_SHA}" >> "${GITHUB_OUTPUT}"
-          echo "Selected PyTorch SHA: ${GOOD_SHA}"
-
-      - name: Restore cached PyTorch wheel
-        id: cache-torch
-        uses: actions/cache@v4
-        with:
-          path: .ci/torch-wheel
-          key: torch-rocm72-py312-${{ steps.pytorch.outputs.sha }}
-
-      - name: Build PyTorch
-        if: steps.cache-torch.outputs.cache-hit != 'true'
+      - name: Create venv + install PyTorch nightly (ROCm)
         shell: bash
         run: |
           set -euxo pipefail
+          python -m venv .venv
+          . .venv/bin/activate
 
-          # Create build script for the container
-          cat << 'EOF' > build_torch.sh
-          #!/bin/bash
-          set -euxo pipefail
-          : "${PYTORCH_SHA:?PYTORCH_SHA env var not set}"
+          python -m pip install -U pip setuptools wheel build packaging
 
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update && apt-get install -y \
-            ca-certificates \
-            curl \
-            git \
-            pkg-config \
-            python3-dev \
-            python3-venv \
-            python-is-python3 \
-            build-essential \
-            cmake \
-            ninja-build \
-            libssl-dev \
-            libopenblas-dev \
-            zlib1g-dev \
-            libffi-dev
-          
-          git config --global --add safe.directory '*'
+          # Install torch from the ROCm nightly index, but allow deps from PyPI.
+          python -m pip install --pre torch \
+            --index-url "${PYTORCH_INDEX_URL}" \
+            --extra-index-url https://pypi.org/simple
 
-          rm -rf /workspace/pytorch-src
-          git clone --recursive https://github.com/pytorch/pytorch.git /workspace/pytorch-src
-          cd /workspace/pytorch-src
-          git checkout "${PYTORCH_SHA}"
-          git submodule sync --recursive
-          git submodule update --init --recursive
-
-          # Fail early with a clear error if the checkout is missing ROCm/HIP bits
-          test -f c10/hip/impl/hip_cmake_macros.h.in
-          test -f aten/src/ATen/hip/HIPConfig.h.in
-          test -d aten/src/THH
-          git rev-parse HEAD
-          git show -s --oneline
-          
-          python3 -m venv /venv
-          export PATH="/venv/bin:$PATH"
-          pip install -U pip setuptools wheel
-
-          # PyTorch's requirements.txt may pull in the Python "cmake" package which
-          # ships CMake 4.x into /venv/bin. CMake 4 breaks third_party projects
-          # that still set cmake_minimum_required(VERSION < 3.5) (e.g. NNPACK).
-          # We must use system CMake from apt (Ubuntu 24.04: 3.28.x).
           python - << 'PY'
-          from pathlib import Path
-          src = Path("requirements.txt").read_text().splitlines()
-          out = []
-          for line in src:
-            s = line.strip()
-            if not s or s.startswith("#"):
-              out.append(line)
-              continue
-            name = s.split()[0]
-            base = name.split("==")[0].split(">=")[0].split("<=")[0]
-            base = base.split("~=")[0].split("!=")[0]
-            if base in {"cmake", "ninja"}:
-              continue
-            out.append(line)
-          Path("requirements.no-cmake-ninja.txt").write_text(
-            "\n".join(out) + "\n"
-          )
+          import torch
+          print("torch:", torch.__version__)
+          print("hip:", torch.version.hip)
+          print("git:", getattr(torch.version, "git_version", None))
           PY
-          pip install -r requirements.no-cmake-ninja.txt
 
-          # Defensive: if anything still pulled them in, remove venv-provided binaries.
-          pip uninstall -y cmake ninja || true
-          rm -f /venv/bin/cmake /venv/bin/ninja || true
-          hash -r
-
-          cmake --version
-          ninja --version
-          
-          export ROCM_HOME=/opt/rocm
-          export PYTORCH_ROCM_ARCH=gfx942
-          export CMAKE_PREFIX_PATH="/venv:/opt/rocm"
-          export USE_ROCM=1
-          export USE_CUDA=0
-          export BUILD_TEST=0
-          export MAX_JOBS=16
-
-          export USE_NNPACK=0
-          export USE_XNNPACK=0
-          export USE_PYTORCH_QNNPACK=0
-          
-          python setup.py bdist_wheel
-          
-          mkdir -p /workspace/dist
-          cp dist/*.whl /workspace/dist/
-          EOF
-          chmod +x build_torch.sh
-          
-          # Run container in background, inject files, build, extract wheels
-          docker rm -f rocm-builder || true
-          docker run -d --name rocm-builder rocm/dev-ubuntu-24.04:7.2-complete sleep infinity
-          
-          docker exec rocm-builder mkdir -p /workspace
-          docker cp build_torch.sh rocm-builder:/workspace/build_torch.sh
-          
-          docker exec -e PYTORCH_SHA='${{ steps.pytorch.outputs.sha }}' \
-            rocm-builder /workspace/build_torch.sh
-          
-          mkdir -p .ci/torch-wheel
-          docker cp rocm-builder:/workspace/dist/. .ci/torch-wheel/
-          docker rm -f rocm-builder
-
-      - name: Build Apex
+      - name: Build apex wheel
         shell: bash
         run: |
           set -euxo pipefail
-          
-          cat << 'EOF' > build_apex.sh
-          #!/bin/bash
-          set -euxo pipefail
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update && apt-get install -y \
-            ca-certificates \
-            git \
-            python3-venv \
-            python3-dev \
-            python-is-python3 \
-            build-essential \
-            cmake \
-            ninja-build \
-            libssl-dev
-          
-          git config --global --add safe.directory '*'
+          . .venv/bin/activate
 
-          python3 -m venv /venv
-          export PATH="/venv/bin:$PATH"
-          pip install -U pip setuptools wheel build
-          
-          cd /workspace
-          pip install .ci/torch-wheel/*.whl
-          pip install -r requirements.txt
-          
-          export ROCM_HOME=/opt/rocm
-          export PYTORCH_ROCM_ARCH=gfx942
+          python -m pip install -r requirements.txt
+
+          export ROCM_HOME="${ROCM_HOME}"
+          export PYTORCH_ROCM_ARCH="${PYTORCH_ROCM_ARCH}"
+
           export APEX_BUILD_CPP_OPS=1
           export APEX_BUILD_CUDA_OPS=1
-          
-          make clean || true
+
           python -m build --wheel --no-isolation .
-          EOF
-          chmod +x build_apex.sh
+          ls -la dist
 
-          docker rm -f rocm-builder || true
-          docker run -d --name rocm-builder rocm/dev-ubuntu-24.04:7.2-complete sleep infinity
-          
-          docker exec rocm-builder mkdir -p /workspace
-          docker cp . rocm-builder:/workspace/
-          
-          docker exec rocm-builder /workspace/build_apex.sh
-          
-          mkdir -p dist
-          docker cp rocm-builder:/workspace/dist/. dist/
-          docker rm -f rocm-builder
+      - name: Write build metadata
+        shell: bash
+        run: |
+          set -euxo pipefail
+          . .venv/bin/activate
 
-      - name: Upload wheels (torch + apex)
+          mkdir -p build-metadata
+          python - << 'PY' > build-metadata/pytorch.txt
+          import torch
+          print("torch:", torch.__version__)
+          print("hip:", torch.version.hip)
+          print("git:", getattr(torch.version, "git_version", None))
+          PY
+
+      - name: Upload wheel + metadata
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-py312-rocm72
+          name: apex-wheel-py312-rocm-nightly
           if-no-files-found: error
           path: |
-            .ci/torch-wheel/*.whl
             dist/*.whl
+            build-metadata/pytorch.txt
 
   test:
     name: Test
-    runs-on: linux-apex-mi325-8
+    runs-on: amd-gpu-mi235-8
     needs: build
     timeout-minutes: 360
 
     steps:
-      - name: Checkout apex
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Download wheels
-        uses: actions/download-artifact@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          name: wheels-py312-rocm72
-          path: .ci/wheels
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
 
-      - name: Run Tests
+      - name: Ensure ROCm is on PATH
         shell: bash
         run: |
           set -euxo pipefail
-          
-          cat << 'EOF' > run_tests_docker.sh
-          #!/bin/bash
+          echo "${ROCM_HOME}/bin" >> "${GITHUB_PATH}"
+          echo "${ROCM_HOME}/llvm/bin" >> "${GITHUB_PATH}"
+          test -x "${ROCM_HOME}/bin/hipcc"
+
+      - name: Download apex wheel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apex-wheel-py312-rocm-nightly
+          path: .ci/artifacts
+
+      - name: Create venv + install torch + apex wheel
+        shell: bash
+        run: |
           set -euxo pipefail
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update && apt-get install -y \
-            ca-certificates \
-            git \
-            python3-venv \
-            python3-dev \
-            python-is-python3 \
-            build-essential \
-            cmake \
-            ninja-build \
-            libssl-dev
-          
-          python3 -m venv /venv
-          export PATH="/venv/bin:$PATH"
-          pip install -U pip setuptools wheel
-          
-          cd /workspace
-          pip install .ci/wheels/torch*.whl
-          pip install -r requirements.txt
-          pip install .ci/wheels/apex*.whl
-          
-          python -c "import torch; print('torch:', torch.__version__, 'hip:', torch.version.hip)"
-          python -c "import apex; print('apex import OK')"
-          
-          export ROCM_HOME=/opt/rocm
-          export PYTORCH_ROCM_ARCH=gfx942
-          export TORCH_EXTENSIONS_DIR=/workspace/.torch_extensions
-          export NPROC_PER_NODE=8
+          python -m venv .venv
+          . .venv/bin/activate
+
+          python -m pip install -U pip setuptools wheel
+
+          python -m pip install --pre torch \
+            --index-url "${PYTORCH_INDEX_URL}" \
+            --extra-index-url https://pypi.org/simple
+
+          python -m pip install -r requirements.txt
+          python -m pip install .ci/artifacts/dist/*.whl
+
+          python - << 'PY'
+          import torch, apex
+          print("torch:", torch.__version__, "hip:", torch.version.hip)
+          print("apex:", getattr(apex, "__version__", "unknown"), "import OK")
+          PY
+
+      - name: Run ROCm tests
+        shell: bash
+        run: |
+          set -euxo pipefail
+          . .venv/bin/activate
+
+          export ROCM_HOME="${ROCM_HOME}"
+          export PYTORCH_ROCM_ARCH="${PYTORCH_ROCM_ARCH}"
+          export TORCH_EXTENSIONS_DIR="${PWD}/.torch_extensions"
           export MASTER_ADDR=127.0.0.1
           export MASTER_PORT="$((10000 + RANDOM % 20000))"
-          
-          mkdir -p test-artifacts
-          bash tests/jit_build/run_tests.sh "condition" "11" 2>&1 | tee test-artifacts/ci-console.log
-          
-          # Manually move script logs so we can copy them out
-          cp results_jit_unit_test*.log test-artifacts/ || true
-          cp results_jit_unit_test*.csv test-artifacts/ || true
-          EOF
-          chmod +x run_tests_docker.sh
 
-          docker rm -f rocm-tester || true
-          docker run -d --name rocm-tester --device=/dev/kfd --device=/dev/dri --group-add video rocm/dev-ubuntu-24.04:7.2-complete sleep infinity
-          
-          docker exec rocm-tester mkdir -p /workspace
-          docker cp . rocm-tester:/workspace/
-          
-          # Run tests and capture exit code
-          set +e 
-          docker exec rocm-tester /workspace/run_tests_docker.sh
-          EXIT_CODE=$?
-          set -e
-          
-          # Extract logs
           mkdir -p test-artifacts
-          docker cp rocm-tester:/workspace/test-artifacts/. test-artifacts/
-          docker rm -f rocm-tester
-          
-          # Fail CI if tests failed
-          exit $EXIT_CODE
+
+          # Run the test script directly after installing the wheel.
+          set +e
+          bash tests/jit_build/run_tests.sh condition 11 2>&1 | tee test-artifacts/ci-console.log
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+
+          cp -f results_jit_unit_test*.log test-artifacts/ || true
+          cp -f results_jit_unit_test*.csv test-artifacts/ || true
+
+          exit "${EXIT_CODE}"
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-py312-rocm
+          name: test-results-py312-rocm-nightly
           if-no-files-found: warn
           path: test-artifacts/**
