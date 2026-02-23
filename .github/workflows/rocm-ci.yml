@@ -24,14 +24,13 @@ jobs:
       - name: Build Apex Wheel in Docker
         run: |
           docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace ${{ env.DOCKER_IMAGE }} bash -c "
-            
             pip install --upgrade pip
             pip install build ninja wheel packaging
 
             # Build apex wheel
             python3 -m build --wheel --no-isolation -C--build-option=--cpp_ext -C--build-option=--cuda_ext
 
-            # Fix permissions so GitHub Actions can upload the artifact
+            # Fix permissions for GitHub Actions artifact upload
             chown -R $(id -u):$(id -g) dist/
           "
 
@@ -43,7 +42,7 @@ jobs:
           retention-days: 7
 
   test:
-    name: Run Unit Tests and Benchmarks
+    name: Run Unit Tests
     runs-on: linux-apex-mi325-8
     needs: build
     steps:
@@ -61,42 +60,54 @@ jobs:
       - name: Run Tests in Docker
         run: |
           docker run --rm \
-            --device=/dev/kfd --device=/dev/dri --group-add=video \
+            --device=/dev/kfd --device=/dev/dri --group-add=video --ipc=host \
             -v ${{ github.workspace }}:/workspace -w /workspace \
             ${{ env.DOCKER_IMAGE }} bash -c "
             
-            # Install the built wheel
+            # Enforce strict error handling for pipes so failures aren't masked
+            set -o pipefail
+            EXIT_CODE=0
+
+            # Install dependencies and the built wheel
+            pip install expecttest  # Fixes ModuleNotFoundError
             pip install dist/apex-*.whl
 
-            # Run LO unit tests
-            echo 'Running LO unit tests...'
+            # Run L0 tests
+            echo 'Running L0 tests...'
             cd tests/L0
-            sh run_rocm.sh 2>&1 | tee ../../log_L0_results.txt
+            sh run_rocm.sh 2>&1 | tee ../../log_L0_results.txt || EXIT_CODE=\$?
             cd ../../
 
-            # Run extensions import tests
-            echo 'Running Extension Import tests...'
-            python3 tests/test_extension_import.py 2>&1 | tee log_import_results.txt
+            # Run contrib tests
+            echo 'Running Contrib tests...'
+            cd apex/contrib/test
+            python3 run_rocm_extensions.py 2>&1 | tee ../../../log_contrib_results.txt || EXIT_CODE=\$?
+            cd ../../..
 
-            # Run micro-benchmarking
-            echo 'Running Micro-benchmarking...'
-            python3 micro_benchmarking_pytorch.py --network resnet50 2>&1 | tee log_microbenchmark_results.txt
+            echo 'Running Peer Halo Exchange tests...'
+            torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee log_halo_results.txt || EXIT_CODE=\$?
 
-            # Extract failed tests from log file
-            grep -i 'fail\|error' log_L0_results.txt log_import_results.txt > extracted_failed_tests.txt || true
+            # Run Distributed tests
+            echo 'Running Distributed Synced BatchNorm tests...'
+            cd tests/distributed/synced_batchnorm
+            sh unit_test.sh 2>&1 | tee ../../../log_syncbn_results.txt || EXIT_CODE=\$?
+            cd ../../..
 
-            # Fix permissions for artifacts
+            # Fix permissions so GitHub Actions can upload the logs
             chown -R $(id -u):$(id -g) *.txt
+            
+            # Exit with the captured status code so the CI accurately reports failure
+            exit \$EXIT_CODE
           "
 
-      - name: Upload Test Logs and Extracted Failures
-        if: always() # Ensure logs upload even if tests fail
+      - name: Upload Test Logs
+        if: always() # Uploads logs even if tests fail
         uses: actions/upload-artifact@v4
         with:
           name: test-logs
           path: |
             log_L0_results.txt
-            log_import_results.txt
-            log_microbenchmark_results.txt
-            extracted_failed_tests.txt
+            log_contrib_results.txt
+            log_halo_results.txt
+            log_syncbn_results.txt
           retention-days: 14
