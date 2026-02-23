@@ -51,7 +51,7 @@ jobs:
           which hipcc || true
           hipcc --version || true
           echo "ROCM_HOME=$ROCM_HOME ROCM_PATH=$ROCM_PATH"
-          ls -la /opt | sed -n '1,200
+          ls -la /opt | sed -n '1,200p'
 
       - name: Ensure ROCm is on PATH
         shell: bash
