@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 720
 
     steps:
-      - name: Checkout apex (with submodules)
+      - name: Checkout apex
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -63,6 +63,8 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           apt-get update && apt-get install -y python3-venv python3-dev python-is-python3 build-essential cmake ninja-build git
           
+          git config --global --add safe.directory '*'
+
           python3 -m venv /venv
           export PATH="/venv/bin:$PATH"
           pip install -U pip setuptools wheel
@@ -109,6 +111,8 @@ jobs:
           set -euxo pipefail
           export DEBIAN_FRONTEND=noninteractive
           apt-get update && apt-get install -y python3-venv python3-dev python-is-python3 build-essential cmake git
+          
+          git config --global --add safe.directory '*'
           
           python3 -m venv /venv
           export PATH="/venv/bin:$PATH"
