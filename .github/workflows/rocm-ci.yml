@@ -20,7 +20,11 @@ permissions:
   contents: read
 
 env:
+  PYTHON_VERSION: "3.12"
   PYTORCH_ROCM_ARCH: "gfx942"
+  PYTORCH_INDEX_URL: >-
+    ${{ github.event.inputs.pytorch_index_url ||
+    'https://download.pytorch.org/whl/nightly/rocm7.2' }}
 
 jobs:
   build:
@@ -45,9 +49,27 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          
+          if [ -z "${ROCM_HOME:-}" ]; then
+            if [ -n "${ROCM_PATH:-}" ] && [ -x "${ROCM_PATH}/bin/hipcc" ]; then
+              ROCM_HOME="${ROCM_PATH}"
+            elif command -v hipcc >/dev/null 2>&1; then
+              HIPCC="$(command -v hipcc)"
+              ROCM_HOME="$(cd "$(dirname "$HIPCC")/.." && pwd)"
+            elif [ -x /opt/rocm/bin/hipcc ]; then
+              ROCM_HOME="/opt/rocm"
+            elif [ -x /usr/local/rocm/bin/hipcc ]; then
+              ROCM_HOME="/usr/local/rocm"
+            else
+              echo "ERROR: Could not find ROCm (hipcc). Set ROCM_HOME or install ROCm."
+              exit 1
+            fi
+          fi
+
+          echo "ROCM_HOME=${ROCM_HOME}" >> "${GITHUB_ENV}"
           echo "${ROCM_HOME}/bin" >> "${GITHUB_PATH}"
           echo "${ROCM_HOME}/llvm/bin" >> "${GITHUB_PATH}"
-          test -x "${ROCM_HOME}/bin/hipcc"
+          hipcc --version
 
       - name: Install build deps (best-effort)
         shell: bash
@@ -154,9 +176,26 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          if [ -z "${ROCM_HOME:-}" ]; then
+            if [ -n "${ROCM_PATH:-}" ] && [ -x "${ROCM_PATH}/bin/hipcc" ]; then
+              ROCM_HOME="${ROCM_PATH}"
+            elif command -v hipcc >/dev/null 2>&1; then
+              HIPCC="$(command -v hipcc)"
+              ROCM_HOME="$(cd "$(dirname "$HIPCC")/.." && pwd)"
+            elif [ -x /opt/rocm/bin/hipcc ]; then
+              ROCM_HOME="/opt/rocm"
+            elif [ -x /usr/local/rocm/bin/hipcc ]; then
+              ROCM_HOME="/usr/local/rocm"
+            else
+              echo "ERROR: Could not find ROCm (hipcc). Set ROCM_HOME or install ROCm."
+              exit 1
+            fi
+          fi
+
+          echo "ROCM_HOME=${ROCM_HOME}" >> "${GITHUB_ENV}"
           echo "${ROCM_HOME}/bin" >> "${GITHUB_PATH}"
           echo "${ROCM_HOME}/llvm/bin" >> "${GITHUB_PATH}"
-          test -x "${ROCM_HOME}/bin/hipcc"
+          hipcc --version
 
       - name: Download apex wheel artifact
         uses: actions/download-artifact@v4
