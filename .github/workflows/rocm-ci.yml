@@ -32,9 +32,42 @@ jobs:
         id: pytorch
         shell: bash
         run: |
-          SHA="$(git ls-remote https://github.com/pytorch/pytorch.git refs/heads/main | awk '{print $1}')"
-          echo "sha=${SHA}" >> "${GITHUB_OUTPUT}"
-          echo "PyTorch main SHA: ${SHA}"
+          set -euxo pipefail
+
+          PROBE_DIR="$(mktemp -d)"
+          git init "${PROBE_DIR}"
+          cd "${PROBE_DIR}"
+          git remote add origin https://github.com/pytorch/pytorch.git
+
+          # Fetch a window of recent commits from main (no blobs needed for path checks)
+          git -c protocol.version=2 fetch --depth=500 --filter=blob:none origin main
+          TIP_SHA="$(git rev-parse FETCH_HEAD)"
+          echo "tip_sha=${TIP_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "PyTorch main tip SHA: ${TIP_SHA}"
+
+          has_path() {
+            local sha="$1"
+            local path="$2"
+            git ls-tree "${sha}" -- "${path}" | grep -q .
+          }
+
+          GOOD_SHA=""
+          for sha in $(git rev-list FETCH_HEAD); do
+            if has_path "${sha}" "c10/hip/impl/hip_cmake_macros.h.in" && \
+              has_path "${sha}" "aten/src/ATen/hip/HIPConfig.h.in" && \
+              has_path "${sha}" "aten/src/THH"; then
+              GOOD_SHA="${sha}"
+              break
+            fi
+          done
+
+          if [ -z "${GOOD_SHA}" ]; then
+            echo "ERROR: No ROCm-buildable SHA found in the last 500 commits of main" >&2
+            exit 1
+          fi
+
+          echo "sha=${GOOD_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "Selected PyTorch SHA: ${GOOD_SHA}"
 
       - name: Restore cached PyTorch wheel
         id: cache-torch
