@@ -44,34 +44,77 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-
+      
+      - name: Sanity check
+        run: |
+          which hipcc || true
+          hipcc --version || true
+          echo "ROCM_HOME=$ROCM_HOME ROCM_PATH=$ROCM_PATH"
+          ls -la /opt | sed -n '1,200
+          
       - name: Ensure ROCm is on PATH
         shell: bash
         run: |
           set -euxo pipefail
           
-          if [ -z "${ROCM_HOME:-}" ]; then
-            if [ -n "${ROCM_PATH:-}" ] && [ -x "${ROCM_PATH}/bin/hipcc" ]; then
-              ROCM_HOME="${ROCM_PATH}"
-            elif command -v hipcc >/dev/null 2>&1; then
-              HIPCC="$(command -v hipcc)"
-              ROCM_HOME="$(cd "$(dirname "$HIPCC")/.." && pwd)"
-            elif [ -x /opt/rocm/bin/hipcc ]; then
-              ROCM_HOME="/opt/rocm"
-            elif [ -x /usr/local/rocm/bin/hipcc ]; then
-              ROCM_HOME="/usr/local/rocm"
-            else
-              echo "ERROR: Could not find ROCm (hipcc). Set ROCM_HOME or install ROCm."
-              exit 1
+          CANDIDATES=()
+
+          # Prefer canonical ROCm locations on Linux.
+          if [ -x /opt/rocm/bin/hipcc ]; then
+            CANDIDATES+=("/opt/rocm")
+          fi
+          while IFS= read -r d; do
+            CANDIDATES+=("$d")
+          done < <(ls -d /opt/rocm-* 2>/dev/null | sort -V || true)
+
+          # Ask hipconfig if available.
+          if command -v hipconfig >/dev/null 2>&1; then
+            CANDIDATES+=("$(hipconfig --rocmpath 2>/dev/null || true)")
+          fi
+
+          # Respect provided env vars 
+          CANDIDATES+=("${ROCM_PATH:-}" "${ROCM_HOME:-}")
+
+          # Infer from hipcc realpath.
+          if command -v hipcc >/dev/null 2>&1; then
+            HIPCC_REAL="$(readlink -f "$(command -v hipcc)" || command -v hipcc)"
+            CANDIDATES+=("$(cd "$(dirname "$HIPCC_REAL")/.." && pwd)")
+          fi
+
+          ROCM_HOME=""
+          for d in "${CANDIDATES[@]}"; do
+            [ -n "${d:-}" ] || continue
+            if [ -x "${d}/bin/hipcc" ] && [ -d "${d}/include" ]; then
+              ROCM_HOME="$d"
             fi
+            # Prefer a ROCm root that actually contains Thrust headers.
+            if [ -x "${d}/bin/hipcc" ] && [ -f "${d}/include/thrust/complex.h" ]; then
+              ROCM_HOME="$d"
+              break
+            fi
+          done
+
+          if [ -z "${ROCM_HOME}" ]; then
+            echo "ERROR: Could not determine ROCm root (need hipcc)."
+            exit 1
           fi
 
           echo "ROCM_HOME=${ROCM_HOME}" >> "${GITHUB_ENV}"
-          echo "${ROCM_HOME}/bin" >> "${GITHUB_PATH}"
-          echo "${ROCM_HOME}/llvm/bin" >> "${GITHUB_PATH}"
-          hipcc --version
+          echo "ROCM_PATH=${ROCM_HOME}" >> "${GITHUB_ENV}"
 
-      - name: Install build deps (best-effort)
+          # Add toolchain to PATH for later steps.
+          echo "${ROCM_HOME}/bin" >> "${GITHUB_PATH}"
+          if [ -d "${ROCM_HOME}/llvm/bin" ]; then
+            echo "${ROCM_HOME}/llvm/bin" >> "${GITHUB_PATH}"
+          fi
+          if [ -d "${ROCM_HOME}/lib/llvm/bin" ]; then
+            echo "${ROCM_HOME}/lib/llvm/bin" >> "${GITHUB_PATH}"
+          fi
+
+          "${ROCM_HOME}/bin/hipcc" --version
+          test -f "${ROCM_HOME}/include/thrust/complex.h"
+
+      - name: Install build deps
         shell: bash
         run: |
           set -euxo pipefail
@@ -92,7 +135,7 @@ jobs:
               libssl-dev
           fi
 
-      - name: Create venv + install PyTorch nightly (ROCm)
+      - name: Create venv + install PyTorch
         shell: bash
         run: |
           set -euxo pipefail
