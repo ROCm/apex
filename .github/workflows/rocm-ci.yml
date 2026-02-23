@@ -81,9 +81,6 @@ jobs:
           export BUILD_TEST=0
           export MAX_JOBS=16
           
-          # Clean any existing generated files before building
-          python tools/amd_build/build_amd.py clean
-          
           # Force HIPIFY to process all files, ignoring Git state
           export BUILD_SPLIT_CUDA=ON
           export BUILD_AMD_FORCE_HIPIFY=1
