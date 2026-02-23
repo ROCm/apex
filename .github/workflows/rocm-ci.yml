@@ -61,7 +61,21 @@ jobs:
           #!/bin/bash
           set -euxo pipefail
           export DEBIAN_FRONTEND=noninteractive
-          apt-get update && apt-get install -y python3-venv python3-dev python-is-python3 build-essential cmake ninja-build git
+          apt-get update && apt-get install -y \
+            ca-certificates \
+            curl \
+            git \
+            pkg-config \
+            python3-dev \
+            python3-venv \
+            python-is-python3 \
+            build-essential \
+            cmake \
+            ninja-build \
+            libssl-dev \
+            libopenblas-dev \
+            zlib1g-dev \
+            libffi-dev
           
           # Tell Git to trust the copied directories
           git config --global --add safe.directory /workspace/pytorch-src
@@ -71,7 +85,39 @@ jobs:
           pip install -U pip setuptools wheel
           
           cd /workspace/pytorch-src
-          pip install -r requirements.txt
+
+          # PyTorch's requirements.txt may pull in the Python "cmake" package which
+          # ships CMake 4.x into /venv/bin. CMake 4 breaks third_party projects
+          # that still set cmake_minimum_required(VERSION < 3.5) (e.g. NNPACK).
+          # We must use system CMake from apt (Ubuntu 24.04: 3.28.x).
+          python - << 'PY'
+          from pathlib import Path
+          src = Path("requirements.txt").read_text().splitlines()
+          out = []
+          for line in src:
+            s = line.strip()
+            if not s or s.startswith("#"):
+              out.append(line)
+              continue
+            name = s.split()[0]
+            base = name.split("==")[0].split(">=")[0].split("<=")[0]
+            base = base.split("~=")[0].split("!=")[0]
+            if base in {"cmake", "ninja"}:
+              continue
+            out.append(line)
+          Path("/tmp/requirements.no-cmake-ninja.txt").write_text(
+            "\n".join(out) + "\n"
+          )
+          PY
+          pip install -r /tmp/requirements.no-cmake-ninja.txt
+
+          # Defensive: if anything still pulled them in, remove venv-provided binaries.
+          pip uninstall -y cmake ninja || true
+          rm -f /venv/bin/cmake /venv/bin/ninja || true
+          hash -r
+
+          cmake --version
+          ninja --version
           
           export ROCM_HOME=/opt/rocm
           export PYTORCH_ROCM_ARCH=gfx942
@@ -80,10 +126,10 @@ jobs:
           export USE_CUDA=0
           export BUILD_TEST=0
           export MAX_JOBS=16
-          
-          # Force HIPIFY to process all files, ignoring Git state
-          export BUILD_SPLIT_CUDA=ON
-          export BUILD_AMD_FORCE_HIPIFY=1
+
+          export USE_NNPACK=0
+          export USE_XNNPACK=0
+          export USE_PYTORCH_QNNPACK=0
           
           python setup.py bdist_wheel
           
@@ -116,7 +162,16 @@ jobs:
           #!/bin/bash
           set -euxo pipefail
           export DEBIAN_FRONTEND=noninteractive
-          apt-get update && apt-get install -y python3-venv python3-dev python-is-python3 build-essential cmake git
+          apt-get update && apt-get install -y \
+            ca-certificates \
+            git \
+            python3-venv \
+            python3-dev \
+            python-is-python3 \
+            build-essential \
+            cmake \
+            ninja-build \
+            libssl-dev
           
           git config --global --add safe.directory '*'
 
@@ -128,6 +183,7 @@ jobs:
           pip install .ci/torch-wheel/*.whl
           pip install -r requirements.txt
           
+          export ROCM_HOME=/opt/rocm
           export PYTORCH_ROCM_ARCH=gfx942
           export APEX_BUILD_CPP_OPS=1
           export APEX_BUILD_CUDA_OPS=1
@@ -186,7 +242,16 @@ jobs:
           #!/bin/bash
           set -euxo pipefail
           export DEBIAN_FRONTEND=noninteractive
-          apt-get update && apt-get install -y python3-venv python3-dev python-is-python3 build-essential cmake git
+          apt-get update && apt-get install -y \
+            ca-certificates \
+            git \
+            python3-venv \
+            python3-dev \
+            python-is-python3 \
+            build-essential \
+            cmake \
+            ninja-build \
+            libssl-dev
           
           python3 -m venv /venv
           export PATH="/venv/bin:$PATH"
@@ -200,6 +265,7 @@ jobs:
           python -c "import torch; print('torch:', torch.__version__, 'hip:', torch.version.hip)"
           python -c "import apex; print('apex import OK')"
           
+          export ROCM_HOME=/opt/rocm
           export PYTORCH_ROCM_ARCH=gfx942
           export TORCH_EXTENSIONS_DIR=/workspace/.torch_extensions
           export NPROC_PER_NODE=8
