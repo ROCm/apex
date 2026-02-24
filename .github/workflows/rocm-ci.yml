@@ -43,6 +43,7 @@ jobs:
 
   test:
     name: Run Unit Tests
+    timeout-minutes: 720
     runs-on: linux-apex-mi325-8
     needs: build
     steps:
