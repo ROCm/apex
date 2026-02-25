@@ -99,9 +99,11 @@ def single_test(peer_rank, peer_group_size, halo_ex, C, H, W, half_halo, dtype, 
         nccl_halo_ex(peer_rank, peer_group_size, y2, half_halo, explicit_nhwc, H_split)
         list_y2.append(y2.clone())
         y2.copy_(y3)
-    is_equal = [torch.all(torch.eq(yy,yy2)) for yy,yy2 in zip(list_y,list_y2)]
-    is_equal = torch.tensor(is_equal, dtype=torch.bool)
-    is_equal = torch.all(is_equal)
+    
+    # Stack the 100 CUDA tensors directly on the GPU. No PCIe syncs
+    is_equal_stack = torch.stack([torch.eq(yy, yy2).all() for yy, yy2 in zip(list_y, list_y2)])
+    is_equal = is_equal_stack.all().item()
+
     if peer_rank == 0:
         if memory_format == 1:
             memory_format_str = "explicit_nhwc"
@@ -144,14 +146,22 @@ def W_split_tests(N, C, H, W, half_halo, rank, world_size, halo_ex, num_steps):
 
 def main():
     # for this trivial example peer_rank == rank and peer_group_size == world_size
-    
-    local_rank = int(os.environ.get("LOCAL_RANK", 0))
-    torch.cuda.set_device(local_rank)
-    torch.distributed.init_process_group("nccl")
 
+    # Force the AMD driver to only see the GPU assigned to this specific process
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    os.environ["HIP_VISIBLE_DEVICES"] = str(local_rank)
+    os.environ["ROCR_VISIBLE_DEVICES"] = str(local_rank)
+    
+    # Because the process only sees 1 GPU now, it is always index 0
+    torch.cuda.set_device(0) 
+    
+    # Iinitialize the process group
+    torch.distributed.init_process_group("nccl")
+    
     rank = torch.distributed.get_rank()
     world_size = torch.distributed.get_world_size()
 
+    torch.cuda.set_device(rank)
     peer_ranks = [i for i in range(world_size)]
     pool = PeerMemoryPool(64*1024, 2*1024*1024, peer_ranks)
 

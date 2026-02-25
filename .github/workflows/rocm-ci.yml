@@ -94,7 +94,9 @@ jobs:
         run: |
           docker run -d --name apex-test-container \
             --device=/dev/kfd --device=/dev/dri --group-add=video --ipc=host \
-            -e OMP_NUM_THREADS=48 \
+            -e OMP_NUM_THREADS=8 \
+            -e TORCH_NCCL_ASYNC_ERROR_HANDLING=1 \
+            -e NCCL_DEBUG=WARN \
             -v ${{ github.workspace }}:/workspace -w /workspace \
             ${{ env.DOCKER_IMAGE }} sleep infinity
 
@@ -129,7 +131,9 @@ jobs:
         run: |
           docker exec apex-test-container bash -c "
             set -eo pipefail
-            torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee halo_results.log
+            torchrun --nproc_per_node 8 \
+              --bind_all \
+              apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee halo_results.log
           "
 
       - name: Run Distributed Synced BatchNorm tests
