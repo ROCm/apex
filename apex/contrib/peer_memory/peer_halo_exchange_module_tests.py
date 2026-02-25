@@ -149,21 +149,25 @@ def main():
     
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     torch.cuda.set_device(local_rank)
-    torch.distributed.init_process_group("nccl")
-    
+
+    # Bind the RCCL context
+    torch.distributed.init_process_group(
+        "nccl", 
+        device_id=torch.device(f"cuda:{local_rank}")
+    )
+   
     rank = torch.distributed.get_rank()
     world_size = torch.distributed.get_world_size()
 
     peer_ranks = [i for i in range(world_size)]
     pool = PeerMemoryPool(64*1024, 2*1024*1024, peer_ranks)
-
     num_steps = 100
-
     half_halo = 1
     halo_ex = PeerHaloExchanger1d(peer_ranks, rank, pool, half_halo)
 
     H_split_tests(1,64,336,200, half_halo,rank,world_size,halo_ex,num_steps)
     W_split_tests(1,64,200,336, half_halo,rank,world_size,halo_ex,num_steps)
+
 
 if __name__ == "__main__":
     main()
