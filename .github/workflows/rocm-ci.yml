@@ -7,9 +7,40 @@ on:
   schedule:
     - cron: '0 0 * * 0' # weekly
   workflow_dispatch:
+    inputs:
+      apex_branch:
+        description: 'Apex branch to build'
+        required: false
+        default: 'master'
+        type: string
+      docker_image:
+        description: 'Docker image to use'
+        required: false
+        default: 'rocm/pytorch:rocm7.2_ubuntu24.04_py3.12_pytorch_release_2.9.1'
+        type: string
+      run_l0:
+        description: 'Run L0 tests'
+        required: false
+        default: true
+        type: boolean
+      run_contrib:
+        description: 'Run Contrib tests'
+        required: false
+        default: true
+        type: boolean
+      run_halo:
+        description: 'Run Peer Halo Exchange tests'
+        required: false
+        default: true
+        type: boolean
+      run_syncbn:
+        description: 'Run Distributed Synced BatchNorm tests'
+        required: false
+        default: true
+        type: boolean
 
 env:
-  DOCKER_IMAGE: "rocm/pytorch:rocm7.2_ubuntu24.04_py3.12_pytorch_release_2.9.1"
+  DOCKER_IMAGE: ${{ inputs.docker_image || 'rocm/pytorch:rocm7.2_ubuntu24.04_py3.12_pytorch_release_2.9.1' }}
 
 jobs:
   build:
@@ -19,6 +50,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Uses the specified branch on manual runs; defaults to the PR/Push context otherwise
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.apex_branch || '' }}
           submodules: recursive
 
       - name: Build Apex Wheel in Docker
@@ -48,6 +81,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.apex_branch || '' }}
           submodules: recursive
 
       - name: Download Wheel Artifact
@@ -60,47 +94,57 @@ jobs:
         run: |
           docker run -d --name apex-test-container \
             --device=/dev/kfd --device=/dev/dri --group-add=video --ipc=host \
+            -e OMP_NUM_THREADS=48 \
             -v ${{ github.workspace }}:/workspace -w /workspace \
             ${{ env.DOCKER_IMAGE }} sleep infinity
 
       - name: Install Dependencies and Built Wheel
         run: |
           docker exec apex-test-container bash -c "
+            set -e
             pip install expecttest
             pip install dist/apex-*.whl
           "
 
       - name: Run L0 tests
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_l0 }}
         run: |
           docker exec apex-test-container bash -c "
+            set -eo pipefail
             cd tests/L0
-            sh run_rocm.sh 2>&1 | tee ../../log_L0_results.txt
+            sh run_rocm.sh 2>&1 | tee ../../L0_results.log
           "
 
       - name: Run Contrib tests
+        if: ${{ (success() || failure()) && (github.event_name != 'workflow_dispatch' || inputs.run_contrib) }}
         run: |
           docker exec apex-test-container bash -c "
+            set -eo pipefail
             cd apex/contrib/test
-            python3 run_rocm_extensions.py 2>&1 | tee ../../../log_contrib_results.txt
+            python3 run_rocm_extensions.py 2>&1 | tee ../../../contrib_results.log
           "
 
       - name: Run Peer Halo Exchange tests
+        if: ${{ (success() || failure()) && (github.event_name != 'workflow_dispatch' || inputs.run_halo) }}
         run: |
           docker exec apex-test-container bash -c "
-            torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee log_halo_results.txt
+            set -eo pipefail
+            torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee halo_results.log
           "
 
       - name: Run Distributed Synced BatchNorm tests
+        if: ${{ (success() || failure()) && (github.event_name != 'workflow_dispatch' || inputs.run_syncbn) }}
         run: |
           docker exec apex-test-container bash -c "
+            set -eo pipefail
             cd tests/distributed/synced_batchnorm
-            sh unit_test.sh 2>&1 | tee ../../../log_syncbn_results.txt
+            sh unit_test.sh 2>&1 | tee ../../../syncbn_results.log
           "
 
       - name: Fix Artifact Permissions
-        if: always() # Run even if a test step fails
+        if: always()
         run: |
-          docker exec apex-test-container bash -c "chown -R $(id -u):$(id -g) *.txt"
+          docker exec apex-test-container bash -c "chown -R $(id -u):$(id -g) *.log"
 
       - name: Cleanup Background Container
         if: always()
@@ -112,8 +156,8 @@ jobs:
         with:
           name: test-logs
           path: |
-            log_L0_results.txt
-            log_contrib_results.txt
-            log_halo_results.txt
-            log_syncbn_results.txt
+            L0_results.log
+            contrib_results.log
+            halo_results.log
+            syncbn_results.log
           retention-days: 14
