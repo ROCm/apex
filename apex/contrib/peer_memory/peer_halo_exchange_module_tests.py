@@ -91,11 +91,8 @@ def single_test(peer_rank, peer_group_size, halo_ex, C, H, W, half_halo, dtype, 
         halo_ex(y, H_split, explicit_nhwc, numSM)
         list_y.append(y.clone())
         y.copy_(y3)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
         halo_ex.peer_pool.reset()
         torch.distributed.barrier()
-
     y2 = y3.clone()
     list_y2 = []
     for step in range(num_steps):
