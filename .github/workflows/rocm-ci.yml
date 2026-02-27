@@ -114,12 +114,12 @@ jobs:
           "
 
       - name: Run Extension Import tests
-        if: ${{ (always()) && (github.event_name != 'workflow_dispatch' || inputs.run_extension) }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_extension }}
         run: |
           docker exec apex-test-container bash -c "
             set -eo pipefail
             cd tests
-            python3 test_extension_import.py 2>&1 | tee ../../extension_import_results.log
+            python3 test_extension_import.py 2>&1 | tee ../extension_import_results.log
           "
 
       - name: Run L0 tests
@@ -132,7 +132,7 @@ jobs:
           "
 
       - name: Run Contrib tests
-        if: ${{ (always()) && (github.event_name != 'workflow_dispatch' || inputs.run_contrib) }}
+        if: ${{ (success() || failure()) && (github.event_name != 'workflow_dispatch' || inputs.run_contrib) }}
         run: |
           docker exec apex-test-container bash -c "
             set -eo pipefail
