@@ -312,10 +312,18 @@ If you installed Pytorch in a Conda environment, make sure to install Apex in th
 
 # Release notes
 
+## release/1.11.0
+
+Added extensions
+- fused_conv_bias_relu
+
+Upgraded extensions
+- Create custom python operators for MixedFusedLayerNorm and MixedFusedRMSNorm
+- Added Pow implementation for Focal loss cuda kernel to improve computation time
+
 ## release/1.10.0
 
-Build and installation related
-- Support JIT (just-in-time) load cpp and CUDA extensions
+- No new features were added in this release cycle.
 
 ## release/1.9.0
 
@@ -326,6 +334,10 @@ Build and installation related
 Unit test related
 - Fix transformer unit tests
 - Fix fused dense gelu dense unit tests
+
+Build and installation related
+- Support JIT (just-in-time) load cpp and CUDA extensions
+- Script to add new module to JIT system
 
 ## release/1.7.0
 
