@@ -1,0 +1,178 @@
+name: Apex ROCm CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+    branches: [master]
+  schedule:
+    - cron: '0 0 * * 0' # weekly
+  workflow_dispatch:
+    inputs:
+      apex_gitref:
+        description: 'Apex branch or commit SHA to build'
+        required: false
+        default: 'master'
+        type: string
+      docker_image:
+        description: 'Docker image to use'
+        required: false
+        default: 'rocm/pytorch:latest'
+        type: string
+      run_extension:
+        description: 'Run Extension Import tests'
+        required: false
+        default: true
+        type: boolean
+      run_l0:
+        description: 'Run L0 tests'
+        required: false
+        default: true
+        type: boolean
+      run_contrib:
+        description: 'Run Contrib tests'
+        required: false
+        default: true
+        type: boolean
+      run_halo:
+        description: 'Run Peer Halo Exchange tests'
+        required: false
+        default: true
+        type: boolean
+      run_syncbn:
+        description: 'Run Distributed Synced BatchNorm tests'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  DOCKER_IMAGE: ${{ inputs.docker_image || 'rocm/pytorch:latest' }}
+
+jobs:
+  build:
+    name: Build Apex Wheel
+    runs-on: build-only-apex
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Uses the specified branch on manual runs; defaults to the PR/Push context otherwise
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.apex_gitref || '' }}
+          submodules: recursive
+
+      - name: Build Apex Wheel in Docker
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace ${{ env.DOCKER_IMAGE }} bash -c "
+            pip install --upgrade pip
+            pip install build ninja wheel packaging
+
+            python3 -m build --wheel --no-isolation -C--build-option=--cpp_ext -C--build-option=--cuda_ext
+
+            chown -R $(id -u):$(id -g) dist/
+          "
+
+      - name: Upload Wheel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex-wheel
+          path: dist/*.whl
+          retention-days: 7
+
+  test:
+    name: Run Unit Tests
+    timeout-minutes: 720
+    runs-on: linux-apex-mi325-8
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.apex_gitref || '' }}
+          submodules: recursive
+
+      - name: Download Wheel Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: apex-wheel
+          path: dist/
+
+      - name: Start Background Docker Container
+        run: |
+          docker run -d --name apex-test-container \
+            --device=/dev/kfd --device=/dev/dri --group-add=video --ipc=host \
+            -e OMP_NUM_THREADS=8 \
+            -e TORCH_NCCL_ASYNC_ERROR_HANDLING=1 \
+            -e NCCL_DEBUG=WARN \
+            -v ${{ github.workspace }}:/workspace -w /workspace \
+            ${{ env.DOCKER_IMAGE }} sleep infinity
+
+      - name: Install Dependencies and Built Wheel
+        run: |
+          docker exec apex-test-container bash -c "
+            set -e
+            pip install expecttest onnxscript
+            pip install dist/apex-*.whl
+          "
+
+      - name: Run Extension Import tests
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_extension }}
+        run: |
+          docker exec apex-test-container bash -c "
+            set -eo pipefail
+            cd tests
+            python3 test_extension_import.py 2>&1 | tee ../extension_import_results.log
+          "
+
+      - name: Run L0 tests
+        if: ${{ (always()) && (github.event_name != 'workflow_dispatch' || inputs.run_l0) }}
+        run: |
+          docker exec apex-test-container bash -c "
+            set -eo pipefail
+            cd tests/L0
+            sh run_rocm.sh 2>&1 | tee ../../L0_results.log
+          "
+
+      - name: Run Contrib tests
+        if: ${{ (success() || failure()) && (github.event_name != 'workflow_dispatch' || inputs.run_contrib) }}
+        run: |
+          docker exec apex-test-container bash -c "
+            set -eo pipefail
+            cd apex/contrib/test
+            python3 run_rocm_extensions.py 2>&1 | tee ../../../contrib_results.log
+          "
+
+      - name: Run Peer Halo Exchange tests
+        if: ${{ (success() || failure()) && (github.event_name != 'workflow_dispatch' || inputs.run_halo) }}
+        run: |
+          docker exec apex-test-container bash -c "
+            set -eo pipefail
+            export HSA_FORCE_FINE_GRAIN_PCIE=1
+            export HSA_ENABLE_SDMA=0
+            torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee halo_results.log
+          "
+
+      - name: Run Distributed Synced BatchNorm tests
+        if: ${{ (success() || failure()) && (github.event_name != 'workflow_dispatch' || inputs.run_syncbn) }}
+        run: |
+          docker exec apex-test-container bash -c "
+            set -eo pipefail
+            cd tests/distributed/synced_batchnorm
+            sh unit_test.sh 2>&1 | tee ../../../syncbn_results.log
+          "
+
+      - name: Fix Artifact Permissions
+        if: always()
+        run: |
+          docker exec apex-test-container bash -c "chown -R $(id -u):$(id -g) *.log"
+
+      - name: Cleanup Background Container
+        if: always()
+        run: docker rm -f apex-test-container
+
+      - name: Upload Test Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            *.log
+          retention-days: 14
