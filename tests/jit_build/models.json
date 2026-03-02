@@ -1,0 +1,158 @@
+[
+    {
+        "name": "apex_jit_install_condition1",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 1"
+    },
+    {
+        "name": "apex_jit_install_condition2",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 2"
+    },
+    {
+        "name": "apex_jit_install_condition3",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 3"
+    },
+    {
+        "name": "apex_jit_install_condition4",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 4"
+    },
+    {
+        "name": "apex_jit_install_condition5",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 5"
+    },
+    {
+        "name": "apex_jit_install_condition6",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 6"
+    },
+    {
+        "name": "apex_jit_install_condition7",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 7"
+    },
+    {
+        "name": "apex_jit_install_condition8",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 8"
+    },
+    {
+        "name": "apex_jit_install_condition9",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 9"
+    },
+    {
+        "name": "apex_jit_install_condition10",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 10"
+    },
+    {
+        "name": "apex_jit_install_condition11",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 11"
+    },
+    {
+        "name": "apex_jit_install_condition12",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 12"
+    },
+    {
+        "name": "apex_jit_install_condition13",
+        "dockerfile": "docker/base",
+        "scripts": "scripts",
+        "n_gpus": "8",
+        "owner": "skishore@amd.com",
+        "training_precision": "",
+        "tags": [
+          "apex_jit"
+        ],
+        "args": "--condition 13"
+    }
+]

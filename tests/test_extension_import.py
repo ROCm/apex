@@ -2,15 +2,17 @@ import unittest
 import os
 import subprocess
 import sys
-
+import site
+import ast
+from apex.op_builder.all_ops import ALL_OPS
 
 
 class TestExtensionImport(unittest.TestCase):
 
-    def get_extensions_list(self):
-        """
-        This method reads setup.py and gets the list of extensions from the setup.py file
-        """
+    def __init__(self, *args, **kwargs):
+        super(TestExtensionImport, self).__init__(*args, **kwargs)
+
+        self.jit_info_file = "apex/git_version_info_installed.py"
 
         #find the absolute path of this file
         current_file_path = os.path.abspath(__file__)
@@ -21,9 +23,24 @@ class TestExtensionImport(unittest.TestCase):
         #apex folder
         parent_folder_path = os.path.dirname(parent_folder_path)
         self.parent_folder_path = parent_folder_path
+
+    def is_jit_modules_mode(self):
+        """
+        This method checks if the file git_version_info_installed.py exists
+        """
+        jit_file_path = os.path.join(site.getsitepackages()[0], self.jit_info_file)
+        #print ("jit_file_path", jit_file_path)
+        mode = os.path.exists(jit_file_path)
+        print ("jit_mode", mode)
+        return mode
+
+    def get_extensions_list_from_setup(self):
+        """
+        This method reads setup.py and gets the list of extensions from the setup.py file
+        """
         
         #get setup.py file contents
-        setup_path = os.path.join(parent_folder_path, "setup.py")
+        setup_path = os.path.join(self.parent_folder_path, "setup.py")
 
         #read setup_path contents
         with open(setup_path, 'r') as f:
@@ -61,6 +78,21 @@ class TestExtensionImport(unittest.TestCase):
 
         return extensions
 
+
+    def get_jit_modules(self):
+        """
+        This method reads the jit file and extracts installed_ops dictionary
+        """
+        jit_info_path = os.path.join(site.getsitepackages()[0], self.jit_info_file)
+        with open(jit_info_path, 'r') as f:
+            lines = f.readlines()
+        for line in lines:
+            if "installed_ops" in line:
+                ops_list = line[len("installed_ops") + 1 : ]
+                ops_list = ast.literal_eval(ops_list)
+                #print ("op_list", ops_list)
+                return list(ops_list.keys())
+        return {}
 
     def get_environment(self):
         """
@@ -122,10 +154,46 @@ class TestExtensionImport(unittest.TestCase):
             print(f"Error testing import for {extension_name}: {e}")
             return False, str(e)
 
+    def check_jit_extension_import(self, extension_name, env):
+        all_ops = dict.fromkeys(ALL_OPS.keys(), False)
+        #get the builder for that extension
+        builder = ALL_OPS[extension_name]
+        builder_name = type(builder).__name__
+        #print ("----builder_name-----", builder_name)
+
+        #increase timeout
+        timeout = 60 * 60
+        try:
+            # Run Python subprocess to test the import
+            result = subprocess.run([
+                sys.executable, '-c', 
+                'from apex.op_builder import ' + builder_name + 
+                '\n' + builder_name + "().load()"
+            ], capture_output=True, text=True, timeout=timeout, env=env)
+            print ("result.stdout", result.stdout, result.stderr)
+            # Check if subprocess completed successfully
+            if result.returncode != 0 and "Error" in result.stderr:
+                return False, result.stderr
+            else:
+                return True, ""
+                
+        except subprocess.TimeoutExpired:
+            print(f"Import test timed out for {extension_name}")
+            return False, "Timeout"
+        except Exception as e:
+            print(f"Error testing import for {extension_name}: {e}")
+            return False, str(e)
+
 
     def test_extensions_import(self):
-        #get the list of extensions
-        extensions = self.get_extensions_list()
+        #check the extensions mode
+        jit_mode = self.is_jit_modules_mode()
+
+        if not jit_mode:
+            #get the list of extensions from setup.py
+            extensions = self.get_extensions_list_from_setup()
+        else:
+            extensions = self.get_jit_modules()
 
         #get environment
         env = self.get_environment()
@@ -135,7 +203,10 @@ class TestExtensionImport(unittest.TestCase):
         for extension in extensions:
             print ("checking extension", extension)
             with self.subTest(extension=extension):
-                success, error_message = self.check_extension_import(extension, env)
+                if not jit_mode:
+                    success, error_message = self.check_extension_import(extension, env)
+                else:
+                    success, error_message = self.check_jit_extension_import(extension, env)
                 #self.assertTrue(success, f"Failed to import extension: {extension}")
                 results.append((extension, success, error_message))
 
