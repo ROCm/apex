@@ -309,23 +309,51 @@ If you installed Pytorch in a Conda environment, make sure to install Apex in th
 
 # Release notes
 
-<<<<<<< HEAD
-=======
-## release/1.10.0
-
-Build and installation related
-- Support JIT (just-in-time) load cpp and CUDA extensions
-
-## release/1.9.0
-
-- No new features were added in this release cycle.
-
->>>>>>> 95043e3 ([REDUX] Refactor Apex build process to use the PyTorch JIT extension flow (#291))
 ## release/1.8.0
 
 Unit test related
 - Fix transformer unit tests
 - Fix fused dense gelu dense unit tests
 
+Build and installation related
+- Support JIT (just-in-time) load cpp and CUDA extensions
+- Script to add new module to JIT system
+
+## release/1.7.0
+
+Build and installation related
+- Support use of BUILD_VERSION environment to override version.txt when creating apex wheels
+- Disable aiter installation by default. make aiter command is used to build apex
+
+Unit test related
+- Include running transformer tests in L0/run_test.py
+- Fix transformer unit tests
+- Fix batch norm unit tests
+- Fix fused dense gelu dense unit tests
+
+## release/1.6.0
+
+Upgraded extensions
+- Support unscale_grads in transformer Grad scaler
+- Support amp function in fused dense, mlp
+- Support blas backend flag in fused dense 
+- Support not destroying process group for distributed tests
+- Upgrade fused adam to support parameters - capturable, master weights, grad scaler
+- Upgrade distributed fused adam to support bias_correction, adam_w_mode, overlap_param_sync, store_params, store_param_remainders, with_scaled_states, nccl_ub
+- Upgrade distributed fused lamb to support parameters fused_norm, full_ar, set_param_views_to_flat_buffer, skip_allgather, fuse_scale, param_order, nccl_allgather_channels
+
+Unit test related
+- Fix fused dense, fused rope, mlp unit tests
+- Add test fused adam unit test
+- Include running fused dense tests in L0/run_test.py
 
 
+## release/1.5.0
+
+Added extensions
+- fused bias swiglu
+- fused gradient accumulator
+- fused rope
+  
+Upgraded extensions
+- Support blaslt backend in fused weight gradient dense module
