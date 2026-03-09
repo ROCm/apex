@@ -229,7 +229,14 @@ class TestExtensionImport(unittest.TestCase):
             error_display = error_message[:17] + "..." if len(error_message) > 20 else error_message
             print(f"{extension:<30} {success:<10} {error_display:<20}")
         print("-" * 60)
-        
+
+        # Fail the test if any extensions failed to import
+        failed_extensions = [ext for ext, success, _ in results if not success]
+        self.assertEqual(
+            len(failed_extensions), 0,
+            f"{len(failed_extensions)} extension(s) failed to import: {', '.join(failed_extensions)}"
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
