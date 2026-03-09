@@ -27,6 +27,23 @@ namespace cg = cooperative_groups;
   }                                                 \
 } while(0)
 
+#define CUDACHECK_FATAL(cmd) do {                   \
+  cudaError_t err = cmd;                            \
+  if( err != cudaSuccess ) {                        \
+    TORCH_CHECK(false,                              \
+        "CUDA error at ", __FILE__, ":", __LINE__,  \
+        " '", cudaGetErrorString(err), "'");        \
+  }                                                 \
+} while(0)
+
+#ifdef USE_ROCM
+#define LAUNCH_COOPERATIVE_KERNEL(kernel, grid, block, args, stream) \
+    CUDACHECK_FATAL(hipLaunchCooperativeKernel((void*)(kernel), (grid), (block), (args), 0, (stream)))
+#else
+#define LAUNCH_COOPERATIVE_KERNEL(kernel, grid, block, args, stream) \
+    CUDACHECK_FATAL(cudaLaunchCooperativeKernel((void*)(kernel), (grid), (block), (args), 0, (stream)))
+#endif
+
 // C++17 removes 'register' storage keyword
 #if __cplusplus < 201703L
 #define REGISTER register
@@ -353,9 +370,7 @@ __device__ void clear_flag(
 }
 
 template<class T, bool is_HWC, bool top_zero, bool btm_zero>
-#if __CUDA_ARCH__ == 700 || __CUDA_ARCH__ == 800 || __CUDA_ARCH__ == 900
 __launch_bounds__(128, 16)
-#endif
 __global__ void push_pull_halos_1d_kernel(
         // top halo,
         const T* toh, int toh_stride_C, int toh_stride_H, int toh_stride_W,     // top output halo
@@ -647,31 +662,22 @@ void push_pull_halos_1d(
 		};
 		if (top_zero) {
 		    int numBlocksPerSm;
-		    cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<int4,true,true,false>, numThreads, 0);
+		    CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<int4,true,true,false>, numThreads, 0));
+		    TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 		    dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-		    hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<int4,true,true,false>, grid, block, kernelArgs, 0, current_stream);
-#else
-		    cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<int4,true,true,false>, grid, block, kernelArgs, 0, current_stream);
-#endif
+		    LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<int4,true,true,false>, grid, block, kernelArgs, current_stream);
 		} else if (btm_zero) {
 		    int numBlocksPerSm;
-		    cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<int4,true,false,true>, numThreads, 0);
+		    CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<int4,true,false,true>, numThreads, 0));
+		    TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 		    dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-		    hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<int4,true,false,true>, grid, block, kernelArgs, 0, current_stream);
-#else
-		    cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<int4,true,false,true>, grid, block, kernelArgs, 0, current_stream);
-#endif
+		    LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<int4,true,false,true>, grid, block, kernelArgs, current_stream);
 		} else {
 		    int numBlocksPerSm;
-		    cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<int4,true,false,false>, numThreads, 0);
+		    CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<int4,true,false,false>, numThreads, 0));
+		    TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 		    dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-		    hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<int4,true,false,false>, grid, block, kernelArgs, 0, current_stream);
-#else
-		    cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<int4,true,false,false>, grid, block, kernelArgs, 0, current_stream);
-#endif
+		    LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<int4,true,false,false>, grid, block, kernelArgs, current_stream);
 		}
             } else {
                 // cannot do int4 transfers
@@ -691,55 +697,37 @@ void push_pull_halos_1d(
                 int numBlocksPerSm;
                 if (is_nhwc) {
 		    if (top_zero) {
-			cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,true,true,false>, numThreads, 0);
+			CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,true,true,false>, numThreads, 0));
+			TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 			dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-			hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,true,true,false>, grid, block, kernelArgs, 0, current_stream);
-#else
-			cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,true,true,false>, grid, block, kernelArgs, 0, current_stream);
-#endif
+			LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<scalar_t,true,true,false>, grid, block, kernelArgs, current_stream);
 		    } else if (btm_zero) {
-			cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,true,false,true>, numThreads, 0);
+			CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,true,false,true>, numThreads, 0));
+			TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 			dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-			hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,true,false,true>, grid, block, kernelArgs, 0, current_stream);
-#else
-			cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,true,false,true>, grid, block, kernelArgs, 0, current_stream);
-#endif
+			LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<scalar_t,true,false,true>, grid, block, kernelArgs, current_stream);
 		    } else {
-			cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,true,false,false>, numThreads, 0);
+			CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,true,false,false>, numThreads, 0));
+			TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 			dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-			hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,true,false,false>, grid, block, kernelArgs, 0, current_stream);
-#else
-			cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,true,false,false>, grid, block, kernelArgs, 0, current_stream);
-#endif
+			LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<scalar_t,true,false,false>, grid, block, kernelArgs, current_stream);
 		    }
                 } else {
 		    if (top_zero) {
-			cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,false,true,false>, numThreads, 0);
+			CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,false,true,false>, numThreads, 0));
+			TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 			dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-			hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,false,true,false>, grid, block, kernelArgs, 0, current_stream);
-#else
-			cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,false,true,false>, grid, block, kernelArgs, 0, current_stream);
-#endif
+			LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<scalar_t,false,true,false>, grid, block, kernelArgs, current_stream);
 		    } else if (btm_zero) {
-			cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,false,false,true>, numThreads, 0);
+			CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,false,false,true>, numThreads, 0));
+			TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 			dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-			hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,false,false,true>, grid, block, kernelArgs, 0, current_stream);
-#else
-			cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,false,false,true>, grid, block, kernelArgs, 0, current_stream);
-#endif
+			LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<scalar_t,false,false,true>, grid, block, kernelArgs, current_stream);
 		    } else {
-			cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,false,false,false>, numThreads, 0);
+			CUDACHECK_FATAL(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&numBlocksPerSm, push_pull_halos_1d_kernel<scalar_t,false,false,false>, numThreads, 0));
+			TORCH_CHECK(numBlocksPerSm > 0, "push_pull_halos_1d: cooperative kernel requires at least 1 block per SM, got 0");
 			dim3 grid(numSM*numBlocksPerSm,1,1);
-#ifdef USE_ROCM
-			hipLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,false,false,false>, grid, block, kernelArgs, 0, current_stream);
-#else
-			cudaLaunchCooperativeKernel((void*)push_pull_halos_1d_kernel<scalar_t,false,false,false>, grid, block, kernelArgs, 0, current_stream);
-#endif
+			LAUNCH_COOPERATIVE_KERNEL(push_pull_halos_1d_kernel<scalar_t,false,false,false>, grid, block, kernelArgs, current_stream);
 		    }
                 }
 	    }
