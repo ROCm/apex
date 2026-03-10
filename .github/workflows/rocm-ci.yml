@@ -60,10 +60,20 @@ jobs:
           # Uses the specified branch on manual runs; defaults to the PR/Push context otherwise
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.apex_gitref || '' }}
           submodules: recursive
-
-      - name: Build Apex Wheel in Docker
+      
+      - name: Pull Docker Image
         run: |
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace ${{ env.DOCKER_IMAGE }} bash -c "
+          docker pull ${{ env.DOCKER_IMAGE }}
+
+      - name: Start Background Docker Container
+        run: |
+          docker run -d --name apex-build-container \
+            -v ${{ github.workspace }}:/workspace -w /workspace \
+            ${{ env.DOCKER_IMAGE }} sleep infinity
+
+      - name: Build Apex Wheel
+        run: |
+          docker exec apex-build-container bash -c "
             pip install --upgrade pip
             pip install build ninja wheel packaging
 
@@ -71,6 +81,23 @@ jobs:
 
             chown -R $(id -u):$(id -g) dist/
           "
+
+      - name: Run Extension Import tests
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_extension }}
+        run: |
+          docker exec apex-build-container bash -c "
+            set -eo pipefail
+
+            pip install expecttest onnxscript
+            pip install dist/apex-*.whl
+
+            cd tests
+            python3 test_extension_import.py 2>&1 | tee ../extension_import_results.log
+          "
+
+      - name: Cleanup Build Container
+        if: always()
+        run: docker rm -f apex-build-container
 
       - name: Upload Wheel Artifact
         uses: actions/upload-artifact@v4
@@ -96,6 +123,10 @@ jobs:
         with:
           name: apex-wheel
           path: dist/
+      
+      - name: Pull Docker Image
+        run: |
+          docker pull ${{ env.DOCKER_IMAGE }}]
 
       - name: Start Background Docker Container
         run: |
@@ -113,15 +144,6 @@ jobs:
             set -e
             pip install expecttest onnxscript
             pip install dist/apex-*.whl
-          "
-
-      - name: Run Extension Import tests
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_extension }}
-        run: |
-          docker exec apex-test-container bash -c "
-            set -eo pipefail
-            cd tests
-            python3 test_extension_import.py 2>&1 | tee ../extension_import_results.log
           "
 
       - name: Run L0 tests
