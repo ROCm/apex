@@ -126,7 +126,7 @@ jobs:
       
       - name: Pull Docker Image
         run: |
-          docker pull ${{ env.DOCKER_IMAGE }}]
+          docker pull ${{ env.DOCKER_IMAGE }}
 
       - name: Start Background Docker Container
         run: |
