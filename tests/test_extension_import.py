@@ -101,30 +101,36 @@ class TestExtensionImport(unittest.TestCase):
         """
         # Get current environment and ensure CUDA/PyTorch libraries are available
         env = os.environ.copy()
-        
-        # Add common CUDA library paths
+
         ld_library_path = env.get('LD_LIBRARY_PATH', '')
-        cuda_paths = [
-            '/usr/local/cuda/lib64',
-            '/usr/local/cuda/lib',
-            '/opt/conda/lib',
-            '/usr/lib/x86_64-linux-gnu'
-        ]
-        
+        extra_paths = []
+
         # Add PyTorch library path
         try:
             import torch
             torch_lib_path = os.path.join(os.path.dirname(torch.__file__), 'lib')
             if os.path.exists(torch_lib_path):
-                cuda_paths.append(torch_lib_path)
+                extra_paths.append(torch_lib_path)
         except ImportError:
             pass
-        
+
+        # Add ROCm library path if present
+        rocm_path = os.environ.get('ROCM_PATH', '/opt/rocm')
+        rocm_lib = os.path.join(rocm_path, 'lib')
+        if os.path.exists(rocm_lib):
+            extra_paths.append(rocm_lib)
+
+        # Add common CUDA library paths (only those that exist)
+        for path in ['/usr/local/cuda/lib64', '/usr/local/cuda/lib',
+                     '/opt/conda/lib', '/usr/lib/x86_64-linux-gnu']:
+            if os.path.isdir(path):
+                extra_paths.append(path)
+
         # Update LD_LIBRARY_PATH
         if ld_library_path:
-            env['LD_LIBRARY_PATH'] = ':'.join(cuda_paths) + ':' + ld_library_path
+            env['LD_LIBRARY_PATH'] = ':'.join(extra_paths) + ':' + ld_library_path
         else:
-            env['LD_LIBRARY_PATH'] = ':'.join(cuda_paths)
+            env['LD_LIBRARY_PATH'] = ':'.join(extra_paths)
         return env
     
 
@@ -229,7 +235,14 @@ class TestExtensionImport(unittest.TestCase):
             error_display = error_message[:17] + "..." if len(error_message) > 20 else error_message
             print(f"{extension:<30} {success:<10} {error_display:<20}")
         print("-" * 60)
-        
+
+        # Fail the test if any extensions failed to import
+        failed_extensions = [ext for ext, success, _ in results if not success]
+        self.assertEqual(
+            len(failed_extensions), 0,
+            f"{len(failed_extensions)} extension(s) failed to import: {', '.join(failed_extensions)}"
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
