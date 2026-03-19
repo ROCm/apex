@@ -172,6 +172,7 @@ jobs:
             export HSA_FORCE_FINE_GRAIN_PCIE=1
             export HSA_ENABLE_SDMA=0
             torchrun --nproc_per_node 8 apex/contrib/peer_memory/peer_halo_exchange_module_tests.py 2>&1 | tee halo_results.log
+            ! grep -q 'FAILURE :' halo_results.log
           "
 
       - name: Run Distributed Synced BatchNorm tests
