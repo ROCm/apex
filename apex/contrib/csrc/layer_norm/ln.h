@@ -8,7 +8,7 @@ namespace layer_norm {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<typename Params> 
+template<typename Params>
 struct LaunchParams{
 
     size_t workspace_bytes;

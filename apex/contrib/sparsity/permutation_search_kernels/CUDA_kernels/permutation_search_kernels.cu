@@ -6,7 +6,7 @@ namespace py = pybind11;
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
 {
-    if (code != cudaSuccess) 
+    if (code != cudaSuccess)
     {
         fprintf(stderr,"GPUassert %d: %s %s %d\n", (int)code, cudaGetErrorString(code), file, line);
         if (abort) exit(code);
@@ -336,7 +336,7 @@ int run_build_permute_map(py::array_t<float>& py_matrix,
     gpuErrchk(cudaMemcpy( d_permutations, permutations, num_permutations*perm_length*sizeof(unsigned int), cudaMemcpyHostToDevice ));
 
     unsigned int group_offset = 0;
-    for (unsigned int l = 0; l < launches; ++l) 
+    for (unsigned int l = 0; l < launches; ++l)
     {
         unsigned int groups_this_launch = (l < full_launches) ? MAX_GROUPS_PER_LAUNCH : final_launch;
 

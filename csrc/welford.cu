@@ -1476,7 +1476,7 @@ at::Tensor batchnorm_backward_c_last_CUDA(
           stride);
     );
   }
- 
+
   return grad_input;
 }
 

@@ -26,7 +26,7 @@ TEST_DIRS = [
     "run_fused_layer_norm",
     "run_mlp",
     "run_fused_dense",
-    "run_transformer",       
+    "run_transformer",
 ]
 
 #the tests that are run by default

@@ -6,7 +6,7 @@ from .RNNBackend import RNNCell
 
 from torch.nn._functions.thnn import rnnFusedPointwise as fusedBackend
 
-import math 
+import math
 
 
 class mLSTMRNNCell(RNNCell):
@@ -36,7 +36,7 @@ class mLSTMRNNCell(RNNCell):
                            self.cell(input, hidden_state, self.w_ih, self.w_hh, self.w_mih, self.w_mhh,
                            b_ih=self.b_ih, b_hh=self.b_hh)
         )
-        
+
         if self.output_size != self.hidden_size:
             self.hidden[0] = F.linear(self.hidden[0], self.w_ho)
         return tuple(self.hidden)
@@ -45,7 +45,7 @@ class mLSTMRNNCell(RNNCell):
     def new_like(self, new_input_size=None):
         if new_input_size is None:
             new_input_size = self.input_size
-        
+
         return type(self)(
             new_input_size,
             self.hidden_size,
@@ -66,7 +66,7 @@ def mLSTMCell(input, hidden, w_ih, w_hh, w_mih, w_mhh, b_ih=None, b_hh=None):
         return state(igates, hgates, hidden[1], b_ih, b_hh)
 
     hx, cx = hidden
-    
+
     m = F.linear(input, w_mih) * F.linear(hidden[0], w_mhh)
     gates = F.linear(input, w_ih, b_ih) + F.linear(m, w_hh, b_hh)
 
@@ -76,9 +76,9 @@ def mLSTMCell(input, hidden, w_ih, w_hh, w_mih, w_mhh, b_ih=None, b_hh=None):
     forgetgate = F.sigmoid(forgetgate)
     cellgate = F.tanh(cellgate)
     outgate = F.sigmoid(outgate)
-    
+
     cy = (forgetgate * cx) + (ingate * cellgate)
     hy = outgate * F.tanh(cy)
-    
+
     return hy, cy
-                                                                            
+

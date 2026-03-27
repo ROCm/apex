@@ -40,7 +40,7 @@ class FusedLARS(Optimizer):
             self._dummy_overflow_buf = torch.cuda.IntTensor(1).zero_()
         else:
             raise RuntimeError('apex.optimizers.FusedLARS requires cuda extensions')
-        
+
     def __setstate__(self, state):
         super(FusedLARS, self).__setstate__(state)
         for group in self.param_groups:
@@ -97,7 +97,7 @@ class FusedLARS(Optimizer):
             nesterov = group['nesterov']
             lr = group['lr']
             is_skipped = group['is_skipped']
-            
+
             # For each group, there are 3 possible combinations we need to consider:
             # grad_type, param_to_update_type, momentum_type, requires_fp16_model_copy
             # 1. fp16, fp16, fp16, No

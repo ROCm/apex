@@ -1432,7 +1432,7 @@ int mlp_bp(
       #endif
     #endif
   #endif
-  
+
   int* y_offsets = (int*)malloc(num_layers * sizeof(int));
   get_y_offsets(batch_size, num_layers, output_features, y_offsets);
 

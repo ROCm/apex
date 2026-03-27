@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -31,7 +31,7 @@
 using Kernel_traits = FMHA_kernel_traits<512, 64, 16, 1, 8, 0x00u>;
 
 template<bool Is_training>
-__global__ 
+__global__
 void fmha_fprop_fp16_512_64_sm80_kernel(Fused_multihead_attention_fprop_params params,
                                            const int total_heads) {
 
@@ -39,7 +39,7 @@ void fmha_fprop_fp16_512_64_sm80_kernel(Fused_multihead_attention_fprop_params p
 }
 
 template<bool Is_training>
-__global__ 
+__global__
 void fmha_fprop_fp16_512_64_sm80_kernel_nl(Fused_multihead_attention_fprop_params params,
                                            const int num_full_heads,
                                            const int num_main_groups,
@@ -107,10 +107,10 @@ void run_fmha_fp16_512_64_sm80_nl_(Launch_params<Fused_multihead_attention_fprop
     if(configure) {
         const int heads_total = launch_params.params.b * launch_params.params.h;
         std::tie(launch_params.num_full_heads,
-                 launch_params.num_main_groups, 
-                 launch_params.heads_last_wave, 
-                 launch_params.main_steps, 
-                 launch_params.rest_steps, 
+                 launch_params.num_main_groups,
+                 launch_params.heads_last_wave,
+                 launch_params.main_steps,
+                 launch_params.rest_steps,
                  launch_params.elts_per_thread) = fmha::work_dist<Kernel_traits>(total_ctas, heads_total);
         return;
     }
@@ -118,10 +118,10 @@ void run_fmha_fp16_512_64_sm80_nl_(Launch_params<Fused_multihead_attention_fprop
     dim3 grid(total_ctas);
     kernel<<<grid, Kernel_traits::THREADS, smem_size, launch_params.stream>>>(
         launch_params.params,
-        launch_params.num_full_heads, 
-        launch_params.num_main_groups, 
-        launch_params.heads_last_wave, 
-        launch_params.main_steps, 
+        launch_params.num_full_heads,
+        launch_params.num_main_groups,
+        launch_params.heads_last_wave,
+        launch_params.main_steps,
         launch_params.rest_steps);
 
     FMHA_CHECK_CUDA(cudaPeekAtLastError());

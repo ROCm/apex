@@ -40,7 +40,7 @@ class TestRnnCells(unittest.TestCase):
             outputs[-1].float().sum().backward()
             for i, x in enumerate(xs):
                 self.assertEqual(x.grad.dtype, x.dtype)
-    
+
     def test_rnn_cell_is_half(self):
         cell = nn.RNNCell(self.h, self.h)
         self.run_cell_test(cell)

@@ -386,7 +386,7 @@ void fused_adam_cuda_mt(
     C10_CUDA_CHECK(cudaGetLastError());
 }
 
-template <typename FROM_T, typename TO_T> 
+template <typename FROM_T, typename TO_T>
 __device__ void convert(const FROM_T vi, TO_T& vo)
 {
     vo = static_cast<TO_T>(vi);
@@ -522,7 +522,7 @@ __global__ void strided_check_finite_cuda_kernel(
     }
 }
 
-template <typename FROM_T, typename TO_T> 
+template <typename FROM_T, typename TO_T>
 __global__ void maybe_cast_kernel(
         volatile int* overflow_flag,
         const FROM_T* p_in,

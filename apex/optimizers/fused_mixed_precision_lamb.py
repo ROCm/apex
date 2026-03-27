@@ -14,7 +14,7 @@ class FusedMixedPrecisionLamb(torch.optim.Optimizer):
                  reduced_precision_dtype=None):
         if amsgrad:
             raise RuntimeError('FusedLAMB does not support the AMSGrad variant.')
-        
+
         # The learning rate (lr) and optimizer step (step) should be located on device
         # in order to faciliated device sync free execution
         defaults = dict(lr=torch.tensor(lr, dtype=torch.float32),
@@ -44,7 +44,7 @@ class FusedMixedPrecisionLamb(torch.optim.Optimizer):
         # Mixed Precision support
         self.reduced_precision_dtype = reduced_precision_dtype
         self.param_groups_full_precision = []
-        
+
         self._step_supports_amp_scaling = True
         self.adam_w_mode = 1 if adam_w_mode else 0
         self.use_nvlamb = use_nvlamb
@@ -125,9 +125,9 @@ class FusedMixedPrecisionLamb(torch.optim.Optimizer):
                     for p in param_list
                 ],
             })
-   
+
     # add_param_groups() is overridden because default items can be tensors. The
-    # parent version does not clone the default item, so two param groups can 
+    # parent version does not clone the default item, so two param groups can
     # accidentally point to the same default item value where they can differ
     # given they are in separate groups.
     def add_param_group(self, param_group):
@@ -159,7 +159,7 @@ class FusedMixedPrecisionLamb(torch.optim.Optimizer):
                 if p.grad is None:
                     continue
                 grad_list.append(p.grad)
-       
+
         # Overflow check of gradients
         device = self.param_groups[0]["params"][0].device
         found_inf = (
@@ -176,7 +176,7 @@ class FusedMixedPrecisionLamb(torch.optim.Optimizer):
         else:
             scale = torch.ones((1,), device=device)
             inv_scale = torch.ones((1,), device=device)
-        
+
         # grad_norm is of scaled gradients.
         # So, multiply `max_grad_norm` by scale.
         max_grad_norm = self.defaults['max_grad_norm'] * scale

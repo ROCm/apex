@@ -11,10 +11,10 @@ template<
     typename output_t,
     typename compute_t,
     typename index_t,
-    int HIDDEN_SIZE, 
-    int CTAS_PER_ROW, 
-    int WARPS_M, 
-    int WARPS_N, 
+    int HIDDEN_SIZE,
+    int CTAS_PER_ROW,
+    int WARPS_M,
+    int WARPS_N,
     int BYTES_PER_LDG
 >
 void launch_(LaunchParams<FwdParams> &launch_params, const bool configure_params){
@@ -41,9 +41,9 @@ void launch_(LaunchParams<FwdParams> &launch_params, const bool configure_params
         launch_params.workspace_bytes = 0;
         if(Kernel_traits::CTAS_PER_ROW > 1) {
             launch_params.barrier_size = 2 * launch_params.params.ctas_per_col;
-            launch_params.workspace_bytes = launch_params.params.ctas_per_col 
-                                          * Kernel_traits::WARPS_M  
-                                          * Kernel_traits::CTAS_PER_ROW 
+            launch_params.workspace_bytes = launch_params.params.ctas_per_col
+                                          * Kernel_traits::WARPS_M
+                                          * Kernel_traits::CTAS_PER_ROW
                                           * sizeof(typename Kernel_traits::Stats::stats_t)
                                           * 2;
         }

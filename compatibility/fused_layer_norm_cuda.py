@@ -22,11 +22,11 @@ class _FusedLayerCudaModule:
             finally:
                 self._loading = False
         return self._loaded_module
-    
+
     def __getattr__(self, name):
         if name.startswith("_"):
             raise AttributeError(f"module fused_layer_norm_cuda has no attribute '{name}'")
-        
+
         module = self._load_module()
         return getattr(module, name)
 
@@ -36,9 +36,9 @@ class _FusedLayerCudaModule:
             return dir(module)
         except:
             return []
-        
+
     def __repr__(self):
         return "<module 'fused_layer_norm_cuda'>"
-    
+
 #replace module with lazy loader
 sys.modules[__name__] = _FusedLayerCudaModule()

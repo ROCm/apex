@@ -66,12 +66,12 @@ __device__ __forceinline__ acc_t warp_reduce_new(acc_t val) {
 template <typename input_t, typename output_t, typename acc_t, int log2_elements>
 __global__ void scaled_masked_softmax_warp_backward_new(
     output_t *gradInput, //[batches, attn_heads, q_len, k_len]
-    input_t *grad, 
+    input_t *grad,
     const input_t *output, //[batches, attn_heads, q_len, k_len]
-    acc_t scale, 
+    acc_t scale,
     int element_count)
 {
-    int threads_per_block = blockDim.x; 
+    int threads_per_block = blockDim.x;
     //the first element_count*2 elements are used for cache, the last 128 is used for reduction
     extern __shared__ acc_t shared_data[];
     input_t *local_data = (input_t *)shared_data;
@@ -86,7 +86,7 @@ __global__ void scaled_masked_softmax_warp_backward_new(
     int local_idx = threadIdx.x;
     int lane = threadIdx.x % C10_WARP_SIZE;
     int wid = threadIdx.x / C10_WARP_SIZE;
-    int warps_per_thread_block = threads_per_block / C10_WARP_SIZE; 
+    int warps_per_thread_block = threads_per_block / C10_WARP_SIZE;
 
     // load the data to local data
     acc_t val = 0.0;
@@ -99,7 +99,7 @@ __global__ void scaled_masked_softmax_warp_backward_new(
         __syncthreads();
     }
 
-    // find the sum 
+    // find the sum
     for (int i = local_idx; i < (element_count - 1) / C10_WARP_SIZE + 1; i += threads_per_block){
         shared[i] = 0.0;
     }
@@ -147,7 +147,7 @@ __global__ void scaled_masked_softmax_warp_backward_new(
     val = shared[0];
     #pragma unroll
     for (int i = local_idx; i < element_count; i += threads_per_block){
-        gradInput[offset + i] = (output_t)(scale*(local_data[i] - output_data[i]*val)); 
+        gradInput[offset + i] = (output_t)(scale*(local_data[i] - output_data[i]*val));
     }
 }
 
@@ -155,12 +155,12 @@ __global__ void scaled_masked_softmax_warp_backward_new(
 
 template<typename input_t, typename output_t, typename acc_t>
 void dispatch_scaled_masked_softmax_backward_new(
-    output_t *grad_input, 
-    input_t *grad, 
-    const input_t *output, 
-    const acc_t scale, 
-    int query_seq_len, 
-    int key_seq_len, 
+    output_t *grad_input,
+    input_t *grad,
+    const input_t *output,
+    const acc_t scale,
+    int query_seq_len,
+    int key_seq_len,
     int batches,
     int attn_heads)
 {
@@ -186,33 +186,33 @@ void dispatch_scaled_masked_softmax_backward_new(
  * Extended softmax (from native aten pytorch) with following additional features
  * 1) input scaling
  * 2) Explicit masking
- */	
+ */
 template <typename input_t, typename output_t, typename acc_t>
 __global__ void scaled_masked_softmax_warp_forward_new(
-    output_t *dst, 
+    output_t *dst,
     const input_t *src,
-    const uint8_t *mask, 
-    const acc_t scale, 
+    const uint8_t *mask,
+    const acc_t scale,
     int query_len,          // query_len
     int attn_heads,
     int element_count,      // key_len
-    int pad_batches)        // mask batch size 
+    int pad_batches)        // mask batch size
 {
     // min threawds_per_block has to be bigger than 128
-    int threads_per_block = blockDim.x; 
+    int threads_per_block = blockDim.x;
     //  the first element_count is used for cache, the last 128 is used for reduction
     extern __shared__ acc_t local_data[];
     // maximum shared cached 128, enough for 4096 elements reduction into 4096/32= 128 elements
     acc_t *shared = &(local_data[element_count]);
-    // number of 1024 threads reductions 
+    // number of 1024 threads reductions
     int num_reductions =  (element_count - 1) / threads_per_block + 1;
 
     int offset = blockIdx.x * element_count;
     int mask_offset;
-    int query_id = blockIdx.x % query_len; 
+    int query_id = blockIdx.x % query_len;
     if (pad_batches == 1){
-        // broadcaste the mask tensor 
-        mask_offset = query_id * element_count; 
+        // broadcaste the mask tensor
+        mask_offset = query_id * element_count;
     }
     else{
         int mask_batch_id = blockIdx.x / attn_heads / query_len;
@@ -222,7 +222,7 @@ __global__ void scaled_masked_softmax_warp_forward_new(
     int local_idx = threadIdx.x;
     int lane = threadIdx.x % C10_WARP_SIZE;
     int wid = threadIdx.x / C10_WARP_SIZE;
-    int warps_per_thread_block = threads_per_block / C10_WARP_SIZE; 
+    int warps_per_thread_block = threads_per_block / C10_WARP_SIZE;
 
     // load the data to local data
     for (int i = local_idx; i < element_count; i += threads_per_block)
@@ -300,7 +300,7 @@ __global__ void scaled_masked_softmax_warp_forward_new(
         local_data[i] = std::exp(local_data[i] - reduced_val);
     }
 
-    // find the sum 
+    // find the sum
     for (int i = local_idx; i < (element_count - 1) / C10_WARP_SIZE + 1; i += threads_per_block){
         shared[i] = 0.0;
     }
@@ -356,12 +356,12 @@ __global__ void scaled_masked_softmax_warp_forward_new(
 
 template<typename input_t, typename output_t, typename acc_t>
 void dispatch_scaled_masked_softmax_forward_new(
-    output_t *dst, 
-    const input_t *src, 
+    output_t *dst,
+    const input_t *src,
     const uint8_t *mask,
-    const input_t scale, 
-    int query_seq_len, 
-    int key_seq_len, 
+    const input_t scale,
+    int query_seq_len,
+    int key_seq_len,
     int batches,
     int attn_heads,
     int pad_batches)

@@ -9,9 +9,9 @@ clean: # This will remove ALL build folders.
 	@test -d apex.egg-info/ && echo "Deleting apex.egg-info folder" || true
 	@test -d apex.egg-info/ && rm -r apex.egg-info/ || true
 
-	$(PYTHON) scripts/clean.py # remove the apex extensions installed at torch extensions folder 
+	$(PYTHON) scripts/clean.py # remove the apex extensions installed at torch extensions folder
 
 aiter:
 	$(PIP) uninstall -y aiter
 	cd third_party/aiter && $(PIP) install . --no-build-isolation --no-deps
-	
+

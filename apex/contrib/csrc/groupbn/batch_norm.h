@@ -861,7 +861,7 @@ void NhwcBatchNorm::fwd(cudaStream_t stream, bool use_relu, void* my_data, void*
   _fwdKernelLauncher(stream, params, grid_dim, params.outer_loops, use_relu, occupancy, coop);
 }
 
-void NhwcBatchNorm::dgrad(cudaStream_t stream, bool use_relu, void* my_data, void* pair_data, void* pair_data2, void* pair_data3, 
+void NhwcBatchNorm::dgrad(cudaStream_t stream, bool use_relu, void* my_data, void* pair_data, void* pair_data2, void* pair_data3,
                           const int bn_group, const int magic, const int occupancy, const int grid_dim_x, const bool coop) {
   bool ptrs_are_set =
       X_tensor_desc_ != nullptr

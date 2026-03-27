@@ -49,10 +49,10 @@ struct LARSFunctor
     bool wd_after_momentum,
     float scale,
     const bool is_skipped) {
-    
+
     // Early exit if we don't need to do anything
     if (*noop_gmem) return;
-    	   
+
     int tensor_loc = tl.block_to_tensor[blockIdx.x];
     int chunk_idx = tl.block_to_chunk[blockIdx.x];
     int n = tl.sizes[tensor_loc];
@@ -137,7 +137,7 @@ struct LARSFunctor
           }
 
           weight_in[i] = static_cast<T_weight>(incoming_weights[ii]);
-          
+
           // if necessary, write out an fp16 copy of the weights
           if(N == 4)
             model_weights_out[i] = static_cast<at::Half>(weight_in[i]);

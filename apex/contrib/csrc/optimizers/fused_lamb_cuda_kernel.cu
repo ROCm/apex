@@ -164,7 +164,7 @@ struct LAMBStage2Functor
 
     MATH_T ratio = learning_rate;
     // apply adaptive learning rate to parameters with non-zero weight decay
-    if (decay != 0.0) 
+    if (decay != 0.0)
     {
       float param_norm = per_tensor_param_norm[tensor_num];
       float update_norm = per_tensor_update_norm[tensor_num];

@@ -15,15 +15,15 @@ __device__ __forceinline__ scalar_t logSumExp(scalar_t a, scalar_t b) {
 }
 
 // Vanilla transducer loss function (i.e. forward-backward algorithm)
-// Detail of this loss function can be found in: 
+// Detail of this loss function can be found in:
 // [1] Sequence Transduction with Recurrent Neural Networks.
 
 // Forward (alpha) and backward (beta) path are launched together. Input is assumed to be converted
 // into log scale by the preceding log_softmax layer
-// Diagonal wavefront advancing usually used in dynamic programming is leveraged here. 
+// Diagonal wavefront advancing usually used in dynamic programming is leveraged here.
 // alpha and beta are of acc_t type, as they are essentially accumulators.
 
-// This loss function supports packed input where a tensor of shape [B, T, U, H] is packed into 
+// This loss function supports packed input where a tensor of shape [B, T, U, H] is packed into
 // [B_packed, H].
 // Don't-care region (t > audLen) or (u > txtLen) is removed.
 // To support the packed input, the starting offsets for each batch need to be specified with
@@ -48,18 +48,18 @@ __global__ void transducer_loss_forward(
     const int tid = threadIdx.x;
     const auto myFLen = audLen[batch];
     // Note that start of the sentence is added as 1 here
-    const auto myGLen = txtLen[batch] + 1;  
+    const auto myGLen = txtLen[batch] + 1;
     const auto myLabel = label + batch * (maxGLen-1);
-    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1]) 
+    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1])
                                                 : batch * maxFLen * maxGLen;
     const int64_t myStrideT = packedInput ? myGLen : maxGLen;
-    const scalar_t* myX = x + myBatchOffset * dictSize; 
+    const scalar_t* myX = x + myBatchOffset * dictSize;
     int u  = tid;
 
     if (blockIdx.x == 0){
         // alpha path
         acc_t* myAlpha = alpha + batch*maxFLen*maxGLen;
-        if (u == 0) 
+        if (u == 0)
             myAlpha[0] = 0;
         __syncthreads();
 
@@ -71,7 +71,7 @@ __global__ void transducer_loss_forward(
                     // Eq(16) in [1]
                     if (u == 0){
                         // alpha(t, u) = alpha(t-1, u) * null(t-1, u)
-                        myAlpha[t*maxGLen + u] = myAlpha[(t-1)*maxGLen] 
+                        myAlpha[t*maxGLen + u] = myAlpha[(t-1)*maxGLen]
                                                     + myX[((t-1)*myStrideT) * dictSize + blankIdx];
                     }
                     else if (t == 0){
@@ -80,9 +80,9 @@ __global__ void transducer_loss_forward(
                     }
                     else{
                         // alpha(t, u) = alpha(t-1, u) * null(t-1, u) + alpha(t, u-1) * y(t, u-1)
-                        acc_t current = myAlpha[(t-1)*maxGLen + u] 
+                        acc_t current = myAlpha[(t-1)*maxGLen + u]
                                         + myX[((t-1)*myStrideT + u) * dictSize + blankIdx];
-                        acc_t next = myAlpha[t*maxGLen + u - 1] 
+                        acc_t next = myAlpha[t*maxGLen + u - 1]
                                         + myX[(t*myStrideT + u - 1) * dictSize + myLabel[u - 1]];
                         myAlpha[t*maxGLen + u] = logSumExp(next, current);
                     }
@@ -95,7 +95,7 @@ __global__ void transducer_loss_forward(
         // beta path
         acc_t* myBeta = beta + batch*maxFLen*maxGLen;
         if (u == 0){
-            myBeta[(myFLen-1)*maxGLen + myGLen - 1] = myX[((myFLen-1)*myStrideT 
+            myBeta[(myFLen-1)*maxGLen + myGLen - 1] = myX[((myFLen-1)*myStrideT
                                                         + myGLen - 1) * dictSize + blankIdx];
         }
         __syncthreads();
@@ -107,19 +107,19 @@ __global__ void transducer_loss_forward(
                     // Eq(18) in [1]
                     if (u == myGLen - 1){
                         // beta(t, u) = beta(t+1, u) * null(t, u)
-                        myBeta[t*maxGLen + u] = myBeta[(t+1)*maxGLen + u] 
+                        myBeta[t*maxGLen + u] = myBeta[(t+1)*maxGLen + u]
                                                 + myX[(t*myStrideT + u) * dictSize + blankIdx];
                     }
                     else if (t == myFLen - 1){
                         // beta(t, u) = beta(t, u+1) * y(t, u)
-                        myBeta[t*maxGLen + u] = myBeta[t*maxGLen + u + 1] 
+                        myBeta[t*maxGLen + u] = myBeta[t*maxGLen + u + 1]
                                                 + myX[(t*myStrideT + u) * dictSize + myLabel[u]];
                     }
                     else{
                         // beta(t, u) = beta(t+1, u)*null(t, u) + beta(t, u+1)*y(t, u)
-                        acc_t current = myBeta[(t+1)*maxGLen + u] 
+                        acc_t current = myBeta[(t+1)*maxGLen + u]
                                         + myX[(t*myStrideT + u) * dictSize + blankIdx];
-                        acc_t next = myBeta[t*maxGLen + u + 1] 
+                        acc_t next = myBeta[t*maxGLen + u + 1]
                                         + myX[(t*myStrideT + u) * dictSize + myLabel[u]];
                         myBeta[t*maxGLen + u] = logSumExp(next, current);
                     }
@@ -128,7 +128,7 @@ __global__ void transducer_loss_forward(
             __syncthreads();
         }
         if (tid == 0)
-            loss[batch] = -myBeta[0];   
+            loss[batch] = -myBeta[0];
     }
 
 }
@@ -140,14 +140,14 @@ __global__ void transducer_loss_forward(
 // For simplicity, this kernel currently only supports U <= maxThread, which should be the common
 // case. For cases where U > maxThread, the vanilla kernel is used as a fallback option.
 
-// Detail of this loss function can be found in: 
+// Detail of this loss function can be found in:
 // [1] Sequence Transduction with Recurrent Neural Networks.
 // Forward (alpha) and backward (beta) path are launched together. Input is assumed to be converted
 // into log scale by the preceding log_softmax layer
 // Diagonal wavefront advancing usually used in dynamic programming is leveraged here.
 // alpha and beta are of acc_t type, as they are essentially accumulators.
 
-// This loss function supports packed input where a tensor of shape [B, T, U, H] is packed into 
+// This loss function supports packed input where a tensor of shape [B, T, U, H] is packed into
 // [B_packed, H].
 // Don't-care region (t > audLen) or (u > txtLen) is removed.
 // To support the packed input, the starting offsets for each batch need to be specified with
@@ -172,10 +172,10 @@ __global__ void transducer_loss_batch_load_forward(
     int u  = threadIdx.x;
     const auto myFLen = audLen[batch];
     const auto myGLen = txtLen[batch] + 1;
-    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1]) 
+    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1])
                                                 : batch * maxFLen * maxGLen;
     const int64_t myStrideT = packedInput ? myGLen : maxGLen;
-    const scalar_t* myX = x + myBatchOffset * dictSize; 
+    const scalar_t* myX = x + myBatchOffset * dictSize;
     scalar_t next[batchLdSize], current[batchLdSize];
     extern __shared__ char smem8[];
     auto smem = reinterpret_cast<acc_t*>(smem8);
@@ -186,7 +186,7 @@ __global__ void transducer_loss_batch_load_forward(
         // two SMEM regions for double buffering read and write data to avoid data race
         acc_t * const sharedAlpha[2] = {smem, smem+maxGLen};
 
-        sharedAlpha[0][u] = 0; 
+        sharedAlpha[0][u] = 0;
         __syncthreads();
 
         if (u == 0)
@@ -302,21 +302,21 @@ __global__ void transducer_loss_batch_load_forward(
                         sharedBetaWr[u] = prvStepBeta;
                         myBeta[t*maxGLen + u] = prvStepBeta;
                     }
-                    
+
                 }
                 __syncthreads();
             }
         }
         if (u == 0)
-            loss[batch] = -prvStepBeta; 
+            loss[batch] = -prvStepBeta;
     }
 
 }
 
 // Vanilla transudcer loss backward operation.
-// Detail of this loss function can be found in: 
+// Detail of this loss function can be found in:
 // [1] Sequence Transduction with Recurrent Neural Networks.
-// For this backward kernel, bwd op for the preceding softmax is assumed to be handled elsewhere, 
+// For this backward kernel, bwd op for the preceding softmax is assumed to be handled elsewhere,
 // hence only Eq(20) in [1] is implemented in this kernel.
 
 // Each thread block works on [batch, t, :, :] of data. Each thread works on a specific u at a time
@@ -347,37 +347,37 @@ __global__ void transducer_loss_backward(
     const int batch = blockIdx.y;
     const int64_t myFLen = audLen[batch];
     const int64_t myGLen = txtLen[batch] + 1;
-    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1]) 
+    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1])
                                                 : batch * maxFLen * maxGLen;
     const int64_t myStrideT = packedInput ? myGLen : maxGLen;
     auto myX = x + (myBatchOffset + t*myStrideT)*dictSize;
     auto myAlpha = alpha + batch*maxFLen*maxGLen;
     auto myBeta = beta + batch*maxFLen*maxGLen;
-    auto myXGrad = xGrad + (myBatchOffset + t*myStrideT)*dictSize; 
+    auto myXGrad = xGrad + (myBatchOffset + t*myStrideT)*dictSize;
     auto myLabel = label + batch*(maxGLen-1);
 
     int64_t u = tid;
     while (t < myFLen and u < myGLen){
         // Do the update
         // loss = -ln(Pr(y*|x))
-        acc_t grad = std::log(lossGrad[batch]) + myAlpha[t*maxGLen + u] - myBeta[0];  
+        acc_t grad = std::log(lossGrad[batch]) + myAlpha[t*maxGLen + u] - myBeta[0];
         if (u != myGLen - 1)
-            myXGrad[u*dictSize + myLabel[u]] = -std::exp(grad + myBeta[t*maxGLen + u + 1] 
+            myXGrad[u*dictSize + myLabel[u]] = -std::exp(grad + myBeta[t*maxGLen + u + 1]
                                                 + myX[u*dictSize + myLabel[u]]);
         if (t == myFLen - 1 and u == myGLen - 1)
             myXGrad[u*dictSize + blankIdx] = -std::exp(grad + myX[u*dictSize + blankIdx]);
         else if (t != myFLen - 1)
-            myXGrad[u*dictSize + blankIdx] = -std::exp(grad + myBeta[(t+1)*maxGLen + u] 
-                                                + myX[u*dictSize + blankIdx]); 
+            myXGrad[u*dictSize + blankIdx] = -std::exp(grad + myBeta[(t+1)*maxGLen + u]
+                                                + myX[u*dictSize + blankIdx]);
 
         u += blockDim.x;
     }
 }
 
 // Fused transudcer loss backward operation.
-// Detail of this loss function can be found in: 
+// Detail of this loss function can be found in:
 // [1] Sequence Transduction with Recurrent Neural Networks.
-// The bwd op of the preceding softmax layer is fused in this kernel. 
+// The bwd op of the preceding softmax layer is fused in this kernel.
 // Each thread block works on [batch, t, u, :] of data. Each thread works on a specific h at a time
 
 // To support the packed input, the starting offsets for each batch need to be specified with
@@ -398,22 +398,22 @@ __global__ void transducer_loss_fused_backward(
     int64_t maxGLen,
     bool packedInput,
     scalar_t* xGrad) {
-    
+
     const int tid = threadIdx.x;
     const int u = blockIdx.x;
     const int t = blockIdx.y;
     const int batch = blockIdx.z;
     const int64_t myFLen = audLen[batch];
     const int64_t myGLen = txtLen[batch] + 1;
-    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1]) 
+    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1])
                                                 : batch * maxFLen * maxGLen;
     const int64_t myStrideT = packedInput ? myGLen : maxGLen;
 
     __shared__ acc_t commonFactor, myBetaTU, myBetaTUp1, myBetaTp1U, myLabelShared;
-    auto myXGrad = xGrad + (myBatchOffset + t*myStrideT +u)*dictSize; 
+    auto myXGrad = xGrad + (myBatchOffset + t*myStrideT +u)*dictSize;
 
-    if (t < myFLen and u < myGLen){ 
-        auto myX = x + (myBatchOffset + t*myStrideT +u)*dictSize; 
+    if (t < myFLen and u < myGLen){
+        auto myX = x + (myBatchOffset + t*myStrideT +u)*dictSize;
         auto myAlpha = alpha + batch*maxFLen*maxGLen;
         auto myBeta = beta + batch*maxFLen*maxGLen;
         auto myLabel = label + batch*(maxGLen-1);
@@ -455,9 +455,9 @@ __global__ void transducer_loss_fused_backward(
 
 
 // Vectorized version of fused transudcer loss backward operation.
-// Detail of this loss function can be found in: 
+// Detail of this loss function can be found in:
 // [1] Sequence Transduction with Recurrent Neural Networks.
-// The bwd op of the preceding softmax layer is fused in this kernel. 
+// The bwd op of the preceding softmax layer is fused in this kernel.
 // Each thread block works on [batch, t, u, :] of data. Each thread works on a specific h at a time
 
 // To support the packed input, the starting offsets for each batch need to be specified with
@@ -478,20 +478,20 @@ __global__ void transducer_loss_fused_vec_backward(
     int64_t maxGLen,
     bool packedInput,
     scalar_t* xGrad) {
-    
+
     const int tid = threadIdx.x;
     const int u = blockIdx.x;
     const int t = blockIdx.y;
     const int batch = blockIdx.z;
     const int64_t myFLen = audLen[batch];
     const int64_t myGLen = txtLen[batch] + 1;
-    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1]) 
+    const int64_t myBatchOffset = packedInput ? (batch == 0 ? 0 : batchOffset[batch-1])
                                                 : batch * maxFLen * maxGLen;
     const int64_t myStrideT = packedInput ? myGLen : maxGLen;
 
     __shared__ acc_t commonFactor, myBetaTU, myBetaTUp1, myBetaTp1U, myLabelShared;
-    auto myXGrad = xGrad + (myBatchOffset + t*myStrideT +u)*dictSize; 
-    auto myX = x + (myBatchOffset + t*myStrideT +u)*dictSize; 
+    auto myXGrad = xGrad + (myBatchOffset + t*myStrideT +u)*dictSize;
+    auto myX = x + (myBatchOffset + t*myStrideT +u)*dictSize;
     auto myAlpha = alpha + batch*maxFLen*maxGLen;
     auto myBeta = beta + batch*maxFLen*maxGLen;
     auto myLabel = label + batch*(maxGLen-1);
@@ -502,7 +502,7 @@ __global__ void transducer_loss_fused_vec_backward(
     auto myXGradVec = reinterpret_cast<vec_t*>(myXGrad);
     auto myXBufferVec = reinterpret_cast<vec_t*>(myXBuffer);
     auto myXGradBufferVec = reinterpret_cast<vec_t*>(myXGradBuffer);
-    if (t < myFLen and u < myGLen){ 
+    if (t < myFLen and u < myGLen){
         // load and store shared variables in SMEM
         if (tid == 0){
             commonFactor = std::log(lossGrad[batch]) + myAlpha[t*maxGLen + u] - myBeta[0];
@@ -541,7 +541,7 @@ __global__ void transducer_loss_fused_vec_backward(
 
             // Store myXGrad in a vector form
             myXGradVec[h0/V] = *myXGradBufferVec;
-            
+
         }
     }
     else if (!packedInput){
@@ -570,18 +570,18 @@ std::vector<torch::Tensor> transducer_loss_cuda_forward(
     const int maxGLen = label.size(1) + 1;
     const int dictSize = x.size(-1);
 
-    TORCH_CHECK(blankIdx >= 0 and blankIdx < dictSize, 
-                "Expected blank index to be in the range of 0 to ", 
+    TORCH_CHECK(blankIdx >= 0 and blankIdx < dictSize,
+                "Expected blank index to be in the range of 0 to ",
                 dictSize-1,
-                ", but got ", 
+                ", but got ",
                 blankIdx);
-    TORCH_CHECK(opt == -1 or opt == 0 or opt == 1, 
-                "Got an invalid optimization level ", 
+    TORCH_CHECK(opt == -1 or opt == 0 or opt == 1,
+                "Got an invalid optimization level ",
                 opt);
 
     // The data type of alpha and beta will be resolved at dispatch time,
     // hence defined here and assigned later
-    torch::Tensor alpha;    
+    torch::Tensor alpha;
     torch::Tensor beta;
     torch::Tensor loss = torch::empty({batchSize}, tensorOpt);
     const auto deviceProperties = at::cuda::getCurrentDeviceProperties();
@@ -602,42 +602,42 @@ std::vector<torch::Tensor> transducer_loss_cuda_forward(
         // if the required SMEM size or number threads exceeds the limit, fall back to the vanilla
         // kernel.
         const auto smemSize = 2*maxGLen*sizeof(acc_t);
-        const auto optFallBack = (maxGLen > maxThreadPerBlock or smemSize > maxSmemPerBlock) ? 0 
+        const auto optFallBack = (maxGLen > maxThreadPerBlock or smemSize > maxSmemPerBlock) ? 0
                                     : (opt == -1) ? 1 : opt;
         const int threads = std::min(maxThreadPerBlock, maxGLen);
-        const dim3 blocks(2, batchSize, 1);        
+        const dim3 blocks(2, batchSize, 1);
 
         if (optFallBack == 0)
             transducer_loss_forward<<<blocks, threads, 0, stream>>>(
-                x.data_ptr<scalar_t>(), 
-                label.data_ptr<int>(), 
-                audLen.data_ptr<int>(), 
-                txtLen.data_ptr<int>(), 
+                x.data_ptr<scalar_t>(),
+                label.data_ptr<int>(),
+                audLen.data_ptr<int>(),
+                txtLen.data_ptr<int>(),
                 batchOffsetPtr,
-                dictSize, 
-                blankIdx, 
+                dictSize,
+                blankIdx,
                 maxFLen,
                 maxGLen,
                 packedInput,
-                alpha.data_ptr<acc_t>(), 
-                beta.data_ptr<acc_t>(), 
+                alpha.data_ptr<acc_t>(),
+                beta.data_ptr<acc_t>(),
                 loss.data_ptr<scalar_t>());
         else if (optFallBack == 1)
             transducer_loss_batch_load_forward<scalar_t, acc_t, 4>
             <<<blocks, threads, smemSize, stream>>>(
-                x.data_ptr<scalar_t>(), 
-                label.data_ptr<int>(), 
-                audLen.data_ptr<int>(), 
-                txtLen.data_ptr<int>(), 
+                x.data_ptr<scalar_t>(),
+                label.data_ptr<int>(),
+                audLen.data_ptr<int>(),
+                txtLen.data_ptr<int>(),
                 batchOffsetPtr,
-                dictSize, 
-                blankIdx, 
+                dictSize,
+                blankIdx,
                 maxFLen,
                 maxGLen,
                 packedInput,
-                alpha.data_ptr<acc_t>(), 
-                beta.data_ptr<acc_t>(), 
-                loss.data_ptr<scalar_t>());  
+                alpha.data_ptr<acc_t>(),
+                beta.data_ptr<acc_t>(),
+                loss.data_ptr<scalar_t>());
 
     }));
     C10_CUDA_CHECK(cudaGetLastError());
@@ -673,17 +673,17 @@ torch::Tensor transducer_loss_cuda_backward(
     const int warpSize = deviceProperties->warpSize;
     const auto batchOffsetPtr = packedInput ? batchOffset.data_ptr<int64_t>() : nullptr;
     cudaStream_t stream = at::cuda::getCurrentCUDAStream();
-    
+
     if (fuseSoftmaxBackward){
-        // alloc empty tensors for performance, hence need to ensure zeros are writtern to 
+        // alloc empty tensors for performance, hence need to ensure zeros are writtern to
         // don't-care region in the kernel.
         xGrad = torch::empty_like(x);
 
         // Would like each thread to work on 4 hidden units
-        const int workPerThread = 4;  
+        const int workPerThread = 4;
         // Don't want to have more than 128 threads per thread block
         const int maxThreadPerElmt = std::min(128, maxThreadPerBlock);
-        const int threads = std::min(maxThreadPerElmt, std::max(warpSize, 
+        const int threads = std::min(maxThreadPerElmt, std::max(warpSize,
                                     (dictSize+workPerThread-1)/workPerThread));
         const dim3 blocks(maxGLen, maxFLen, batchSize);
 
@@ -694,44 +694,44 @@ torch::Tensor transducer_loss_cuda_backward(
             constexpr int vecAlignment = std::alignment_of<vec_t>::value;
             // if all input and output tensors meet the alignment requirement
             bool memAlign = reinterpret_cast<uint64_t>(x.data_ptr<scalar_t>()) % vecAlignment == 0
-                                and reinterpret_cast<uint64_t>(xGrad.data_ptr<scalar_t>()) 
+                                and reinterpret_cast<uint64_t>(xGrad.data_ptr<scalar_t>())
                                         % vecAlignment == 0;
 
             if (vectFactor > 1 and dictSize%vectFactor == 0 and memAlign){
                 transducer_loss_fused_vec_backward<scalar_t, acc_t, vec_t, vectFactor>
-                    <<<blocks, threads, 0, stream>>>(    
-                    x.data_ptr<scalar_t>(), 
+                    <<<blocks, threads, 0, stream>>>(
+                    x.data_ptr<scalar_t>(),
                     lossGrad.data_ptr<scalar_t>(),
-                    audLen.data_ptr<int>(), 
-                    txtLen.data_ptr<int>(), 
+                    audLen.data_ptr<int>(),
+                    txtLen.data_ptr<int>(),
                     label.data_ptr<int>(),
-                    alpha.data_ptr<acc_t>(), 
-                    beta.data_ptr<acc_t>(),  
+                    alpha.data_ptr<acc_t>(),
+                    beta.data_ptr<acc_t>(),
                     batchOffsetPtr,
-                    dictSize, 
-                    blankIdx, 
+                    dictSize,
+                    blankIdx,
                     maxFLen,
                     maxGLen,
                     packedInput,
-                    xGrad.data_ptr<scalar_t>());   
+                    xGrad.data_ptr<scalar_t>());
             }
             else{
-                transducer_loss_fused_backward<<<blocks, threads, 0, stream>>>(    
-                    x.data_ptr<scalar_t>(), 
+                transducer_loss_fused_backward<<<blocks, threads, 0, stream>>>(
+                    x.data_ptr<scalar_t>(),
                     lossGrad.data_ptr<scalar_t>(),
-                    audLen.data_ptr<int>(), 
-                    txtLen.data_ptr<int>(), 
+                    audLen.data_ptr<int>(),
+                    txtLen.data_ptr<int>(),
                     label.data_ptr<int>(),
-                    alpha.data_ptr<acc_t>(), 
-                    beta.data_ptr<acc_t>(),  
+                    alpha.data_ptr<acc_t>(),
+                    beta.data_ptr<acc_t>(),
                     batchOffsetPtr,
-                    dictSize, 
-                    blankIdx, 
+                    dictSize,
+                    blankIdx,
                     maxFLen,
                     maxGLen,
                     packedInput,
-                    xGrad.data_ptr<scalar_t>());   
-                
+                    xGrad.data_ptr<scalar_t>());
+
             }
         }));
     }
@@ -744,17 +744,17 @@ torch::Tensor transducer_loss_cuda_backward(
         const dim3 blocks(maxFLen, batchSize);
         AT_DISPATCH_FLOATING_TYPES_AND_HALF(dtype, "transducer_loss_cuda_backward", ([&] {
             using acc_t = at::acc_type<scalar_t, true>;
-            transducer_loss_backward<<<blocks, threads, 0, stream>>>(    
-                x.data_ptr<scalar_t>(), 
+            transducer_loss_backward<<<blocks, threads, 0, stream>>>(
+                x.data_ptr<scalar_t>(),
                 lossGrad.data_ptr<scalar_t>(),
-                audLen.data_ptr<int>(), 
-                txtLen.data_ptr<int>(), 
+                audLen.data_ptr<int>(),
+                txtLen.data_ptr<int>(),
                 label.data_ptr<int>(),
-                alpha.data_ptr<acc_t>(), 
-                beta.data_ptr<acc_t>(), 
-                batchOffsetPtr, 
-                dictSize, 
-                blankIdx, 
+                alpha.data_ptr<acc_t>(),
+                beta.data_ptr<acc_t>(),
+                batchOffsetPtr,
+                dictSize,
+                blankIdx,
                 maxFLen,
                 maxGLen,
                 packedInput,
@@ -762,6 +762,6 @@ torch::Tensor transducer_loss_cuda_backward(
         }));
     }
     C10_CUDA_CHECK(cudaGetLastError());
-    
+
     return xGrad;
 }

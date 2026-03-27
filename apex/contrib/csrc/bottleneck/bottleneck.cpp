@@ -3118,7 +3118,7 @@ at::Tensor bottleneck_forward_out2_halo(bool explicit_nhwc, at::Tensor fat_halo_
   at::Half* w = inputs[2].data_ptr<at::Half>();
   at::Half* z = inputs[5].data_ptr<at::Half>();
   at::Half* b = inputs[8].data_ptr<at::Half>();
-  
+
   at::Half* y1 = fat_halo_y1.data_ptr<at::Half>();
 
   auto halo_y2 = at::empty(forward_state.outdim4, inputs[0].type(), output_format);
@@ -3824,7 +3824,7 @@ void bottleneck_backward_wgrad2(bool explicit_nhwc, int stride_1X1, std::vector<
   // wgrad
   auto wgrad2 = outputs[2];
   at::Half* dw2 = wgrad2.data_ptr<at::Half>();
-  
+
   //printf("outdimA1 = (%d,%d,%d,%d)\n",backward_state.outdimA1[0],backward_state.outdimA1[1],backward_state.outdimA1[2],backward_state.outdimA1[3]);
   run_dconv(backward_state.outdimA1,
             backward_state.padA1,

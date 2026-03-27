@@ -104,7 +104,7 @@ class FP16_Optimizer(object):
             for i, p in enumerate(group):
                 fp16_grad.append(p.grad)
             fp16_grads.append(fp16_grad)
-        
+
         # nan check
         self.overflow_buf.zero_()
         for fp16_grad in fp16_grads:

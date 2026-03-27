@@ -33,7 +33,7 @@ class AmpCBuilder(CUDAOpBuilder):
 
     def include_paths(self):
         return ['csrc/']
-        
+
     def cxx_args(self):
         args = super().cxx_args()
         return args + self.version_dependent_macros()

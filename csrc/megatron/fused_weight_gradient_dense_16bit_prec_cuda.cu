@@ -54,7 +54,7 @@ void gemmex_wrapper_fp16(
     at::BFloat16* D,
     void*   d_workspace,
     int64_t  max_workspace_size,
-    cudaStream_t   stream) 
+    cudaStream_t   stream)
 {
     cublasLtMatrixLayout_t matA, matB, matC, matD;
     CHECK_CUBLASLT_ERROR(cublasLtMatrixLayoutCreate(&matA, CUDA_R_16BF, m, k, m));
@@ -148,7 +148,7 @@ void gemmex_wrapper_fp16(
     at::Half* D,
     void*   d_workspace,
     int64_t  max_workspace_size,
-    cudaStream_t   stream) 
+    cudaStream_t   stream)
 {
     cublasLtMatrixLayout_t matA, matB, matC, matD;
     CHECK_CUBLASLT_ERROR(cublasLtMatrixLayoutCreate(&matA, CUDA_R_16F, m, k, m));
@@ -249,14 +249,14 @@ void wgrad_gemm_accum_fp16_cuda(T *input, T *d_output, T *d_weight,int in_dim, i
         batch_count,
         alpha,
         beta,
-        input,         //da   
+        input,         //da
         d_output,      //db
         d_weight,      //dc
         d_weight,      //dd
         d_workspace,
         max_workspace_size,
         stream);
-} 
+}
 
 template void wgrad_gemm_accum_fp16_cuda<at::Half>(at::Half *input, at::Half *d_output, at::Half *d_weight, int in_dim, int hidden_dim, int out_dim);
 template void wgrad_gemm_accum_fp16_cuda<at::BFloat16>(at::BFloat16 *input, at::BFloat16 *d_output, at::BFloat16 *d_weight,  int in_dim, int hidden_dim, int out_dim);

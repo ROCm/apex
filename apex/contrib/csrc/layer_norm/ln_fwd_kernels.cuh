@@ -5,7 +5,7 @@
 namespace layer_norm {
 
 template<typename Ktraits>
-__global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) 
+__global__ __launch_bounds__(Ktraits::THREADS_PER_CTA)
 void ln_fwd_kernel(FwdParams params) {
 
     enum { ROWS_PER_CTA = Ktraits::ROWS_PER_CTA };

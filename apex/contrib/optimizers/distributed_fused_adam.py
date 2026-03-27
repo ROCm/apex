@@ -579,10 +579,10 @@ class DistributedFusedAdam(torch.optim.Optimizer):
                 "multi_tensor_copy to set dummy_overflow_buf to indicate "
                 "whether there's gradient Inf/NaN, build APEX with "
                 "`--deprecated_fused_adam` is essential.")
-        
+
         if capturable:
             raise Exception("Distributed fused adam does not support cudagraph on ROCm")
-        
+
         # If capturable for CUDA graph
         self.capturable: bool = capturable
         # If the optimizer is capturable then LR should be a tensor (on GPU)

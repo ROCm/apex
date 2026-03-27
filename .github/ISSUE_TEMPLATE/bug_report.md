@@ -14,7 +14,7 @@ assignees: ''
 Please list the *minimal* steps or provide a code snippet for us to be able to reproduce the bug.
 
 A helpful guide on on how to craft a minimal bug report http://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports.
---> 
+-->
 
 **Expected Behavior**
 <!-- A clear and concise description of what you expected to happen. -->

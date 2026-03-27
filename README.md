@@ -1,6 +1,6 @@
 # Introduction
 
-This repository holds ROCm variant of Nvidia's Apex: https://github.com/NVIDIA/apex. 
+This repository holds ROCm variant of Nvidia's Apex: https://github.com/NVIDIA/apex.
 The aim of Apex repository is to streamline mixed precision and distributed training in Pytorch.
 Some of the code here will be included in upstream Pytorch eventually.
 The intent of Apex is to make up-to-date utilities available to users as quickly as possible.
@@ -118,19 +118,19 @@ pip install . --no-build-isolation
 ### Supported Versions
 | ``APEX Version`` | ``APEX branch`` | ``Torch Version`` |
 |------------------|-----------------|-------------------|
-| ``1.9.0``        | release/1.9.0   | ``2.9``           | 
-| ``1.8.0``        | release/1.8.0   | ``2.8``           | 
-| ``1.7.0``        | release/1.7.0   | ``2.7``           | 
-| ``1.6.0``        | release/1.6.0   | ``2.6``           | 
-| ``1.5.0``        | release/1.5.0   | ``2.5``           | 
-| ``1.4.0``        | release/1.4.0   | ``2.4``           | 
-| ``1.3.0``        | release/1.3.0   | ``2.3``           | 
-| ``1.2.0``        | release/1.2.0   | ``2.2``           | 
+| ``1.9.0``        | release/1.9.0   | ``2.9``           |
+| ``1.8.0``        | release/1.8.0   | ``2.8``           |
+| ``1.7.0``        | release/1.7.0   | ``2.7``           |
+| ``1.6.0``        | release/1.6.0   | ``2.6``           |
+| ``1.5.0``        | release/1.5.0   | ``2.5``           |
+| ``1.4.0``        | release/1.4.0   | ``2.4``           |
+| ``1.3.0``        | release/1.3.0   | ``2.3``           |
+| ``1.2.0``        | release/1.2.0   | ``2.2``           |
 | ``1.1.0``        | release/1.1.0   | ``2.1``           |
 | ``1.0.0``        | release/1.0.0   | ``2.0`` and older |
 
 
-The relation between APEX and ROCm PyTorch is maintained in file `related_commits` in [ROCm PyTorch release branches](https://github.com/ROCm/pytorch/branches/all?query=release) in the following format. 
+The relation between APEX and ROCm PyTorch is maintained in file `related_commits` in [ROCm PyTorch release branches](https://github.com/ROCm/pytorch/branches/all?query=release) in the following format.
 
 ```
 ubuntu|pytorch|apex|release/1.0.0|06c33eee43f7a22f3ed7d9c3e5be0ddd757dc345|https://github.com/ROCmSoftwarePlatform/apex
@@ -178,11 +178,11 @@ The following extensions are supported:
 | transducer_loss_cuda | APEX_BUILD_TRANSDUCER_LOSS=1 | APEX_BUILD_CUDA_OPS=1 |
 | xentropy_cuda | APEX_BUILD_XENTROPY=1 | APEX_BUILD_CUDA_OPS=1 |
 
-For example, to build FUSED_DENSE​ you can use the following command: 
+For example, to build FUSED_DENSE​ you can use the following command:
 ```
 APEX_BUILD_FUSED_DENSE​=1 pip install . --no-build-isolation
 ```
-This will pre-build and install FUSED_DENSE​ module and rest of the modules are installed to be JIT built and loaded at runtime. 
+This will pre-build and install FUSED_DENSE​ module and rest of the modules are installed to be JIT built and loaded at runtime.
 
 Aiter backend can be built and used for fused rope. To install aiter:
 ```
@@ -193,10 +193,10 @@ To use aiter in fused rope, you can use the flag ```USE_ROCM_AITER_ROPE_BACKEND=
 
 ### To add a new module into jit loader
 
-What is JIT (just-in-time) load? Just-in-time load helps to build the specific modules that are used without needing to build all modules during installation time. This helps to significantly reduce installation time. Without JIT load, it would take roughtly 30 minutes to install apex. With JIT load, it takes less than 1 minute to install apex. 
+What is JIT (just-in-time) load? Just-in-time load helps to build the specific modules that are used without needing to build all modules during installation time. This helps to significantly reduce installation time. Without JIT load, it would take roughtly 30 minutes to install apex. With JIT load, it takes less than 1 minute to install apex.
 
-A python script is provided to ease the process of adding a new module to JIT load. 
-For this, the user must create C++/CUDA source code for a new apex module in either csrc or apex/contrib/csrc folder. 
+A python script is provided to ease the process of adding a new module to JIT load.
+For this, the user must create C++/CUDA source code for a new apex module in either csrc or apex/contrib/csrc folder.
 This script helps to create a builder and a loader for the apex module.
 The builder creates the .so file for the apex module (during installation or jit load time) and the loader loads the .so file when the module is imported.
 
@@ -204,25 +204,25 @@ To run the script:
 
 ```
 python scripts/jit_module.py <apex_module_name>
-``` 
+```
 
 The user should provide the name used to import the module i.e. import fused_bias_swiglu.
 If the user does not provide the module name, the script will ask for the module name
 ```
 What is the name of the module?
-``` 
+```
 
-The script is interactive and asks two questions 
+The script is interactive and asks two questions
 1. Is this a CUDA module? (Y/n)
-2. Enter the sources (comma separated) Press Enter to skip 
+2. Enter the sources (comma separated) Press Enter to skip
 
 If the user answers yes to cuda module, it builds with CUDAOpBuilder otherwise it builds as a cpu operation with CPUOpBuilder. The default is cuda operation.
 The user must mention the list of .cpp, .h, .cu files used to compile the module as a comma separated list.
 This argument is used to define the return value of sources() method in the builder module.
-This will be used to also find the list of directories (include_paths() method) i.e. -I flag in g++ compiler. 
-The user can decide to skip the list of sources and add it manually to the builder file created by the script. 
+This will be used to also find the list of directories (include_paths() method) i.e. -I flag in g++ compiler.
+The user can decide to skip the list of sources and add it manually to the builder file created by the script.
 
-e.g.  
+e.g.
 ```
 python scripts/jit_module.py fused_bias_swiglu
 1. Is this a CUDA module? (Y/n) y
@@ -250,7 +250,7 @@ apex/                                    # repo root
 ```
 
 
-The user must not edit the loader code. 
+The user must not edit the loader code.
 
 The script creates an initial builder code and the users can edit the methods in the module.
 
@@ -262,7 +262,7 @@ The builder module is created in op_builder folder and must override either CPUO
 | INCLUDE_FLAG | Either APEX_BUILD_CUDA_OPS or APEX_BUILD_CPU_OPS to indicate whether the module will be built for gpu or cpu |
 | NAME | name of module e.g. fused_bias_swiglu |
 
-| Method | Purpose | Necessary to override | 
+| Method | Purpose | Necessary to override |
 |-----------|-----------|-----------|
 | absolute_name | return the namespace where the module will be installed | Yes |
 | sources | list of C++/CUDA source files for the module | Yes |
@@ -289,11 +289,11 @@ make clean
 ```
 
 ### Enable hipblasLT on ROCm
-hipblasLT is supported only on mi300 (gfx942) only.  
-python setup.py automatically builds apex with hipblasLT support only if GPU device id is gfx942  
-To verify if hipblasLT support is enabled, check the build logs  
-INFO: IS_HIPBLASLT_SUPPORTED value is True  ==> indicates apex is built with hipblasLT support  
-INFO: IS_HIPBLASLT_SUPPORTED value is False  
+hipblasLT is supported only on mi300 (gfx942) only.
+python setup.py automatically builds apex with hipblasLT support only if GPU device id is gfx942
+To verify if hipblasLT support is enabled, check the build logs
+INFO: IS_HIPBLASLT_SUPPORTED value is True  ==> indicates apex is built with hipblasLT support
+INFO: IS_HIPBLASLT_SUPPORTED value is False
 
 ### Linux
 For performance and full functionality, we recommend installing Apex with
@@ -307,7 +307,7 @@ pip install . --no-build-isolation
 
 ### [Experimental] Windows
 `pip install . --no-build-isolation` may work if you were able to build Pytorch from source
-on your system. A Python-only build via `pip install --no-build-isolation -v --no-cache-dir .` is more likely to work.  
+on your system. A Python-only build via `pip install --no-build-isolation -v --no-cache-dir .` is more likely to work.
 If you installed Pytorch in a Conda environment, make sure to install Apex in that same environment.
 
 # Release notes
@@ -356,7 +356,7 @@ Unit test related
 Upgraded extensions
 - Support unscale_grads in transformer Grad scaler
 - Support amp function in fused dense, mlp
-- Support blas backend flag in fused dense 
+- Support blas backend flag in fused dense
 - Support not destroying process group for distributed tests
 - Upgrade fused adam to support parameters - capturable, master weights, grad scaler
 - Upgrade distributed fused adam to support bias_correction, adam_w_mode, overlap_param_sync, store_params, store_param_remainders, with_scaled_states, nccl_ub
@@ -374,7 +374,7 @@ Added extensions
 - fused bias swiglu
 - fused gradient accumulator
 - fused rope
-  
+
 Upgraded extensions
 - Support blaslt backend in fused weight gradient dense module
 

@@ -99,7 +99,7 @@ def post_backward_models_are_masters(scaler, params, stashed_grads, scale_overri
             for i in range(len(stashed_grads)):
                 stashed_grads[i] = None
             return
-        
+
         if scale_override is not None:
             grads_have_scale, stashed_have_scale, out_scale = scale_override
 
