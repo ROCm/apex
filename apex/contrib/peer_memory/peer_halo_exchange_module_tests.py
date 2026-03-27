@@ -118,6 +118,9 @@ def single_test(peer_rank, peer_group_size, halo_ex, C, H, W, half_halo, dtype, 
     # peer memory flag sync relies on there being at least one barrier per step
     torch.distributed.barrier()
 
+    if peer_rank == 0:
+        torch.testing.assert_close(list_y, list_y2, msg=memory_format_str)
+
 
 def H_split_tests(N, C, H, W, half_halo, rank, world_size, halo_ex, num_steps):
     Hr = 8*world_size
