@@ -1,3 +1,8 @@
+import os
+import sys
+import signal
+from datetime import timedelta
+
 import torch
 from apex.contrib.peer_memory import PeerMemoryPool, PeerHaloExchanger1d
 import peer_memory_cuda as pm
@@ -5,6 +10,15 @@ import peer_memory_cuda as pm
 # How to run:
 # torchrun --nproc_per_node <num-GPU> <this-python-prog>
 # <num-GPU> must be a power of 2 greater than 1.
+
+TEST_TIMEOUT_SEC = int(os.environ.get("TEST_TIMEOUT_SEC", "300"))
+NCCL_TIMEOUT_SEC = int(os.environ.get("NCCL_TIMEOUT_SEC", "120"))
+
+
+def _timeout_handler(signum, frame):
+    rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else "?"
+    print(f"[rank{rank}] Test timed out after {TEST_TIMEOUT_SEC}s, exiting.", flush=True)
+    sys.exit(1)
 
 
 # Output of this function is used as ground truth in module tests.
@@ -147,7 +161,13 @@ def W_split_tests(N, C, H, W, half_halo, rank, world_size, halo_ex, num_steps):
 def main():
     # for this trivial example peer_rank == rank and peer_group_size == world_size
 
-    torch.distributed.init_process_group("nccl")
+    signal.signal(signal.SIGALRM, _timeout_handler)
+    signal.alarm(TEST_TIMEOUT_SEC)
+
+    torch.distributed.init_process_group(
+        "nccl",
+        timeout=timedelta(seconds=NCCL_TIMEOUT_SEC),
+    )
     rank = torch.distributed.get_rank()
     world_size = torch.distributed.get_world_size()
     torch.cuda.set_device(rank)
@@ -159,8 +179,19 @@ def main():
     half_halo = 1
     halo_ex = PeerHaloExchanger1d(peer_ranks, rank, pool, half_halo)
 
-    H_split_tests(1,64,336,200, half_halo,rank,world_size,halo_ex,num_steps)
-    W_split_tests(1,64,200,336, half_halo,rank,world_size,halo_ex,num_steps)
+    try:
+        H_split_tests(1,64,336,200, half_halo,rank,world_size,halo_ex,num_steps)
+        W_split_tests(1,64,200,336, half_halo,rank,world_size,halo_ex,num_steps)
+    except torch.distributed.DistBackendError as e:
+        print(f"[rank{rank}] Distributed backend error (likely NCCL timeout): {e}", flush=True)
+        sys.exit(1)
+    except RuntimeError as e:
+        print(f"[rank{rank}] Runtime error: {e}", flush=True)
+        sys.exit(1)
+    finally:
+        signal.alarm(0)
+        if torch.distributed.is_initialized():
+            torch.distributed.destroy_process_group()
 
 
 if __name__ == "__main__":
