@@ -30,6 +30,11 @@ def _sigabrt_handler(signum, frame):
     _force_exit(1)
 
 
+def _sigterm_handler(signum, frame):
+    """Handle SIGTERM from torchrun so surviving ranks exit immediately."""
+    _force_exit(1)
+
+
 def _timeout_handler(signum, frame):
     rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else "?"
     print(f"[rank{rank}] Test timed out after {TEST_TIMEOUT_SEC}s, exiting.", flush=True)
@@ -178,6 +183,7 @@ def main():
 
     signal.signal(signal.SIGALRM, _timeout_handler)
     signal.signal(signal.SIGABRT, _sigabrt_handler)
+    signal.signal(signal.SIGTERM, _sigterm_handler)
     signal.alarm(TEST_TIMEOUT_SEC)
 
     torch.distributed.init_process_group(
