@@ -15,10 +15,25 @@ TEST_TIMEOUT_SEC = int(os.environ.get("TEST_TIMEOUT_SEC", "300"))
 NCCL_TIMEOUT_SEC = int(os.environ.get("NCCL_TIMEOUT_SEC", "120"))
 
 
+def _force_exit(code=1):
+    """Terminate immediately, bypassing Python cleanup.
+
+    When NCCL is in a broken state, its C++ watchdog thread will call
+    std::terminate() -> abort() -> SIGABRT on a separate thread.  We must
+    call os._exit() to beat that race; sys.exit() unwinds too slowly.
+    """
+    os._exit(code)
+
+
+def _sigabrt_handler(signum, frame):
+    """Catch SIGABRT from NCCL's C++ watchdog and convert to a clean exit."""
+    _force_exit(1)
+
+
 def _timeout_handler(signum, frame):
     rank = torch.distributed.get_rank() if torch.distributed.is_initialized() else "?"
     print(f"[rank{rank}] Test timed out after {TEST_TIMEOUT_SEC}s, exiting.", flush=True)
-    sys.exit(1)
+    _force_exit(1)
 
 
 # Output of this function is used as ground truth in module tests.
@@ -162,6 +177,7 @@ def main():
     # for this trivial example peer_rank == rank and peer_group_size == world_size
 
     signal.signal(signal.SIGALRM, _timeout_handler)
+    signal.signal(signal.SIGABRT, _sigabrt_handler)
     signal.alarm(TEST_TIMEOUT_SEC)
 
     torch.distributed.init_process_group(
@@ -184,14 +200,14 @@ def main():
         W_split_tests(1,64,200,336, half_halo,rank,world_size,halo_ex,num_steps)
     except torch.distributed.DistBackendError as e:
         print(f"[rank{rank}] Distributed backend error (likely NCCL timeout): {e}", flush=True)
-        sys.exit(1)
+        _force_exit(1)
     except RuntimeError as e:
         print(f"[rank{rank}] Runtime error: {e}", flush=True)
-        sys.exit(1)
-    finally:
-        signal.alarm(0)
-        if torch.distributed.is_initialized():
-            torch.distributed.destroy_process_group()
+        _force_exit(1)
+
+    signal.alarm(0)
+    if torch.distributed.is_initialized():
+        torch.distributed.destroy_process_group()
 
 
 if __name__ == "__main__":
