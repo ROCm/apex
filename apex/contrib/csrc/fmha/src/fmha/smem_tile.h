@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -34,24 +34,24 @@ namespace fmha {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template< 
+template<
     // The description of the tile computed by this CTA.
-    typename Cta_tile, 
+    typename Cta_tile,
     // The number of rows in the 2D shared memory buffer.
-    int M_, 
+    int M_,
     // The number of cols.
-    int N_, 
+    int N_,
     // The size in bits of each element.
-    int BITS_PER_ELEMENT_, 
+    int BITS_PER_ELEMENT_,
     // The number of bytes per STS.
     int BYTES_PER_STS_ = 16,
     // The number of buffers. (Used in multistage and double buffer cases.)
     int BUFFERS_PER_TILE_ = 1,
     // Do we enable the fast path for LDS.128 and friends.
-    int ENABLE_LDS_FAST_PATH_ = 0, 
-    // The number of rows that are used for the XOR swizzling to allow fast STS/LDS. 
+    int ENABLE_LDS_FAST_PATH_ = 0,
+    // The number of rows that are used for the XOR swizzling to allow fast STS/LDS.
     int ROWS_PER_XOR_PATTERN_ = 8,
-    // The number of cols that are used for the XOR swizzling to allow fast STS/LDS. 
+    // The number of cols that are used for the XOR swizzling to allow fast STS/LDS.
     int COLS_PER_XOR_PATTERN_ = 1,
     // Use or not predicates
     bool USE_PREDICATES_ = true
@@ -65,7 +65,7 @@ struct Smem_tile_without_skews {
     // The number of elements per STS.
     enum { ELEMENTS_PER_STS = BYTES_PER_STS * 8 / BITS_PER_ELEMENT };
     // To support arbitrary N, we pad some values to a power-of-2.
-    enum { N_WITH_PADDING = Next_power_of_two<N_>::VALUE }; 
+    enum { N_WITH_PADDING = Next_power_of_two<N_>::VALUE };
     // The number of bytes per row without packing of rows.
     enum { BYTES_PER_ROW_BEFORE_PACKING = N_WITH_PADDING * BITS_PER_ELEMENT / 8 };
     // The number of bytes per row -- we want at least 128B per row.
@@ -93,7 +93,7 @@ struct Smem_tile_without_skews {
 
     // The size of one buffer in bytes in shared memory.
     enum { BYTES_PER_BUFFER = STS * BYTES_PER_STS * Cta_tile::THREADS_PER_CTA };
-    // The number of buffers. 
+    // The number of buffers.
     enum { BUFFERS_PER_TILE = BUFFERS_PER_TILE_ };
     // The size in bytes of total buffers.
     enum { BYTES_PER_TILE = BYTES_PER_BUFFER * BUFFERS_PER_TILE };
@@ -103,9 +103,9 @@ struct Smem_tile_without_skews {
     // Do we enable the LDS.128 fast path?
     enum { ENABLE_LDS_FAST_PATH = ENABLE_LDS_FAST_PATH_ };
     static_assert(ENABLE_LDS_FAST_PATH == 0);
-    // The number of rows that are used for the XOR swizzling to allow fast STS/LDS. 
+    // The number of rows that are used for the XOR swizzling to allow fast STS/LDS.
     enum { ROWS_PER_XOR_PATTERN = ROWS_PER_XOR_PATTERN_ };
-    // The number of cols that are used for the XOR swizzling to allow fast STS/LDS. 
+    // The number of cols that are used for the XOR swizzling to allow fast STS/LDS.
     enum { COLS_PER_XOR_PATTERN = COLS_PER_XOR_PATTERN_ * 16 / BYTES_PER_STS };
     // Use or not predicates
     enum { USE_PREDICATES = USE_PREDICATES_ };
@@ -114,7 +114,7 @@ struct Smem_tile_without_skews {
     using Store_type = typename Uint_from_size_in_bytes<BYTES_PER_STS>::Type;
 
     // Ctor.
-    inline __device__ Smem_tile_without_skews(void *smem, int tidx) 
+    inline __device__ Smem_tile_without_skews(void *smem, int tidx)
         : smem_(__nvvm_get_smem_pointer(smem)) {
 
         // The row written by a thread. See doc/mma_smem_layout.xlsx.
@@ -147,7 +147,7 @@ struct Smem_tile_without_skews {
 
             // Take the column into account.
             if( STS_PER_ROW > 1 ) {
-                offset += col*THREADS_PER_ROW*BYTES_PER_STS; 
+                offset += col*THREADS_PER_ROW*BYTES_PER_STS;
             }
 
             // Apply the XOR pattern if needed.
@@ -266,7 +266,7 @@ struct Smem_tile_without_skews {
 
     // Store to the tile in shared memory.
     template< int N >
-    inline __device__ void store(const Store_type (&data)[N], uint32_t preds, uint64_t = 0) { 
+    inline __device__ void store(const Store_type (&data)[N], uint32_t preds, uint64_t = 0) {
         this->store(data, preds);
     }
 
@@ -291,11 +291,11 @@ struct Smem_tile_without_skews {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template< 
+template<
     // The dimensions of the tile computed by the CTA.
-    typename Cta_tile, 
+    typename Cta_tile,
     // The layout of the tile.
-    typename Layout, 
+    typename Layout,
     // The size of the STS.
     int BYTES_PER_STS = 16,
     // The number of buffers per tile.
@@ -497,11 +497,11 @@ struct Smem_tile_a<Cta_tile, Row, BYTES_PER_STS, BUFFERS_PER_TILE>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template< 
+template<
     // The dimensions of the tile computed by the CTA.
-    typename Cta_tile, 
+    typename Cta_tile,
     // The layout of the tile.
-    typename Layout, 
+    typename Layout,
     // The size of the STS.
     int BYTES_PER_STS = 16,
     // The number of buffers per tile.
@@ -1217,7 +1217,7 @@ struct Smem_tile_mma_epilogue : public Base {
     enum { WARPS_M = Base::WARPS_M };
     enum { WARPS_N = Base::WARPS_N };
     static_assert((WARPS_M == 4 || WARPS_N == 8) || WARPS_N == 1);
-    
+
     using Acc = fmha::Fragment_accumulator;
 
     inline __device__ Smem_tile_mma_epilogue(char *smem, int tidx) : Base(smem, tidx) {
@@ -1255,7 +1255,7 @@ struct Smem_tile_mma_epilogue : public Base {
                 uint32_t y = fmha::float2_to_half2(tmp02, tmp03);
                 uint32_t z = fmha::float2_to_half2(tmp10, tmp11);
                 uint32_t w = fmha::float2_to_half2(tmp12, tmp13);
-     
+
                 size_t offset = (this->write_offset_ ^ (ni * 32)) + mi * WARPS_M * 16 * BYTES_PER_ROW;
                 fmha::sts(this->smem_ + offset + 0 * BYTES_PER_ROW, x);
                 fmha::sts(this->smem_ + offset + 8 * BYTES_PER_ROW, z);

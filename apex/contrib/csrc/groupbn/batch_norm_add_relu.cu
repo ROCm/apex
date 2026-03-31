@@ -243,9 +243,9 @@ std::vector<at::Tensor> nhwc_bn_addrelu_bwd(
                        const float momentum,
                        const float epsilon,
                        void * my_data,
-                       void * pair_data, 
-                       void * pair_data2, 
-                       void * pair_data3, 
+                       void * pair_data,
+                       void * pair_data2,
+                       void * pair_data3,
                        const int bn_group,
                        const at::Tensor& magic_tensor,
                        const int occupancy,
@@ -338,7 +338,7 @@ std::vector<at::Tensor> nhwc_bn_addrelu_bwd(
 int nhwc_bn_addrelu_fwd_occupancy() {
     int device_id=-1;
     cudaGetDevice(&device_id);
-    
+
     //max occupancy supported by the code is 2
     return NhwcBatchNormAddRelu::smem_driven_fwd_occupancy(device_id, 2);
 }

@@ -20,14 +20,14 @@ class TransducerJointBuilder(CUDAOpBuilder):
     def include_paths(self):
         return ['contrib/csrc/',
                 #it uses philox.cuh from contrib/csrc/multihead_attn
-                'contrib/csrc/multihead_attn'] 
-        
+                'contrib/csrc/multihead_attn']
+
     def cxx_args(self):
         args = super().cxx_args()
-        return args + self.version_dependent_macros() + self.generator_args() 
+        return args + self.version_dependent_macros() + self.generator_args()
 
     def nvcc_args(self):
-        nvcc_flags = ['-O3'] + self.version_dependent_macros() + self.generator_args() 
+        nvcc_flags = ['-O3'] + self.version_dependent_macros() + self.generator_args()
         if not self.is_rocm_pytorch():
             nvcc_flags += self.nvcc_threads_args()
         return nvcc_flags

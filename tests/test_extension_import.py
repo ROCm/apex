@@ -38,7 +38,7 @@ class TestExtensionImport(unittest.TestCase):
         """
         This method reads setup.py and gets the list of extensions from the setup.py file
         """
-        
+
         #get setup.py file contents
         setup_path = os.path.join(self.parent_folder_path, "setup.py")
 
@@ -58,14 +58,14 @@ class TestExtensionImport(unittest.TestCase):
                 if found == 1:
                     continue
                 #print ("extension", line, line_index)
-                
+
                 if "name"in line:
                     name_line = line.strip()
                 else:
                     #get the next line
                     line_index += 1
                     name_line = setup_contents[line_index].strip()
-                    
+
                 #extract the name part
                 if "name" in name_line:
                     if "'" in name_line:
@@ -74,7 +74,7 @@ class TestExtensionImport(unittest.TestCase):
                         name = name_line[name_line.find("name") + 6 : name_line.rfind('"')]
                     extensions.append(name)
 
-            line_index += 1  
+            line_index += 1
 
         return extensions
 
@@ -132,7 +132,7 @@ class TestExtensionImport(unittest.TestCase):
         else:
             env['LD_LIBRARY_PATH'] = ':'.join(extra_paths)
         return env
-    
+
 
     def check_extension_import(self, extension_name, env):
         """
@@ -140,10 +140,10 @@ class TestExtensionImport(unittest.TestCase):
         Returns True if import successful, False if ImportError occurs
         """
         try:
-            
+
             # Run Python subprocess to test the import
             result = subprocess.run([
-                sys.executable, '-c', 
+                sys.executable, '-c',
                 'import ' + extension_name
             ], capture_output=True, text=True, timeout=30, env=env)
             print ("result.stdout", result.stdout, result.stderr)
@@ -152,7 +152,7 @@ class TestExtensionImport(unittest.TestCase):
                 return False, result.stderr
             else:
                 return True, ""
-                
+
         except subprocess.TimeoutExpired:
             print(f"Import test timed out for {extension_name}")
             return False, "Timeout"
@@ -172,8 +172,8 @@ class TestExtensionImport(unittest.TestCase):
         try:
             # Run Python subprocess to test the import
             result = subprocess.run([
-                sys.executable, '-c', 
-                'from apex.op_builder import ' + builder_name + 
+                sys.executable, '-c',
+                'from apex.op_builder import ' + builder_name +
                 '\n' + builder_name + "().load()"
             ], capture_output=True, text=True, timeout=timeout, env=env)
             print ("result.stdout", result.stdout, result.stderr)
@@ -182,7 +182,7 @@ class TestExtensionImport(unittest.TestCase):
                 return False, result.stderr
             else:
                 return True, ""
-                
+
         except subprocess.TimeoutExpired:
             print(f"Import test timed out for {extension_name}")
             return False, "Timeout"

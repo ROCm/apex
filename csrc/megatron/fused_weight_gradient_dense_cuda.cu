@@ -361,7 +361,7 @@ template void wgrad_gemm_accum_fp32_cuda<float>(float *input, float *d_output, f
 void wgrad_gemm_accum_fp32_cuda_stub(
   at::Tensor &input,
   at::Tensor &d_output,
-  at::Tensor &d_weight) 
+  at::Tensor &d_weight)
 {
     at::Tensor input_2d, d_output_2d;
     // input tensor: collapse to the first dim

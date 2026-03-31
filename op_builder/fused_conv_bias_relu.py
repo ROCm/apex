@@ -20,7 +20,7 @@ class FusedConvBiasReluBuilder(CUDAOpBuilder):
             return ["contrib/csrc/conv_bias_relu/conv_bias_relu.cpp"]
 
     def include_paths(self):
-        paths = ['contrib/csrc/'] 
+        paths = ['contrib/csrc/']
         if not self.is_rocm_pytorch():
             paths.append("apex/contrib/csrc/cudnn-frontend/include")
         return paths

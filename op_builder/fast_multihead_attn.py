@@ -29,13 +29,13 @@ class FastMultiheadAttnBuilder(CUDAOpBuilder):
         return ['csrc/',
                 'contrib/csrc/',
                 'contrib/csrc/multihead_attn']
-        
+
     def cxx_args(self):
         args = super().cxx_args()
         return args + self.version_dependent_macros() + self.generator_args()
 
     def nvcc_args(self):
-        nvcc_flags = ['-O3'] + self.version_dependent_macros() + self.generator_args() 
+        nvcc_flags = ['-O3'] + self.version_dependent_macros() + self.generator_args()
         if not self.is_rocm_pytorch():
             nvcc_flags += ['-U__CUDA_NO_HALF_OPERATORS__',
                          '-U__CUDA_NO_HALF_CONVERSIONS__',

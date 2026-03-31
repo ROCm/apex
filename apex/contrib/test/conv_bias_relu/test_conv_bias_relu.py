@@ -19,7 +19,7 @@ else:
 class FusedDenseTest(unittest.TestCase):
     def setUp(self, seed=0):
         torch.manual_seed(seed)
-        
+
         self.batch_size = random.randint(1, 64)
         self.in_channels = random.randint(1, 64) * 8
         self.out_channels = random.randint(1, 64) * 8
@@ -106,26 +106,26 @@ class FusedDenseTest(unittest.TestCase):
         in_channels = 256
         out_channels = 2376
         h, w = 100, 100
-        
+
         # Input in NHWC format with HALF precision
         x = torch.randn(batch_size, in_channels, h, w).cuda()\
             .to(memory_format=torch.channels_last).half()
         x_ = x.clone()
         x.requires_grad_()
         x_.requires_grad_()
-        
+
         # Conv layer
-        conv = torch.nn.Conv2d(in_channels, out_channels, 3, 
+        conv = torch.nn.Conv2d(in_channels, out_channels, 3,
                             stride=1, padding=1).cuda()\
                             .to(memory_format=torch.channels_last)
         conv_ = copy.deepcopy(conv)
-        
+
         # Test with FP16
         with torch.amp.autocast(device_type="cuda", dtype=torch.half):
             out = ConvBias(x, conv.weight, conv.bias.reshape(1, -1, 1, 1), 1, 1)
             loss = (out.float()**2).sum() / out.numel()
         loss.backward()
-        
+
         # Reference with FP16
         with torch.amp.autocast(device_type="cuda", dtype=torch.half):
             out_ = conv_(x_)

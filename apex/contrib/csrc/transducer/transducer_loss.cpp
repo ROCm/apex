@@ -51,13 +51,13 @@ std::vector<torch::Tensor> transducer_loss_forward(
     if (packedInput)
         CHECK_INPUT(batchOffset);
     return transducer_loss_cuda_forward(
-        x, 
-        label, 
-        fLen, 
-        yLen, 
+        x,
+        label,
+        fLen,
+        yLen,
         batchOffset,
         maxFLen,
-        blankIdx, 
+        blankIdx,
         opt,
         packedInput);
 }

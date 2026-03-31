@@ -1,4 +1,4 @@
-# Fast Multihead Attention 
+# Fast Multihead Attention
 
 This implementation has two main features :
 * A C++ implementation to avoid the CPU overheads of Pytorch found with smaller batch sizes.

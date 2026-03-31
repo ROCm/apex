@@ -111,7 +111,7 @@ class Novograd(Optimizer):
                 exp_avg.mul_(beta1).add_(grad)
 
                 p.data.add_(exp_avg, alpha=-group['lr'])
-        
+
         return loss
 
 
@@ -124,10 +124,10 @@ class TestFusedNovoGrad(TestFusedOptimizer):
         # are expected to behave the same.
         self.options = {'lr':1e-3, 'betas':(0.95, 0), 'eps':1e-8,
                  'weight_decay':0, 'grad_averaging':False, 'amsgrad':False}
-        
+
         self.tst_options = {'lr':1e-3, 'betas':(0.95, 0), 'eps':1e-8,
-                 'weight_decay':0, 'grad_averaging':False, 'amsgrad':False, 
-                 'bias_correction':False, 'reg_inside_moment':True, 
+                 'weight_decay':0, 'grad_averaging':False, 'amsgrad':False,
+                 'bias_correction':False, 'reg_inside_moment':True,
                  'norm_type':2, 'init_zero':False, 'set_grad_none':True}
 
         self.ref_optim = Novograd
@@ -146,7 +146,7 @@ class TestFusedNovoGrad(TestFusedOptimizer):
             with torch.cuda.device(current_dev):
                 torch.cuda.synchronize()
                 self.gen_single_type_test(param_type=torch.float, device=tensor_dev)
-                
+
 
     def test_multi_params(self):
         sizes = [[4096, 1024], [4096], [4096, 2048], [32320, 1024], [1]]

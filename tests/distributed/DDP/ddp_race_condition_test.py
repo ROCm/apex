@@ -51,7 +51,7 @@ for i in range(10):
     # torch.cuda.nvtx.range_push("backward")
     loss.backward()
     # torch.cuda.nvtx.range_pop()
-    
+
     # torch.cuda.nvtx.range_push("synchronize() + info")
     # torch.cuda.synchronize()
     print("i = {}".format(i))

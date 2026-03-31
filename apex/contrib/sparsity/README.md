@@ -31,7 +31,7 @@ for epoch in range(epochs):
 torch.save(...)
 ```
 
-The `prune_trained_model` step calculates the sparse mask and applies it to the weights. This is done once, i.e., sparse locations in the weights matrix remain fixed after this step. 
+The `prune_trained_model` step calculates the sparse mask and applies it to the weights. This is done once, i.e., sparse locations in the weights matrix remain fixed after this step.
 
 ## Generate a Sparse Network
 
@@ -51,7 +51,7 @@ criterion = ... # compare ground truth with model predition; use the same criter
 optimizer = ... # optimize model parameters; use the same optimizer as used to generate the dense trained model
 lr_scheduler = ... # learning rate scheduler; use the same schedule as used to generate the dense trained model
 
-from apex.contrib.sparsity import ASP     
+from apex.contrib.sparsity import ASP
 ASP.prune_trained_model(model, optimizer) #pruned a trained model
 
 x, y = DataLoader(args)
@@ -62,7 +62,7 @@ for epoch in range(epochs): # train the pruned model for the same number of epoc
     loss.backward()
     optimizer.step()
 
-torch.save(...) # saves the pruned checkpoint with sparsity masks 
+torch.save(...) # saves the pruned checkpoint with sparsity masks
 ```
 
 ## Non-Standard Usage
@@ -73,7 +73,7 @@ If your goal is to easily perpare a network for accelerated inference, please fo
 ASP.compute_sparse_masks()
 ```
 
-A more thorough example can be found in `./test/toy_problem.py`. 
+A more thorough example can be found in `./test/toy_problem.py`.
 
 ## Advanced Usage: Channel Permutation
 

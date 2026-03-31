@@ -3,7 +3,7 @@ name: Apex ROCm CI
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review]
-    branches: 
+    branches:
       - master
       - release/1.8.0
       - release/1.9.0
@@ -60,7 +60,7 @@ jobs:
           # Uses the specified branch on manual runs; defaults to the PR/Push context otherwise
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.apex_gitref || '' }}
           submodules: recursive
-      
+
       - name: Pull Docker Image
         run: |
           docker pull ${{ env.DOCKER_IMAGE }}
@@ -123,7 +123,7 @@ jobs:
         with:
           name: apex-wheel
           path: dist/
-      
+
       - name: Pull Docker Image
         run: |
           docker pull ${{ env.DOCKER_IMAGE }}

@@ -7,13 +7,13 @@
 
 Supported Type combinations:
 
-input    compute   weights   output    
+input    compute   weights   output
 =======================================
-fp32     fp32      fp32      fp32      
-fp16     fp32      fp16      fp16      
-bf16     fp32      bf16      bf16      
-fp32     fp32      fp16      fp16      
-fp32     fp32      bf16      bf16      
+fp32     fp32      fp32      fp32
+fp16     fp32      fp16      fp16
+bf16     fp32      bf16      bf16
+fp32     fp32      fp16      fp16
+fp32     fp32      bf16      bf16
 
 Remarks:
 Output type = Weight type
@@ -240,7 +240,7 @@ std::vector<at::Tensor> ln_bwd(const at::Tensor &dz,     // BxSxhidden_size
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.doc() = "CUDA LayerNorm"; 
+  m.doc() = "CUDA LayerNorm";
   m.def("ln_fwd", &ln_fwd, "Run LayerNorm forward kernel");
   m.def("ln_bwd", &ln_bwd, "Run LayerNorm backward kernel");
 }

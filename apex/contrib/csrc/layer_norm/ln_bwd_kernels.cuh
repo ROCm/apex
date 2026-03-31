@@ -3,7 +3,7 @@
 namespace layer_norm {
 
 template<typename Ktraits>
-__global__ __launch_bounds__(Ktraits::THREADS_PER_CTA) 
+__global__ __launch_bounds__(Ktraits::THREADS_PER_CTA)
 void ln_bwd_kernel(layer_norm::BwdParams params) {
 
     enum { ROWS_PER_CTA = Ktraits::ROWS_PER_CTA };
@@ -262,7 +262,7 @@ void ln_bwd_finalize_kernel(BwdParams params)
             memset(&dbeta_local, 0, sizeof(dbeta_local));
             memset(&dgamma_local, 0, sizeof(dgamma_local));
 
-            // Load beta and gamma transposed 
+            // Load beta and gamma transposed
             if(read_row < Kernel_traits::ROWS_PER_CTA){
                 dbeta_local.load_from(smem_beta, read_idx);
                 dgamma_local.load_from(smem_gamma, read_idx);

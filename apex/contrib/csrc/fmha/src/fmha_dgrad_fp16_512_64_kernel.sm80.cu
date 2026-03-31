@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -84,7 +84,7 @@ void run_fmha_dgrad_fp16_512_64_sm80_nl(const Fused_multihead_attention_fprop_pa
     constexpr int smem_size = std::max(smem_size_dv, smem_size_dq_dk);
 
     auto kernel = fmha_dgrad_fp16_512_64_sm80_nl_kernel<2>;
-       
+
     if( num_chunks == 2 ) {
         kernel = fmha_dgrad_fp16_512_64_sm80_nl_kernel<2>;
     }else if( num_chunks == 3 ) {

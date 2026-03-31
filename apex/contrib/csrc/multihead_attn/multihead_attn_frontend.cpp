@@ -493,7 +493,7 @@ std::vector<torch::Tensor> bwd_cuda(
     // torch::Tensor const& input_biases,
     // torch::Tensor const& output_biases,
     torch::Tensor const &dropout_mask, float dropout_prob);
-    
+
 std::vector<torch::Tensor>
 fwd(bool use_mask, bool use_time_mask, bool is_training, int heads,
     torch::Tensor const &inputs, torch::Tensor const &input_weights,
@@ -588,7 +588,7 @@ std::vector<torch::Tensor> bwd_cuda(
     // torch::Tensor const& input_biases,
     // torch::Tensor const& output_biases,
     torch::Tensor const &dropout_mask, float dropout_prob);
-    
+
 std::vector<torch::Tensor>
 fwd(bool use_mask, bool use_time_mask, bool is_training, int heads,
     torch::Tensor const &inputs, torch::Tensor const &input_weights,

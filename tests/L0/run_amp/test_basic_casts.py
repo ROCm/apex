@@ -74,7 +74,7 @@ class TestBasicCastsHalf(_TestBasicCasts):
     def tearDown(self):
         self.handle._deactivate()
         common_reset(self)
-    
+
     def test_linear_is_half(self):
         self._test_linear(ALWAYS_HALF)
 

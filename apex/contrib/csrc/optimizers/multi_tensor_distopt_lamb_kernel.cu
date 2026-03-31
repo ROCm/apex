@@ -24,7 +24,7 @@ __device__ __forceinline__ void load_store(T* dst, T* src, int dst_offset, int s
   ((LT*)dst)[dst_offset] = ((LT*)src)[src_offset];
 }
 
-template <typename FROM_T, typename TO_T> 
+template <typename FROM_T, typename TO_T>
 __device__ void convert(const FROM_T vi, TO_T& vo)
 {
     vo = static_cast<TO_T>(vi);

@@ -45,7 +45,7 @@ def builder_closure(member_name):
         return builder
 
 # this is for the import statement such as 'from apex.op_builder import FusedLayerNormBuilder' to work
-# reflect builder names and add builder closure, such as 'apex.op_builder.FusedLayerNormBuilder()' creates op builder 
+# reflect builder names and add builder closure, such as 'apex.op_builder.FusedLayerNormBuilder()' creates op builder
 for _, module_name, _ in pkgutil.iter_modules([os.path.dirname(this_module.__file__)]):
     if module_name != 'all_ops' and module_name != 'builder':
         module = importlib.import_module(f".{module_name}", package=op_builder_dir)

@@ -179,10 +179,10 @@ class BatchNorm2d_NHWC(_BatchNorm):
         #FIXME: turn pair handles into an array
         if bn_group>1:
             local_rank = torch.distributed.get_rank()
-            world_size = torch.distributed.get_world_size()          
+            world_size = torch.distributed.get_world_size()
             assert(world_size >= bn_group)
             assert(world_size % bn_group == 0)
-         
+
             bn_sync_steps = 1
             if (bn_group==4):
                 bn_sync_steps = 2

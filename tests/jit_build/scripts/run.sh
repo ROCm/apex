@@ -4,13 +4,13 @@ JIT_CONDITION="$2"
 echo $(pwd)
 
 WORKSPACE_DIR=/myworkspace
-mkdir -p $WORKSPACE_DIR 
+mkdir -p $WORKSPACE_DIR
 
-cd $WORKSPACE_DIR  
-git clone https://github.com/rocm/apex.git --recursive 
-cd apex 
+cd $WORKSPACE_DIR
+git clone https://github.com/rocm/apex.git --recursive
+cd apex
 git checkout Refactor_build
-git submodule update --init --recursive 
+git submodule update --init --recursive
 
 sh tests/jit_build/build.sh "condition" $JIT_CONDITION
 

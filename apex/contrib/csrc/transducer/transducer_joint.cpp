@@ -50,9 +50,9 @@ std::vector<torch::Tensor> transducer_joint_forward(
     if (packOutput)
         CHECK_INPUT(batchOffset);
     return transducer_joint_cuda_forward(
-        f, 
-        g, 
-        fLen, 
+        f,
+        g,
+        fLen,
         gLen,
         batchOffset,
         packedBatch,
@@ -81,8 +81,8 @@ std::vector<torch::Tensor> transducer_joint_backward(
     if (packOutput)
         CHECK_INPUT(batchOffset);
     return transducer_joint_cuda_backward(
-        in, 
-        fLen, 
+        in,
+        fLen,
         gLen,
         batchOffset,
         maxFLen,

@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -70,10 +70,10 @@ inline __device__ void compute_dv_1xN_nl(const Params &params) {
     using Smem_tile_v = typename Kernel_traits::Smem_tile_v;
 
     // The global memory tile to store dV.
-    using Gmem_tile_dv = fmha::Gmem_tile_qkv<typename Kernel_traits::Cta_tile_o, 
-                                             fmha::BITS_PER_ELEMENT_B, 
-                                             Cta_tile_p::N, //S, 
-                                             Cta_tile_p::K, //D, 
+    using Gmem_tile_dv = fmha::Gmem_tile_qkv<typename Kernel_traits::Cta_tile_o,
+                                             fmha::BITS_PER_ELEMENT_B,
+                                             Cta_tile_p::N, //S,
+                                             Cta_tile_p::K, //D,
                                              2*CHUNKS>;
 
     // The shared memory tile to swizzle dV.
@@ -351,10 +351,10 @@ inline __device__ void compute_dq_dk_1xN_nl(const Params &params) {
     using Smem_tile_o = typename Kernel_traits::Smem_tile_o;
 
     // The global memory tile to store dK.
-    using Gmem_tile_dk = fmha::Gmem_tile_qkv<typename Kernel_traits::Cta_tile_o, 
-                                             fmha::BITS_PER_ELEMENT_B, 
-                                             Cta_tile_p::N, //S, 
-                                             Cta_tile_p::K, //D, 
+    using Gmem_tile_dk = fmha::Gmem_tile_qkv<typename Kernel_traits::Cta_tile_o,
+                                             fmha::BITS_PER_ELEMENT_B,
+                                             Cta_tile_p::N, //S,
+                                             Cta_tile_p::K, //D,
                                              2*CHUNKS>;
 
     // The shared memory tile to swizzle dK.
@@ -368,7 +368,7 @@ inline __device__ void compute_dq_dk_1xN_nl(const Params &params) {
     // The global memory tile to load dP, stored in S
     using Gmem_tile_s = Gmem_tile_mma_s<Cta_tile_p>;
     // The shared memory tile to transpose dP.
-    using Smem_tile_st = Smem_tile_mma_transposed<Cta_tile_p>;  
+    using Smem_tile_st = Smem_tile_mma_transposed<Cta_tile_p>;
 
     using Noloop = Noloop_traits<CHUNKS, Cta_tile_p>;
 
@@ -551,9 +551,9 @@ inline __device__ void compute_dq_dk_1xN_nl(const Params &params) {
     // Epilogue swizzle for dK
     Smem_tile_dk smem_dk(&smem_[0], tidx);
     smem_dk.store(acc_dk);
-    
+
     __syncthreads();
-    
+
     uint4 dk_out[Smem_tile_dk::NUM_LDS];
     smem_dk.load(dk_out);
     Qkv_params dk_params;

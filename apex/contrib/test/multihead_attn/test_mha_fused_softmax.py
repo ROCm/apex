@@ -16,20 +16,20 @@ class FusedSoftmaxTest(unittest.TestCase):
 
         self.mask = (torch.randn(self.sequences,self.seq_length)>0).cuda()
         self.mask = self.mask.half()*-10000
-        self.ref_inputs = torch.randn(self.heads * self.sequences, self.seq_length, self.seq_length, 
+        self.ref_inputs = torch.randn(self.heads * self.sequences, self.seq_length, self.seq_length,
                                       dtype=torch.float16, device=torch.device("cuda")).requires_grad_(True)
-        
+
         self.tst_inputs = self.ref_inputs.clone().detach().requires_grad_(True)
 
     def test_fused_softmax(self) :
         grads = torch.randn_like(self.tst_inputs)
         y_ref = self.ref_inputs.view(self.sequences, self.heads, self.seq_length, self.seq_length)
         y_ref = y_ref + self.mask.unsqueeze(1).unsqueeze(2)
-        y_ref = y_ref.view(self.sequences*self.heads, self.seq_length, self.seq_length) 
+        y_ref = y_ref.view(self.sequences*self.heads, self.seq_length, self.seq_length)
         y_ref = F.softmax(y_ref, dim=-1)
-        y_ref = torch._fused_dropout(y_ref, 1.0)    
-   
-        y_tst = fast_mask_softmax_dropout_func(True, self.heads, self.tst_inputs, self.mask, True, 0.0)        
+        y_ref = torch._fused_dropout(y_ref, 1.0)
+
+        y_tst = fast_mask_softmax_dropout_func(True, self.heads, self.tst_inputs, self.mask, True, 0.0)
         y_ref[0].backward(grads)
         y_tst.backward(grads)
 

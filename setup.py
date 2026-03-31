@@ -9,10 +9,10 @@ import subprocess
 
 import torch
 from torch.utils.cpp_extension import (
-        BuildExtension, 
-        CppExtension, 
-        CUDAExtension, 
-        CUDA_HOME, 
+        BuildExtension,
+        CppExtension,
+        CUDAExtension,
+        CUDA_HOME,
         ROCM_HOME,
         load,
      )
@@ -202,7 +202,7 @@ for op_name, builder in ALL_OPS.items():
         install_ops[op_name] = True
         ext_modules.append(builder.builder())
 
-print(f'Install Ops={install_ops}')  
+print(f'Install Ops={install_ops}')
 
 # Write out version/git info.
 git_hash_cmd = shlex.split("bash -c \"git rev-parse --short HEAD\"")

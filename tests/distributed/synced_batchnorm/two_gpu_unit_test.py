@@ -148,7 +148,7 @@ if args.local_rank == 0:
     sbn_result = compare("comparing output: ", out, out_r, error) and sbn_result
     compare("comparing bn output: ", out_bn, out_r, error)
 
-grad_output_t  = torch.tensor(grad, dtype=tdtype, device='cuda') 
+grad_output_t  = torch.tensor(grad, dtype=tdtype, device='cuda')
 grad_output_r  = torch.tensor(grad.transpose(1, 0, 2, 3), dtype=torch.float64, device='cuda').reshape(feature_size, -1)
 grad_output2_r = torch.tensor(grad, dtype=torch.float64, device='cuda')
 

@@ -22,8 +22,8 @@
 namespace apex { namespace contrib { namespace nccl_p2p {
 at::Tensor get_unique_nccl_id(int n);
 int init_nccl_comm(
-        at::Tensor unique_nccl_id, 
-        int my_rank, 
+        at::Tensor unique_nccl_id,
+        int my_rank,
         int num_ranks
         );
 void left_right_halo_exchange_inplace(
@@ -38,7 +38,7 @@ std::vector<at::Tensor> left_right_halo_exchange(
         int handle,
         int left_rank,
         int right_rank,
-        at::Tensor left_output_halo, 
+        at::Tensor left_output_halo,
         at::Tensor right_output_halo);
 void add_delay(int delay);
 }}}

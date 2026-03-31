@@ -69,7 +69,7 @@ class TestCheckpointing(unittest.TestCase):
                 msg='Parameters in state_dices not equal.' +
                     'key: {}\nparam: {}\nrestored: {}\ndiff: {} for {}'.format(
                         key, paramA, paramB, paramA - paramB, test_setup))
-    
+
     def test_restoring(self):
         nb_epochs = 10
         nb_epochs_restore = nb_epochs // 2
@@ -225,11 +225,11 @@ class TestCheckpointing(unittest.TestCase):
                 self.assertEqual(scaler['loss_scale'], init_ls / 2**factor)
                 unskipped_target = 0
                 self.assertEqual(scaler['unskipped'], unskipped_target)
-            
+
             if opt_level != "O0":
                 _amp_state.handle._deactivate()
 
-            
+
 
     def test_state_dict(self):
         for opt_level in self.test_opt_levels:

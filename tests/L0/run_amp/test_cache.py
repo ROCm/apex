@@ -74,23 +74,23 @@ class TestCache(unittest.TestCase):
         _amp_state.allow_incoming_model_not_fp32 = True
         model, optimizer = amp.initialize(model, optimizer, opt_level=opt_level, verbosity=0)
         _amp_state.allow_incoming_model_not_fp32 = False
-        
+
         def training_step():
             for param in model.parameters():
                 param.grad = None
-        
+
             loss = model(self.x).sum()
             _amp_state.loss_scalers[0]._loss_scale = 4.0
             with amp.scale_loss(loss, optimizer) as scaled_loss:
                 scaled_loss.backward()
-        
+
             self.assertEqual(len([p.grad for p in model.parameters() if p.grad is not None]), 1)
             self.assertEqual(model.weight.grad.type(), model.weight.type())
-        
+
             reference_grad = get_reference_grad(self.x, model.weight, model.ops)
-        
+
             # Currently there's no difference in the allclose calls, so no need for branching,
-            # but I'm keeping this in case we want different tolerances for fp16 and fp32 checks. 
+            # but I'm keeping this in case we want different tolerances for fp16 and fp32 checks.
             if model.weight.grad.type() == "torch.cuda.HalfTensor":
                 self.assertTrue(torch.allclose(model.weight.grad.float(), reference_grad))
             elif model.weight.grad.type() == "torch.cuda.BFloat16Tensor":
@@ -101,19 +101,19 @@ class TestCache(unittest.TestCase):
                 raise RuntimeError("model.weight.grad.type = {}".format(model.weight.grad.type()))
 
             model.weight.data -= 1.
-        
+
         # Simulates first epoch
         training_step()
-        
+
         # Simulates eval
         with torch.no_grad():
             loss = model(self.x).sum()
-        
+
         # Simulates resuming training after eval
         training_step()
 
         _amp_state.handle._deactivate()
-   
+
     # I could easily have these as a set of for loops in a single test,
     # instead of going for granularity.
     def test_whitelist_module_fp16_weight(self):

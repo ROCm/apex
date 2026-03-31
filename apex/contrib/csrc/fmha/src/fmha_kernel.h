@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -73,20 +73,20 @@ struct BlockInfoPadded {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template<int CHUNKS, typename Cta_tile> 
+template<int CHUNKS, typename Cta_tile>
 struct Noloop_traits{
     // Interpretation of Cta_tile dims, i.e. Cta_tile_p:
     enum{ STEP = Cta_tile::M };
     enum{ SEQLEN = Cta_tile::N };
 
     template<typename Block_info>
-    inline __device__ Noloop_traits(const int bidc, const Block_info& binfo) 
+    inline __device__ Noloop_traits(const int bidc, const Block_info& binfo)
         : bidc_(bidc) {
         const int seqlen = binfo.actual_seqlen;
         const int steps = (seqlen  + STEP - 1) / STEP;
         const int steps_per_chunk = (steps + CHUNKS - 1) / CHUNKS;
 
-        const int step_begin = bidc_ * steps_per_chunk; 
+        const int step_begin = bidc_ * steps_per_chunk;
         const int step_end = min(steps, (bidc_ + 1) * steps_per_chunk);
         const int actual_steps = max(0, step_end - step_begin);
         loop_offset_ = step_begin;
@@ -94,7 +94,7 @@ struct Noloop_traits{
 
     }
 
-    template<typename ... Tiles> 
+    template<typename ... Tiles>
     inline __device__ void move_all(Tiles & ... tiles) const {
         using expand_type = int[];
         for( int s = 0; s < loop_offset_; s++ ) {
@@ -130,7 +130,7 @@ std::tuple<int , int, int, int, int, int> work_dist(const int total_ctas, const 
     constexpr int STEPS_PER_HEAD = Kernel_traits::Cta_tile_p::N / Kernel_traits::Cta_tile_p::M;
 
     const int num_full_heads = heads_total / total_ctas;
-    const int heads_last_wave = heads_total % total_ctas; 
+    const int heads_last_wave = heads_total % total_ctas;
 
     int num_main_groups = 0;
     int main_steps = 0;

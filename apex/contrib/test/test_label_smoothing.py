@@ -64,13 +64,13 @@ class LabelSmoothingTest(unittest.TestCase):
         for i in range(iters):
             logits, labels, half_to_float = self.gen_test_inputs(
                 N, T, H, smoothing, padding_idx)
-    
+
             # Run original softmax cross entropy with label smoothing
             logits.grad = None
             losses = label_smoothing_raw(logits, labels, padding_idx, smoothing)
             loss = losses.sum()
             loss.backward()
-            
+
             ref_loss = loss.clone().detach()
             ref_grad = logits.grad.clone().detach()
 
@@ -98,7 +98,7 @@ class LabelSmoothingTest(unittest.TestCase):
 
         logits, labels, half_to_float = self.gen_test_inputs(
             N, T, H, smoothing, padding_idx)
-    
+
         # Run original softmax cross entropy with label smoothing
         torch.cuda.synchronize()
         ts = time.time()
@@ -110,7 +110,7 @@ class LabelSmoothingTest(unittest.TestCase):
         torch.cuda.synchronize()
         print("Raw time {:.2f} s elapsed for {} iterations, norm {:.4f}".format(
             time.time() - ts, iters, logits.grad.norm()))
-            
+
         # Run optimized softmax cross entropy with label smoothing
         torch.cuda.synchronize()
         ts = time.time()

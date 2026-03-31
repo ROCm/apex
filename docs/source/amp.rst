@@ -187,10 +187,10 @@ In order to get bitwise accuracy, we recommend the following workflow::
         # Initialization
         opt_level = 'O1'
         model, optimizer = amp.initialize(model, optimizer, opt_level=opt_level)
-        
+
         # Train your model
         ...
-        
+
         # Save checkpoint
         checkpoint = {
             'model': model.state_dict(),
@@ -199,17 +199,17 @@ In order to get bitwise accuracy, we recommend the following workflow::
         }
         torch.save(checkpoint, 'amp_checkpoint.pt')
         ...
-        
+
         # Restore
         model = ...
         optimizer = ...
         checkpoint = torch.load('amp_checkpoint.pt')
-        
+
         model, optimizer = amp.initialize(model, optimizer, opt_level=opt_level)
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         amp.load_state_dict(checkpoint['amp'])
-        
+
         # Continue training
         ...
 
