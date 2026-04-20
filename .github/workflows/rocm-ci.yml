@@ -142,7 +142,7 @@ jobs:
         run: |
           docker exec apex-test-container bash -c "
             set -e
-            pip install expecttest onnxscript
+            pip install -r requirements_dev.txt
             pip install dist/apex-*.whl
           "
 
