@@ -1,3 +1,5 @@
 -r requirements.txt
 flake8>=3.7.9
 Sphinx>=3.0.3
+expecttest
+onnxscript
