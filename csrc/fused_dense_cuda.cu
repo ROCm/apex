@@ -142,7 +142,7 @@ int gemm_lt(
 {
 
   hipStream_t stream;
-  hipblasHandle_t handle = at::cuda::getCurrentCUDABlasHandle();
+  hipblasHandle_t handle = at::cuda::getCurrentCUDABlasLtHandle();
   hipblasGetStream(handle, &stream);
 
 #if DEBUG
