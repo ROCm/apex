@@ -12,8 +12,8 @@ class FusedSGD(Optimizer):
       * A multi-tensor apply launch that batches the elementwise updates applied to all the model's parameters into one or a few kernel launches.
 
     :class:`apex.contrib.optimizers.FusedSGD` should be used without AMP.
-   
-    :class:`apex.contrib.optimizers.FusedSGD` only works in the case where all parameters require grad. 
+
+    :class:`apex.contrib.optimizers.FusedSGD` only works in the case where all parameters require grad.
 
     Nesterov momentum is based on the formula from
     `On the importance of initialization and momentum in deep learning`__.
@@ -111,7 +111,7 @@ class FusedSGD(Optimizer):
                 first_run = False
                 momentums.append(param_state['momentum_buffer'])
         return momentums, first_run
-    
+
     def step(self, closure=None, grads=None, output_params=None, scale=1., grad_norms=None):
         """Performs a single optimization step.
         Arguments:
@@ -157,13 +157,13 @@ class FusedSGD(Optimizer):
         else:
             output_params_group = output_params
 
-        for group, grads_this_group, output_params_this_group in zip(self.param_groups, 
-	                                                             grads_group, 
+        for group, grads_this_group, output_params_this_group in zip(self.param_groups,
+	                                                             grads_group,
                                                                      output_params_group):
-            if grads_this_group is None or output_params_this_group is None: 
+            if grads_this_group is None or output_params_this_group is None:
                 raise RuntimeError('apex.contrib.optimizers.FusedSGD only works \
                                     when all parameters require grad.')
-            
+
             weight_decay = group['weight_decay']
             momentum = group['momentum']
             dampening = group['dampening']
@@ -171,7 +171,7 @@ class FusedSGD(Optimizer):
             lr = group['lr']
 
             first_runs = [True, True]
-            
+
             # output_params_this_group: original weights (either fp16 or fp32)
             # group['params']: master weights (fp32)
 

@@ -158,7 +158,7 @@ each process prior to initializing your model or any other tensors.
 More information can be found in the docs for the
 Pytorch multiprocess launcher module [torch.distributed.launch](https://pytorch.org/docs/stable/distributed.html#launch-utility).
 
-`main_amp.py` is written to interact with 
+`main_amp.py` is written to interact with
 [torch.distributed.launch](https://pytorch.org/docs/master/distributed.html#launch-utility),
 which spawns multiprocess jobs using the following syntax:
 ```

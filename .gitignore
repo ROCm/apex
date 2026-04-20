@@ -147,7 +147,7 @@ dmypy.json
 cython_debug/
 *.hip
 *_hip.*
-*hip* 
+*hip*
 
 
 #file temporarily created for build process

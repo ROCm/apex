@@ -1,4 +1,4 @@
-from apex import fused_dense 
+from apex import fused_dense
 import torch
 import torch.nn.functional as F
 import unittest

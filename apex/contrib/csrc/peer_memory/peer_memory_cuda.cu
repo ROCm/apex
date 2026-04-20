@@ -131,7 +131,7 @@ void tensor_strides(at::Tensor t, bool explicit_nhwc, int& stride_N, int& stride
     }
 }
 
-template<class T> 
+template<class T>
 __device__ void __zero(T* dst)
 {
     *dst = T(0);
@@ -146,8 +146,8 @@ __device__ void __zero(int4* dst)
 
 template<class T, bool is_HWC, bool zero>
 __device__ void strided_copy_kernel(
-	T* dst, const int dst_stride_C, const int dst_stride_H, const int dst_stride_W, 
-	const T* src, const int src_stride_C, const int src_stride_H, const int src_stride_W, 
+	T* dst, const int dst_stride_C, const int dst_stride_H, const int dst_stride_W,
+	const T* src, const int src_stride_C, const int src_stride_H, const int src_stride_W,
 	const int NC, const int NH, const int NW
 	)
 {
@@ -179,7 +179,7 @@ __device__ void strided_copy_kernel(
     }
 }
 
-template<bool top_zero, bool btm_zero> 
+template<bool top_zero, bool btm_zero>
 __device__ void checked_signal(
 	volatile int* signal1_flag, volatile int* signal2_flag,
 	const int v1, const int v2, const int v3, const int v4
@@ -325,7 +325,7 @@ __device__ void wait_for(
 	    r4 = __builtin_nontemporal_load(wait_flag + 3);
 #else
 	    asm volatile("ld.volatile.global.v4.u32 {%0,%1,%2,%3}, [%4];" : "=r"(r1), "=r"(r2), "=r"(r3), "=r"(r4) : "l"(wait_flag) : "memory");
-#endif        
+#endif
 	} while (r1 != v1 || r2 != v2 || r3 != v3 || r4 != v4);
     }
     cg::this_grid().sync();  // all threads wait for main

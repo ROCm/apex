@@ -116,7 +116,7 @@ class FusedRoPEFuncAiter(FusedRoPEFunc):
         h = t.shape[2]
         d = t.shape[3]
         # t is of shape [s, b, h, d]
-        # freqs is of shape [s, 1, 1, d]    
+        # freqs is of shape [s, 1, 1, d]
 
         act_options = {'dtype': t.dtype, 'device': t.device, 'requires_grad': False}
         if transpose_output_memory:
@@ -130,18 +130,18 @@ class FusedRoPEFuncAiter(FusedRoPEFunc):
 
         return output
 
-    
+
     @staticmethod
     def backward(
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
-        (freqs,) = ctx.saved_tensors   
+        (freqs,) = ctx.saved_tensors
 
         s = grad_output.shape[0]
         b = grad_output.shape[1]
         h = grad_output.shape[2]
         d = grad_output.shape[3]
-        
+
         act_options = {'dtype': grad_output.dtype, 'device': grad_output.device, 'requires_grad': False}
         if ctx.transpose_output_memory:
             grad_input = torch.empty((b, s, h, d), **act_options).transpose(0, 1)
@@ -195,7 +195,7 @@ class FusedRoPECachedFunc(torch.autograd.Function):
         transpose_output_memory: bool = False,
     ) -> torch.Tensor:
         raise ValueError("Invalid forward implementation.")
-            
+
     @staticmethod
     def backward(
         ctx, grad_output: torch.Tensor
@@ -228,8 +228,8 @@ class FusedRoPECachedFuncApex(FusedRoPECachedFunc):
             grad_output, cos_, sin_, ctx.transpose_output_memory
         )
         return grad_input, None, None, None
-    
-class FusedRoPECachedFuncAiter(FusedRoPECachedFunc):    
+
+class FusedRoPECachedFuncAiter(FusedRoPECachedFunc):
     @staticmethod
     def forward(
         ctx,
@@ -243,7 +243,7 @@ class FusedRoPECachedFuncAiter(FusedRoPECachedFunc):
         h = t.shape[2]
         d = t.shape[3]
         # t is of shape [s, b, h, d]
-        # freqs is of shape [s, 1, 1, d]    
+        # freqs is of shape [s, 1, 1, d]
 
         act_options = {'dtype': t.dtype, 'device': t.device, 'requires_grad': False}
         if transpose_output_memory:
@@ -267,7 +267,7 @@ class FusedRoPECachedFuncAiter(FusedRoPECachedFunc):
         b = grad_output.shape[1]
         h = grad_output.shape[2]
         d = grad_output.shape[3]
-        
+
         act_options = {'dtype': grad_output.dtype, 'device': grad_output.device, 'requires_grad': False}
         if ctx.transpose_output_memory:
             grad_input = torch.empty((b, s, h, d), **act_options).transpose(0, 1)
@@ -320,7 +320,7 @@ class FusedRoPETHDFunc(torch.autograd.Function):
         freqs: torch.Tensor,
     ) -> torch.Tensor:
         raise ValueError("Invalid forward implementation.")
-        
+
     @staticmethod
     def backward(
         ctx, grad_output: torch.Tensor
@@ -383,7 +383,7 @@ class FusedRoPETHDFuncAiter(FusedRoPETHDFunc):
         h = grad_output.shape[1]
         d = grad_output.shape[2]
         # t is of shape [t, h, d]
-        
+
         act_options = {'dtype': grad_output.dtype, 'device': grad_output.device, 'requires_grad': False}
         grad_input = torch.empty((t, h, d), **act_options)
         aiter.rope_thd_bwd_impl(grad_input, grad_output, cu_seqlens, freqs, 0, False, False)
@@ -488,7 +488,7 @@ class FusedRoPE2DFuncAiter(FusedRoPE2DFunc):
         cos_w: torch.Tensor,
         sin_w: torch.Tensor,
     ) -> torch.Tensor:
-        
+
         s = t.shape[0]
         h = t.shape[2]
         d = t.shape[3]
@@ -509,12 +509,12 @@ class FusedRoPE2DFuncAiter(FusedRoPE2DFunc):
     ) -> Tuple[Union[torch.Tensor, None], ...]:
 
         cos_h, sin_h, cos_w, sin_w = ctx.saved_tensors
-       
+
         s = grad_output.shape[0]
         h = grad_output.shape[2]
         d = grad_output.shape[3]
         # t is of shape [s, ih* iw, h, d]
-        
+
         act_options = {'dtype': grad_output.dtype, 'device': grad_output.device, 'requires_grad': False}
         grad_input = torch.empty((s, ctx.img_h * ctx.img_w, h, d), **act_options)
         aiter.rope_2d_bwd_impl(grad_input, grad_output, cos_h, sin_h, cos_w, sin_w, ctx.img_h, ctx.img_w, 0, False, False)

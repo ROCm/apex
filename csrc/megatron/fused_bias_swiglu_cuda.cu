@@ -8,10 +8,10 @@ __device__ __forceinline__ float silu(float x) {
 
 // CUDA kernel for Fused Bias SwiGLU with chunking
 template <typename T>
-__global__ void fused_bias_swiglu_kernel(const T* __restrict__ input, 
-                                         const T* __restrict__ bias, 
-                                         T* __restrict__ output, 
-                                         int half_dim, 
+__global__ void fused_bias_swiglu_kernel(const T* __restrict__ input,
+                                         const T* __restrict__ bias,
+                                         T* __restrict__ output,
+                                         int half_dim,
                                          int max_index) {
     int output_idx = blockIdx.x * blockDim.x + threadIdx.x;
     int row_idx = output_idx / half_dim;
@@ -31,10 +31,10 @@ __global__ void fused_bias_swiglu_kernel(const T* __restrict__ input,
 // CUDA Kernel: Computes the backward pass for fused bias SwiGLU
 template <typename T>
 __global__ void fused_bias_swiglu_backward_kernel(
-    const T* __restrict__ grad_output, 
-    const T* __restrict__ input, 
-    const T* __restrict__ bias, 
-    T* __restrict__ grad_input, 
+    const T* __restrict__ grad_output,
+    const T* __restrict__ input,
+    const T* __restrict__ bias,
+    T* __restrict__ grad_input,
     int half_dim, int max_index) {
 
     int output_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -80,7 +80,7 @@ torch::Tensor fused_bias_swiglu_forward(torch::Tensor input, torch::Tensor bias)
     int threads = prop.maxThreadsPerBlock;
     int blocks = (batch_size * half_dim + threads - 1) / threads;
     blocks = min(blocks, prop.maxGridSize[0]);
-    
+
 
     AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.scalar_type(), "fused_bias_swiglu_forward", [&] {
         fused_bias_swiglu_kernel<scalar_t><<<blocks, threads>>>(

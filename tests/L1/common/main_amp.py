@@ -91,7 +91,7 @@ def fast_collate(batch):
         nump_array = np.rollaxis(nump_array, 2)
 
         tensor[i] += torch.from_numpy(nump_array)
-        
+
     return tensor, targets
 
 best_prec1 = 0
@@ -99,7 +99,7 @@ args = parser.parse_args()
 
 # Let multi_tensor_applier be the canary in the coalmine
 # that verifies if the backend is what we think it is
-assert multi_tensor_applier.available == args.has_ext 
+assert multi_tensor_applier.available == args.has_ext
 
 print("opt_level = {}".format(args.opt_level))
 print("keep_batchnorm_fp32 = {}".format(args.keep_batchnorm_fp32), type(args.keep_batchnorm_fp32))
@@ -149,7 +149,7 @@ def main():
     model = model.cuda()
 
     # Scale learning rate based on global batch size
-    args.lr = args.lr*float(args.batch_size*args.world_size)/256. 
+    args.lr = args.lr*float(args.batch_size*args.world_size)/256.
     if args.fused_adam:
         optimizer = optimizers.FusedAdam(model.parameters())
     else:
@@ -166,7 +166,7 @@ def main():
         )
 
     if args.distributed:
-        # By default, apex.parallel.DistributedDataParallel overlaps communication with 
+        # By default, apex.parallel.DistributedDataParallel overlaps communication with
         # computation in the backward pass.
         # model = DDP(model)
         # delay_allreduce delays all communication to the end of the backward pass.
@@ -288,7 +288,7 @@ class data_prefetcher():
             # else:
             self.next_input = self.next_input.float()
             self.next_input = self.next_input.sub_(self.mean).div_(self.std)
-            
+
     def next(self):
         torch.cuda.current_stream().wait_stream(self.stream)
         input = self.next_input

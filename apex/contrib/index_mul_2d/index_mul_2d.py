@@ -49,9 +49,9 @@ class IndexMul2d_(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_out):
-        
+
         in1, in2, idx1 = ctx.for_backwards
-       
+
         grad_in1, grad_in2 = index_mul_2d_backward(in1, in2, idx1, grad_out)
 
         return grad_in1, grad_in2, None
@@ -93,8 +93,8 @@ class IndexMul2dBackward_(torch.autograd.Function):
                 grad_out,
                 in1,
                 in2,
-                idx1)            
-            
+                idx1)
+
         ctx.for_backwards = (in1, in2, idx1, grad_out)
         return grad_in1, grad_in2
 
@@ -104,7 +104,7 @@ class IndexMul2dBackward_(torch.autograd.Function):
             grad_grad_in1 = grad_grad_in1.contiguous()
         if not grad_grad_in2.is_contiguous():
             grad_grad_in2 = grad_grad_in2.contiguous()
-        
+
         assert grad_grad_in1.is_contiguous()
         assert grad_grad_in2.is_contiguous()
 
@@ -135,7 +135,7 @@ class IndexMul2dBackward_(torch.autograd.Function):
                 grad_grad_in2,
                 in1,
                 in2,
-                idx1)            
+                idx1)
 
         return grad_in1, grad_in2, None, grad_grad_out
 

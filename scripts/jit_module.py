@@ -12,7 +12,7 @@ class JitModule:
         self.compatability_folder = "compatibility"
 
     def get_module_name(self, builder_file_name):
-        #open builder file and read the NAME attribute  
+        #open builder file and read the NAME attribute
         with open(os.path.join(self.op_builder_folder, f"{builder_file_name}.py"), "r") as f:
             contents = f.read()
         for line in contents.split("\n"):
@@ -36,7 +36,7 @@ class JitModule:
             new_name += part.capitalize()
         return f"{new_name}Builder"
 
-    
+
     def create_build_var(self, module_name):
         return f"APEX_BUILD_{module_name.upper()}"
 
@@ -137,7 +137,7 @@ class JitModule:
 
         builder_class_name = self.create_builder_class_name(module_name)
         build_var = self.create_build_var(module_name)
-        
+
         if len(sources) == 0:
             sources_list = []
             sources_list_string = "[]"
@@ -179,7 +179,7 @@ class JitModule:
             f.write(f"    # Please mention the full path of the source files\n")
             f.write(f"    # e.g. ['csrc/fused_dense_base.cpp', 'csrc/fused_dense_cuda.cu']\n")
             f.write(f"    def sources(self):\n")
-            f.write(f"        return {sources_list_string}\n")  
+            f.write(f"        return {sources_list_string}\n")
             f.write(f"\n")
             f.write(f"    # Required to override. Return the list of include directories\n")
             f.write(f"    # Please mention the full path of the include directories\n")

@@ -45,7 +45,7 @@ Some other useful material, including GTC 2019 and Pytorch DevCon 2019 Slides, c
      fp16_util
 
 ..   RNN
-   
+
 Indices and tables
 ==================
 

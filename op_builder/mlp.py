@@ -29,4 +29,4 @@ class MlpBuilder(CUDAOpBuilder):
         nvcc_flags = ['-O3'] + self.version_dependent_macros()
         if self.is_rocm_pytorch():
             nvcc_flags.extend(self.backward_pass_guard_args())
-        return nvcc_flags 
+        return nvcc_flags

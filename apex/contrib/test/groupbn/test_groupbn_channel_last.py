@@ -35,13 +35,13 @@ def bn_nhwc_bwd_ref(grad_y, x, mu, ivar, gamma):
     grad_y = grad_y.permute(0, 2, 3, 1).contiguous()
     x = x.permute(0, 2, 3, 1).contiguous()
     sum_dim_c = (0, 1, 2)
-    grad_y_f32 = grad_y.float() 
+    grad_y_f32 = grad_y.float()
     x_f32 = x.float()
     N = x.shape[0] * x.shape[1] * x.shape[2] # nhw
     ones = torch.ones(x.shape, dtype=torch.float32, device='cuda')
 
     xmu = x_f32 - mu
-    
+
     xhat = xmu * ivar
     dbias = torch.sum(grad_y_f32, dim=sum_dim_c)
 

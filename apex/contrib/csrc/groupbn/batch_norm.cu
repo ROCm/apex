@@ -234,9 +234,9 @@ std::vector<at::Tensor> nhwc_bn_bwd(
                        const float epsilon,
                        const bool fuse_relu,
                        void * my_data,
-                       void * pair_data, 
-                       void * pair_data2, 
-                       void * pair_data3, 
+                       void * pair_data,
+                       void * pair_data2,
+                       void * pair_data3,
                        const int bn_group,
                        const at::Tensor& magic_tensor,
                        const int occupancy,
@@ -334,7 +334,7 @@ int nhwc_bn_fwd_occupancy() {
 int nhwc_bn_bwd_occupancy() {
     int device_id=-1;
     cudaGetDevice(&device_id);
-    
+
     //max occupancy supported by the code is 2
     return NhwcBatchNorm::smem_driven_bwd_occupancy(device_id, 2);
 }

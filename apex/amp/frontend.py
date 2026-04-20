@@ -450,7 +450,7 @@ def load_state_dict(state_dict):
             len(state_dict), len(_amp_state.loss_scalers)))
 
     state_dict = state_dict.copy()
-    
+
     nb_loss_scalers = len(_amp_state.loss_scalers)
     unexpected_keys = []
     # Initialize idx outside, since unexpected_keys will increase it if enumerate is used

@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -39,7 +39,7 @@ namespace fmha {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Row {};  
+struct Row {};
 struct Col {};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -309,7 +309,7 @@ static inline __device__ uint32_t hrelu2(uint32_t x, uint32_t lb = 0) {
         "{\n" \
         "\t .reg .f16x2 sela;\n" \
         "\t set.gtu.u32.f16x2 sela, %1, %2;\n" \
-        "\t and.b32 %0, sela, %1;\n" 
+        "\t and.b32 %0, sela, %1;\n"
         "}\n" : "=r"(res) : "r"(x), "r"(zero));
 #endif
     return res;
@@ -402,8 +402,8 @@ static inline __device__ uint32_t hfma2_relu(uint32_t a, uint32_t b, uint32_t c)
 
 static inline __device__ uint32_t h0_h0(uint32_t x) {
     uint32_t y;
-    asm volatile("{.reg .f16 lo, hi; mov.b32 {lo, hi}, %1; mov.b32 %0, {lo, lo};}\n" 
-        : "=r"(y) : "r"(x)); 
+    asm volatile("{.reg .f16 lo, hi; mov.b32 {lo, hi}, %1; mov.b32 %0, {lo, lo};}\n"
+        : "=r"(y) : "r"(x));
     return y;
 }
 
@@ -423,8 +423,8 @@ static inline __device__ float h0_to_float(uint32_t h2) {
 
 static inline __device__ uint32_t h1_h1(uint32_t x) {
     uint32_t y;
-    asm volatile("{.reg .f16 lo, hi; mov.b32 {lo, hi}, %1; mov.b32 %0, {hi, hi};}\n" 
-        : "=r"(y) : "r"(x)); 
+    asm volatile("{.reg .f16 lo, hi; mov.b32 {lo, hi}, %1; mov.b32 %0, {hi, hi};}\n"
+        : "=r"(y) : "r"(x));
     return y;
 }
 
@@ -979,9 +979,9 @@ struct Allreduce {
 
 template<>
 struct Allreduce<2> {
-template<typename T, typename Operator> 
+template<typename T, typename Operator>
 static __device__ inline T run(T x, Operator &op) {
-    x = op(x, __shfl_xor_sync(uint32_t(-1), x, 1));                 
+    x = op(x, __shfl_xor_sync(uint32_t(-1), x, 1));
     return x;
 }
 };

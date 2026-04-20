@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -280,7 +280,7 @@ struct Gmem_tile_mma_sd {
 
     // Ctor.
     template<typename Params>
-    inline __device__ Gmem_tile_mma_sd(void *ptr, const Params &params, const int bidb, const int bidh, const int tidx) 
+    inline __device__ Gmem_tile_mma_sd(void *ptr, const Params &params, const int bidb, const int bidh, const int tidx)
         : ptr_(static_cast<char *>(ptr)) {
 
         // The block index.
@@ -328,7 +328,7 @@ struct Gmem_tile_mma_s : public Base {
 
     // Ctor.
     template< typename Params, typename Block_info >
-    inline __device__ Gmem_tile_mma_s(const Params &params, const Block_info& binfo, const int tidx) 
+    inline __device__ Gmem_tile_mma_s(const Params &params, const Block_info& binfo, const int tidx)
         : Base(params.s_ptr, params, binfo.bidb, binfo.bidh, tidx) {
     }
 
@@ -433,7 +433,7 @@ struct Gmem_tile_dq : public Base {
 
     // Ctor.
     template<typename Params, typename BInfo>
-    inline __device__ Gmem_tile_dq(const Params &params, const BInfo &binfo, int tidx) 
+    inline __device__ Gmem_tile_dq(const Params &params, const BInfo &binfo, int tidx)
         : Base(params, binfo, tidx) {
         this->o_ptr_ = reinterpret_cast<char *>(params.dqkv_ptr);
         this->params_o_stride_in_bytes_ = params.qkv_stride_in_bytes;  // needed for move

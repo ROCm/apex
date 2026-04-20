@@ -47,27 +47,27 @@ void RocblasStridedBatchedGemm(char transa, char transb, long m, long n, long k,
 
     TORCH_CUDABLAS_CHECK(hipblasGemmStridedBatchedEx(
 			    handle,
-                            opa, 
-			    opb, 
-			    (int)m, 
-			    (int)n, 
+                            opa,
+			    opb,
+			    (int)m,
+			    (int)n,
 			    (int)k,
-                            (void*)&fAlpha, 
-			    a, 
-			    HIP_R_16F /*a_type*/, 
-			    (int)lda, 
+                            (void*)&fAlpha,
+			    a,
+			    HIP_R_16F /*a_type*/,
+			    (int)lda,
 			    strideA,
-                            b, 
-			    HIP_R_16F /*b_type*/, 
-			    (int)ldb, 
+                            b,
+			    HIP_R_16F /*b_type*/,
+			    (int)ldb,
 			    strideB,
-                            (void*)&fBeta, 
-			    c, 
-			    HIP_R_16F /*c_type*/, 
-			    (int)ldc, 
+                            (void*)&fBeta,
+			    c,
+			    HIP_R_16F /*c_type*/,
+			    (int)ldc,
 			    strideC,
                             (int)batchCount,
-			    HIPBLAS_COMPUTE_32F, 
+			    HIPBLAS_COMPUTE_32F,
 			    algo));
 }
 
@@ -136,7 +136,7 @@ void HgemmStridedBatched(char transa, char transb, long m,
 
   // gemm_switch_fp32accum(transa, transb, m, n, k, alpha, a, lda, strideA,
   //                       b, ldb, strideB, beta, c, ldc, strideC, batchCount);
-  gemm_switch_fp32accum(transa, transb, m, n, k, alpha, a, lda, strideA, 
+  gemm_switch_fp32accum(transa, transb, m, n, k, alpha, a, lda, strideA,
                         b, ldb, strideB, beta, c, ldc, strideC, batchCount);
 }
 

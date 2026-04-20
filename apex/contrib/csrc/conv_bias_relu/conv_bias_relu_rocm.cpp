@@ -178,7 +178,7 @@ static std::vector<at::Tensor> conv_bias_forward_dispatch(const at::Tensor& x,
 }
 
 std::string get_cache_key(const at::Tensor& x, const at::Tensor& w, int64_t padding, int64_t stride, bool relu) {
-    return std::to_string(x.size(0)) + "_" + std::to_string(x.size(1)) + "_" + 
+    return std::to_string(x.size(0)) + "_" + std::to_string(x.size(1)) + "_" +
            std::to_string(x.size(2)) + "_" + std::to_string(x.size(3)) + "_" +
            std::to_string(w.size(0)) + "_" + std::to_string(w.size(1)) + "_" +
            std::to_string(w.size(2)) + "_" + std::to_string(w.size(3)) + "_" +
@@ -255,7 +255,7 @@ static std::vector<at::Tensor> conv_bias_relu_forward_fused(const at::Tensor& x,
             MIOPEN_CHECK(miopenCreateOpActivationForward(plan, &activ_op, miopenActivationRELU));
         }else
         {
-            MIOPEN_CHECK(miopenCreateOpActivationForward(plan, &activ_op, miopenActivationCLAMP)); 
+            MIOPEN_CHECK(miopenCreateOpActivationForward(plan, &activ_op, miopenActivationCLAMP));
         }
 
         // Compile
@@ -345,9 +345,9 @@ std::vector<at::Tensor> conv_bias_relu_backward(std::vector<at::Tensor> inputs, 
     auto grad_relu = grad_output * (out > 0).to(grad_output.dtype());
     int64_t bias_size = weight.size(0);
     std::vector<int64_t> bias_sizes = {bias_size};
-    auto grads = at::convolution_backward(grad_relu, x, weight, 
+    auto grads = at::convolution_backward(grad_relu, x, weight,
                                          bias_sizes,
-                                         {stride, stride}, {padding, padding}, {1, 1}, 
+                                         {stride, stride}, {padding, padding}, {1, 1},
                                          false, {0, 0}, 1,
                                          {true, true, true});
     return {std::get<0>(grads), std::get<1>(grads), std::get<2>(grads)};
@@ -366,10 +366,10 @@ std::vector<at::Tensor> conv_bias_backward(std::vector<at::Tensor> inputs, int64
     auto grad_output = inputs[2];
     int64_t bias_size = weight.size(0);
     std::vector<int64_t> bias_sizes = {bias_size};
-    
+
     auto grads = at::convolution_backward(grad_output, x, weight,
                                          bias_sizes,
-                                         {stride, stride}, {padding, padding}, {1, 1}, 
+                                         {stride, stride}, {padding, padding}, {1, 1},
                                          false, {0, 0}, 1,
                                          {true, true, true});
     return {std::get<0>(grads), std::get<1>(grads), std::get<2>(grads)};

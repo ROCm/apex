@@ -15,7 +15,7 @@ except ImportError:
     print(f"Could not find permutation search CUDA kernels, falling back to CPU path")
     kernels_found = False
 
-def use_gpu(initial_override = True): 
+def use_gpu(initial_override = True):
     global gpus_tested, gpus_found, kernels_found
     if not gpus_tested:
         if not initial_override:
@@ -30,7 +30,7 @@ def use_gpu(initial_override = True):
             print(f"Could not find nvidia-smi, please check your cuda installation")
 
         gpus_tested = True
-    
+
     return gpus_found > 0 and kernels_found
 
 ##############################################################################################
@@ -83,7 +83,7 @@ def sum_after_2_to_4(matrix):
 def try_swap(matrix, dst, src):
     src_base = sum_after_2_to_4(matrix[...,int(src/4)*4:int(src/4)*4+4])
     dst_base = sum_after_2_to_4(matrix[...,int(dst/4)*4:int(dst/4)*4+4])
-    
+
     # swap
     matrix[...,[src,dst]] = matrix[...,[dst,src]]
 
@@ -93,7 +93,7 @@ def try_swap(matrix, dst, src):
 
     # swap back
     matrix[...,[src,dst]] = matrix[...,[dst,src]]
-    
+
     return src_sum + dst_sum, (src_sum + dst_sum) - (src_base + dst_base)
 
 ##############################################################################################

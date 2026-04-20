@@ -17,7 +17,7 @@
 #pragma once
 #include <torch/extension.h>
 #ifndef _peer_memory_h_
-#define _peer_memory_h_ 
+#define _peer_memory_h_
 
 namespace apex { namespace contrib { namespace peer_memory {
     int64_t allocate_raw(int64_t size);

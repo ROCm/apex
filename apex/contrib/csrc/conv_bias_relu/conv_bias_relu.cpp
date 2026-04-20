@@ -773,7 +773,7 @@ run_drelu_dbias(int64_t* dy_dim,
 			 .setDataType(dataType)
 			 .build();
 	DEBUG_CUDNN_MSG(log_buf, dyTensor.describe());
-	
+
 	generateStrides(dy_dim, stride, 4, CUDNN_TENSOR_NHWC);
 	auto rTensor = cudnn_frontend::TensorBuilder()
 		 	 .setDim(4, dy_dim)
@@ -783,7 +783,7 @@ run_drelu_dbias(int64_t* dy_dim,
 			 .setDataType(dataType)
 			 .build();
 	DEBUG_CUDNN_MSG(log_buf, rTensor.describe());
-	
+
 	generateStrides(dy_dim, stride, 4, CUDNN_TENSOR_NHWC);
 	auto inActGradTensor = cudnn_frontend::TensorBuilder()
 		 	 .setDim(4, dy_dim)
@@ -1424,7 +1424,7 @@ std::vector<at::Tensor> conv_bias_relu_backward(std::vector<at::Tensor> inputs, 
     w_dim[dim] = inputs[1].size(axis[dim]);
     y_dim[dim] = inputs[3].size(axis[dim]);
   }
-  
+
   int64_t b_dim[]       = {1, y_dim[1], 1, 1};
 
   int64_t conv_pad[]        = {padding, padding};
@@ -1450,7 +1450,7 @@ std::vector<at::Tensor> conv_bias_relu_backward(std::vector<at::Tensor> inputs, 
   // conv wgrad
   at::Half* x = inputs[0].data_ptr<at::Half>();
   auto wgrad = at::empty_like(inputs[1]);
-  at::Half* dw = wgrad.data_ptr<at::Half>(); 
+  at::Half* dw = wgrad.data_ptr<at::Half>();
   run_dconv(x_dim,
 	    w_dim,
 	    y_dim,
@@ -1572,7 +1572,7 @@ std::vector<at::Tensor> conv_bias_backward(std::vector<at::Tensor> inputs, int64
     w_dim[dim] = inputs[1].size(axis[dim]);
     y_dim[dim] = inputs[2].size(axis[dim]);
   }
-  
+
   int64_t b_dim[]       = {1, y_dim[1], 1, 1};
 
   int64_t conv_pad[]        = {padding, padding};
@@ -1588,12 +1588,12 @@ std::vector<at::Tensor> conv_bias_backward(std::vector<at::Tensor> inputs, int64
   run_dbias(y_dim,
             CUDNN_DATA_HALF,
             dy,
-            db); 
-  
+            db);
+
   // conv wgrad
   at::Half* x = inputs[0].data_ptr<at::Half>();
   auto wgrad = at::empty_like(inputs[1]);
-  at::Half* dw = wgrad.data_ptr<at::Half>(); 
+  at::Half* dw = wgrad.data_ptr<at::Half>();
   run_dconv(x_dim,
 	    w_dim,
 	    y_dim,

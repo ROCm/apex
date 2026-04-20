@@ -6,7 +6,7 @@ echo "JIT_CONDITION $JIT_CONDITION"
 LOG_FILE=results_jit_unit_test${JIT_CONDITION}.log
 LOG_FILE2=results_jit_unit_test${JIT_CONDITION}c.log
 
-cd tests/L0 
+cd tests/L0
 PYTHONUNBUFFERED=1 sh run_rocm.sh 2>&1 | tee ../../$LOG_FILE
 cd ../../
 

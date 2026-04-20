@@ -19,7 +19,7 @@ class ApexCBuilder(CPUOpBuilder):
 
     def include_paths(self):
         return ['csrc/' ]
-        
+
     def libraries_args(self):
         args = super().libraries_args()
         return args

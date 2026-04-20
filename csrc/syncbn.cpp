@@ -4,12 +4,12 @@
 #include <vector>
 
 // returns {mean,biased_var}
-// implemented using welford 
+// implemented using welford
 std::vector<at::Tensor> welford_mean_var_CUDA(const at::Tensor input);
 
 // reduces array of mean/var across processes
 // returns global {mean,inv_std,biased_var}
-// implemented using welford 
+// implemented using welford
 std::vector<at::Tensor> welford_parallel_CUDA(const at::Tensor mean_feature_nodes,
                                               const at::Tensor var_biased_feature_nodes,
                                               const at::Tensor numel,
@@ -47,7 +47,7 @@ at::Tensor batchnorm_backward_CUDA(const at::Tensor grad_output,
                                    const at::Tensor count);
 
 // returns {mean, biased_var}
-// implemented using welford 
+// implemented using welford
 // expect data to be in n+c format (channel last) and applies CUDNN_BATCHNORM_SPATIAL
 std::vector<at::Tensor> welford_mean_var_c_last_CUDA(const at::Tensor input);
 

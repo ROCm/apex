@@ -4,13 +4,13 @@
 apex.fp16_utils
 ===================================
 
-This submodule contains utilities designed to streamline the mixed precision training recipe 
-presented by NVIDIA `on Parallel Forall`_ and in GTC 2018 Sessions 
-`Training Neural Networks with Mixed Precision: Theory and Practice`_ and 
+This submodule contains utilities designed to streamline the mixed precision training recipe
+presented by NVIDIA `on Parallel Forall`_ and in GTC 2018 Sessions
+`Training Neural Networks with Mixed Precision: Theory and Practice`_ and
 `Training Neural Networks with Mixed Precision: Real Examples`_.
 For Pytorch users, Real Examples in particular is recommended.
 
-Full runnable Python scripts demonstrating ``apex.fp16_utils`` 
+Full runnable Python scripts demonstrating ``apex.fp16_utils``
 can be found on the Github page:
 
 | `Simple FP16_Optimizer demos`_

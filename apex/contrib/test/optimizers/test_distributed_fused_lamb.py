@@ -26,7 +26,7 @@ class ModelFoo(torch.nn.Module):
         return loss
 
 # A test for distributed fused Lamb optimizer: run several iterations and see if loss decreases
-# There are two instances of the same test because based on `world_size` the optimizer decides what collectives operation to use. 
+# There are two instances of the same test because based on `world_size` the optimizer decides what collectives operation to use.
 # If torch.distributed.get_world_size() == torch.cuda.device_count() it uses only `all_gather`.
 # If torch.distributed.get_world_size() < torch.cuda.device_count() it uses both `all_gather` and `reduce_scatter`.
 class NcclDistributedFusedLAMB(NcclDistributedTestBase):
@@ -69,10 +69,10 @@ class NcclDistributedFusedLAMB(NcclDistributedTestBase):
         if 'full_ar' not in opt_kwargs:
             opt_kwargs['full_ar'] = gpu_count == torch.cuda.device_count()
 
-        # Aidyn-A: not sure what parameters are the best for testing purposes, 
-        # setting up whatever I think appropriate. 
+        # Aidyn-A: not sure what parameters are the best for testing purposes,
+        # setting up whatever I think appropriate.
         optimizer = DistributedFusedLAMB(
-                optimizer_grouped_parameters, 
+                optimizer_grouped_parameters,
                 lr=0.1,
                 betas=(0.9, 0.9),
                 eps=1e-6,

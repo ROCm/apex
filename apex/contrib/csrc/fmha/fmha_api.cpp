@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -83,7 +83,7 @@ void set_params(Fused_multihead_attention_fprop_params &params,
     set_alpha(params.scale_dropout, params.rp_dropout, data_type);
 }
 
-std::vector<at::Tensor> 
+std::vector<at::Tensor>
 mha_fwd(const at::Tensor &qkv,         // total x num_heads x 3 x head_size, total := \sum_{i=0}^{b} s_i
         const at::Tensor &cu_seqlens,  // b+1
         const float p_dropout,
@@ -290,7 +290,7 @@ std::vector<at::Tensor> mha_bwd_nl(const at::Tensor &dout,        // total x num
     TORCH_CHECK(sizes[THREE_DIM] == 3);
 
     const int batch_size = cu_seqlens.numel() - 1;
-    
+
     const int total = sizes[TOTAL_DIM];
     const int num_heads = sizes[H_DIM];
     const int head_size = sizes[D_DIM];
@@ -307,7 +307,7 @@ std::vector<at::Tensor> mha_bwd_nl(const at::Tensor &dout,        // total x num
     if( zero_tensors ) {
         dqkv.zero_();
     }
-    
+
     int num_chunks = 2;
     if( batch_size == 1 ) {
         num_chunks = 4;
@@ -354,7 +354,7 @@ std::vector<at::Tensor> mha_bwd_nl(const at::Tensor &dout,        // total x num
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.doc() = "Fused Multi-head Self-attention for BERT";  
+    m.doc() = "Fused Multi-head Self-attention for BERT";
     m.def("fwd", &mha_fwd, "Forward pass");
     m.def("bwd", &mha_bwd, "Backward pass");
     m.def("bwd_nl", &mha_bwd_nl, "Backward pass (small-batch)");

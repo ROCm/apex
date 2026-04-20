@@ -17,10 +17,10 @@ def flatten_list(tens_list):
     """
     if not is_iterable(tens_list):
         return tens_list
-    
+
     return torch.cat(tens_list, dim=0).view(len(tens_list), *tens_list[0].size() )
 
-    
+
 #These modules always assumes batch_first
 class bidirectionalRNN(nn.Module):
     """
@@ -32,7 +32,7 @@ class bidirectionalRNN(nn.Module):
         self.fwd = stackedRNN(inputRNN, num_layers=num_layers, dropout = dropout)
         self.bckwrd = stackedRNN(inputRNN.new_like(), num_layers=num_layers, dropout = dropout)
         self.rnns = nn.ModuleList([self.fwd, self.bckwrd])
-        
+
     #collect hidden option will return all hidden/cell states from entire RNN
     def forward(self, input, collect_hidden=False):
         """
@@ -43,7 +43,7 @@ class bidirectionalRNN(nn.Module):
 
         fwd_out, fwd_hiddens = list(self.fwd(input, collect_hidden = collect_hidden))
         bckwrd_out, bckwrd_hiddens = list(self.bckwrd(input, reverse=True, collect_hidden = collect_hidden))
-        
+
         output = torch.cat( [fwd_out, bckwrd_out], -1 )
         hiddens = tuple( torch.cat(hidden, -1) for hidden in zip( fwd_hiddens, bckwrd_hiddens) )
 
@@ -55,7 +55,7 @@ class bidirectionalRNN(nn.Module):
         """
         for rnn in self.rnns:
             rnn.reset_parameters()
-        
+
     def init_hidden(self, bsz):
         """
         init_hidden()
@@ -69,7 +69,7 @@ class bidirectionalRNN(nn.Module):
         """
         for rnn in self.rnns:
             rnn.detachHidden()
-        
+
     def reset_hidden(self, bsz):
         """
         reset_hidden()
@@ -77,25 +77,25 @@ class bidirectionalRNN(nn.Module):
         for rnn in self.rnns:
             rnn.reset_hidden(bsz)
 
-    def init_inference(self, bsz):    
+    def init_inference(self, bsz):
         """
         init_inference()
         """
         for rnn in self.rnns:
             rnn.init_inference(bsz)
 
-   
+
 #assumes hidden_state[0] of inputRNN is output hidden state
 #constructor either takes an RNNCell or list of RNN layers
-class stackedRNN(nn.Module):        
+class stackedRNN(nn.Module):
     """
     stackedRNN
     """
     def __init__(self, inputRNN, num_layers=1, dropout=0):
         super(stackedRNN, self).__init__()
-        
+
         self.dropout = dropout
-        
+
         if isinstance(inputRNN, RNNCell):
             self.rnns = [inputRNN]
             for i in range(num_layers-1):
@@ -105,9 +105,9 @@ class stackedRNN(nn.Module):
             self.rnns=inputRNN
         else:
             raise RuntimeError()
-        
+
         self.nLayers = len(self.rnns)
-        
+
         self.rnns = nn.ModuleList(self.rnns)
 
 
@@ -135,14 +135,14 @@ class stackedRNN(nn.Module):
 
                 if layer == 0:
                     prev_out = input[seq]
-                    
+
                 outs = self.rnns[layer](prev_out)
 
                 if collect_hidden:
                     hidden_states[layer].append(outs)
                 elif seq == seq_len-1:
                     hidden_states[layer].append(outs)
-                    
+
                 prev_out = outs[0]
 
             outputs.append(prev_out)
@@ -187,20 +187,20 @@ class stackedRNN(nn.Module):
         hiddens = list( list(
             flatten_list(seq) for seq in hidden )
                         for hidden in hidden_states )
-        
+
         #Now in format list( [hidden_states][seq_length] x Tensor([layer][bsz][features]) )
         #Remove seq_length dimension if not collect_hidden
         if not collect_hidden:
             hidden_states = list( entry[0] for entry in hidden_states)
         return output, hidden_states
-    
+
     def reset_parameters(self):
         """
         reset_parameters()
         """
         for rnn in self.rnns:
             rnn.reset_parameters()
-        
+
     def init_hidden(self, bsz):
         """
         init_hidden()
@@ -214,7 +214,7 @@ class stackedRNN(nn.Module):
         """
         for rnn in self.rnns:
             rnn.detach_hidden()
-        
+
     def reset_hidden(self, bsz):
         """
         reset_hidden()
@@ -222,16 +222,16 @@ class stackedRNN(nn.Module):
         for rnn in self.rnns:
             rnn.reset_hidden(bsz)
 
-    def init_inference(self, bsz):    
-        """ 
+    def init_inference(self, bsz):
+        """
         init_inference()
         """
         for rnn in self.rnns:
             rnn.init_inference(bsz)
 
 class RNNCell(nn.Module):
-    """ 
-    RNNCell 
+    """
+    RNNCell
     gate_multiplier is related to the architecture you're working with
     For LSTM-like it will be 4 and GRU-like will be 3.
     Always assumes input is NOT batch_first.
@@ -265,7 +265,7 @@ class RNNCell(nn.Module):
         if self.bias:
             self.b_ih = nn.Parameter(torch.empty(self.gate_size))
             self.b_hh = nn.Parameter(torch.empty(self.gate_size))
-            
+
         #hidden states for forward
         self.hidden = [ None for states in range(self.n_hidden_states)]
 
@@ -277,7 +277,7 @@ class RNNCell(nn.Module):
         """
         if new_input_size is None:
             new_input_size = self.input_size
-            
+
         return type(self)(self.gate_multiplier,
                        new_input_size,
                        self.hidden_size,
@@ -286,7 +286,7 @@ class RNNCell(nn.Module):
                        self.bias,
                        self.output_size)
 
-    
+
     #Use xavier where we can (weights), otherwise use uniform (bias)
     def reset_parameters(self, gain=1):
         """
@@ -325,8 +325,8 @@ class RNNCell(nn.Module):
 
                 tens = a_param.data.new(bsz, hidden_size).zero_()
                 self.hidden[i] = Variable(tens, requires_grad=False)
-            
-        
+
+
     def reset_hidden(self, bsz):
         """
         reset_hidden()
@@ -344,7 +344,7 @@ class RNNCell(nn.Module):
                 raise RuntimeError("Must initialize hidden state before you can detach it")
         for i, _ in enumerate(self.hidden):
             self.hidden[i] = self.hidden[i].detach()
-        
+
     def forward(self, input):
         """
         forward()

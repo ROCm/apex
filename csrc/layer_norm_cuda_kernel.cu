@@ -74,7 +74,7 @@ void cuWelfordMuSigma2(
   const int i1,
   U& mu,
   U& sigma2,
-  U* buf,  
+  U* buf,
   const int GPU_WARP_SIZE,
   bool rms_only)
 {
@@ -107,7 +107,7 @@ void cuWelfordMuSigma2(
       }
     }
 
-    
+
 
     for (;  l < n2;  ++l) {
       U curr = static_cast<U>(lvals[l]);
@@ -121,11 +121,11 @@ void cuWelfordMuSigma2(
     // intra-warp reductions
     if(USE_ROCM){
       #pragma unroll
-      for (int stride = GPU_WARP_SIZE / 2; stride > 0; stride /= 2) {  
+      for (int stride = GPU_WARP_SIZE / 2; stride > 0; stride /= 2) {
         U sigma2B = WARP_SHFL_DOWN(sigma2, stride);
         if (!rms_only) {
           U muB = WARP_SHFL_DOWN(mu, stride);
-          U countB = WARP_SHFL_DOWN(count, stride);  
+          U countB = WARP_SHFL_DOWN(count, stride);
           cuChanOnlineSum<U>(muB, sigma2B, countB, mu, sigma2, count);
         } else {
           cuChanRMSOnlineSum<U>(sigma2B, sigma2);
@@ -985,14 +985,14 @@ void HostApplyLayerNorm(
     // Optimization for ROCm MI100
     threads.y = 1;
     #endif
-    
+
     const uint64_t maxGridY = at::cuda::getCurrentDeviceProperties()->maxGridSize[1];
     const dim3 blocks(1, std::min((uint64_t)n1, maxGridY), 1);
     int nshared =
         threads.y > 1 ?
             threads.y*sizeof(U)+(threads.y/2)*sizeof(U) :
             0;
-    
+
     cuApplyLayerNorm<<<blocks, threads, nshared, stream>>>(
       output, mean, invvar, input, n1, n2, U(epsilon), gamma, beta, warp_size);
 }
@@ -1220,7 +1220,7 @@ void HostRMSNormGradient(
                         epsilon,
                         true);
       });
-            
+
 
       const dim3 threads3(32,8,1);
       const dim3 blocks3((n2+threads2.x-1)/threads2.x,1,1);

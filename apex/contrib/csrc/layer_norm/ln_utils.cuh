@@ -268,7 +268,7 @@ struct Zeros{
     }
 };
 
-template<> 
+template<>
 struct Zeros<float2>{
     static inline __device__ float2 get() {
         return make_float2(0.f, 0.f);
@@ -380,7 +380,7 @@ struct Reducer : public Reducer<T, 1, WARPS_M, WARPS_N> {
 
     template<typename Params>
     inline __device__ Reducer(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem)
-        : Base(params, bidm, bidn, warp_m, warp_n, lane, smem) 
+        : Base(params, bidm, bidn, warp_m, warp_n, lane, smem)
         , inter_cta_(params, bidm, bidn)
         , bidn_(bidn) // CTA id within the group.
         , w0_(static_cast<T*>(params.workspace) + (bidm * WARPS_M + warp_m) * CTAS_PER_ROW)
@@ -428,7 +428,7 @@ struct Reducer<T, 1, WARPS_M, 1> {
     enum { THREADS_PER_WARP = 32 };
 
     template<typename Params>
-    inline __device__ Reducer(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem) 
+    inline __device__ Reducer(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem)
         : warp_n_(warp_n)
         , lane_(lane)
     {
@@ -454,7 +454,7 @@ struct Reducer<T, 1, WARPS_M, 1> {
         #pragma unroll
         for( int it = THREADS_PER_WARP / 2; it > 0; it /= 2 ) {
             data = op(data, warp_shuffle_down(data, it));
-        }  
+        }
         return data;
     }
     int warp_n_;
@@ -476,8 +476,8 @@ struct Reducer<T, 1, WARPS_M, WARPS_N> : public Reducer<T, 1, WARPS_M, 1> {
     enum { THREADS_PER_WARP = 32 };
 
     template<typename Params>
-    inline __device__ Reducer(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem) 
-        : Base(params, bidm, bidn, warp_m, warp_n, lane, smem) 
+    inline __device__ Reducer(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem)
+        : Base(params, bidm, bidn, warp_m, warp_n, lane, smem)
         , use0_(true)
     {
         smem0_ = &static_cast<T *>(smem)[warp_m * WARPS_N];
@@ -528,12 +528,12 @@ struct Reducer<T, 1, WARPS_M, WARPS_N> : public Reducer<T, 1, WARPS_M, 1> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
- 
+
 template<typename T>
 inline __device__ void warp_chan_upd_dynamic(T &m_a, T &m2_a, T &n_a, int num_active){
     //Assume at least leftmost is valid and init: step = next_pow2(num_active) / 2 (might get NaN otherwise)
     int highest_bit_set = (8 * sizeof(num_active)) - __clz(num_active - 1);
-    
+
     #pragma unroll
     for( int step = (1 << (highest_bit_set - 1)); step > 0; step /= 2 ) {
         // Exchange
@@ -570,7 +570,7 @@ struct Stats {
     enum { SMEM_BYTES = BlockStats::SMEM_BYTES };
 
     template<typename Params>
-    inline __device__ Stats(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem) 
+    inline __device__ Stats(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem)
         : inter_cta_(params, bidm, bidn)
         , block_stats_(params, bidm, bidn, warp_m, warp_n, lane, smem)
         , bidn_(bidn) // CTA id within the group.
@@ -604,7 +604,7 @@ struct Stats {
         // Assume CTA group size in N less than 32, such that we can finalize with a single warp.
         static_assert(CTAS_PER_ROW <= 32);
 
-        // Every warp does the final reduction locally. 
+        // Every warp does the final reduction locally.
         if( lane_ < CTAS_PER_ROW ) {
             stats_t result = workspace[lane_];
             n = ELTS_PER_ROW_PER_CTA;
@@ -638,7 +638,7 @@ struct Stats<T, 1, WARPS_M, WARPS_N> {
     enum { SMEM_BYTES = WARPS_M * WARPS_N * sizeof(stats_t) * 2 };
 
     template<typename Params>
-    inline __device__ Stats(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem) 
+    inline __device__ Stats(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem)
         : warp_stats_(params, bidm, bidn, warp_m, warp_n, lane, smem)
         , use0_(true)
     {
@@ -697,7 +697,7 @@ struct Stats<T, 1, WARPS_M, 1> {
     enum { SMEM_BYTES = 0 };
 
     template<typename Params>
-    inline __device__ Stats(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem) 
+    inline __device__ Stats(Params & params, uint32_t bidm, uint32_t bidn, uint32_t warp_m, uint32_t warp_n, uint32_t lane, void * smem)
         : reducer_(params, bidm, bidn, warp_m, warp_n, lane, smem)
     {
     }

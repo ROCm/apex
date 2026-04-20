@@ -62,48 +62,48 @@ for recorded_trial in range(0, args.trials) :
 for sequences in range(args.num_seqs_start, args.num_seqs_stop + args.num_seqs_inc, args.num_seqs_inc) :
     inputs        = torch.randn(args.seq_length, sequences, args.hidden_dim, dtype=torch.float16, device=torch.device("cuda")).requires_grad_(True)
     grads         = torch.randn_like(inputs)
-   
+
     for trial in range(0, args.trials + args.warmup_trials) :
         layer_inputs  = inputs
         evt_idx       = trial - args.warmup_trials
-    
+
         if evt_idx >= 0 :
             start_evt_fwd[evt_idx].record()
-    
+
         for lyr_idx in range(0, args.layers) :
             if args.native :
-                outputs,_ = attn_layers[lyr_idx].forward(layer_inputs, 
-                                                         layer_inputs, 
-                                                         layer_inputs, 
-                                                         key_padding_mask=None, 
-                                                         need_weights=False, 
+                outputs,_ = attn_layers[lyr_idx].forward(layer_inputs,
+                                                         layer_inputs,
+                                                         layer_inputs,
+                                                         key_padding_mask=None,
+                                                         need_weights=False,
                                                          attn_mask=None)
             else :
-                outputs,_ = attn_layers[lyr_idx].forward(layer_inputs, 
-                                                         layer_inputs, 
+                outputs,_ = attn_layers[lyr_idx].forward(layer_inputs,
                                                          layer_inputs,
-                                                         key_padding_mask=None, 
-                                                         need_weights=False, 
+                                                         layer_inputs,
+                                                         key_padding_mask=None,
+                                                         need_weights=False,
                                                          attn_mask=None,
                                                          is_training=True)
             layer_inputs = outputs
-    
+
         if evt_idx >= 0 :
             start_evt_bwd[evt_idx].record()
 
         if not args.fwd :
             layer_inputs.backward(grads)
-    
+
         if evt_idx >= 0 :
             stop_evt_bwd[evt_idx].record()
-   
+
     torch.cuda.synchronize()
     elapsed_time_fwd = 0.0
     elapsed_time_bwd = 0.0
     for evt_idx in range(0, args.trials) :
         elapsed_time_fwd += start_evt_fwd[evt_idx].elapsed_time(start_evt_bwd[evt_idx])
         elapsed_time_bwd += start_evt_bwd[evt_idx].elapsed_time(stop_evt_bwd[evt_idx])
-   
+
     print("[ {} Attn {} ]Total Tokens: {:4d} Sequences: {:3d} Sequence Length: {:3d} Fwd Time / Layer: {:.3f} ms Bwd Time / Layer: {:.3f} ms".format(
         'Encdec' if args.encdec_attn else 'Self',              \
         'Norm&Add' if args.norm_add else '',                   \

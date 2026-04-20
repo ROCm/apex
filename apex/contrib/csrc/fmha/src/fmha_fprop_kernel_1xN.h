@@ -1,6 +1,6 @@
 /***************************************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -51,7 +51,7 @@ struct Gemm_Q_K_base {
 
     static constexpr int SMEM_BYTES_SOFTMAX = Cta_tile_p::M * Cta_tile_p::WARPS_N * sizeof(float) * 2;
 
-    __device__ inline Gemm_Q_K_base(char * smem_ptr_q, char * smem_ptr_k, const int tidx) 
+    __device__ inline Gemm_Q_K_base(char * smem_ptr_q, char * smem_ptr_k, const int tidx)
         : smem_q(smem_ptr_q, tidx)
         , smem_k(smem_ptr_k, tidx) {
 
@@ -87,11 +87,11 @@ struct Gemm_Q_K : public Gemm_Q_K_base<Kernel_traits> {
 
     // Q | K / V
     //   | O | SOFTMAX
-    static constexpr int SMEM_BYTES = Smem_tile_q::BYTES_PER_TILE 
+    static constexpr int SMEM_BYTES = Smem_tile_q::BYTES_PER_TILE
                                     + std::max((SHARE_SMEM_FOR_K_AND_V ? 1 : 2) * Smem_tile_k::BYTES_PER_TILE,
                                                Smem_tile_o::BYTES_PER_TILE + Base::SMEM_BYTES_SOFTMAX);
 
-    __device__ inline Gemm_Q_K(char * smem_, const int tidx) 
+    __device__ inline Gemm_Q_K(char * smem_, const int tidx)
         : Base(smem_, smem_ + Smem_tile_q::BYTES_PER_TILE, tidx) {
     }
 
@@ -146,10 +146,10 @@ struct Gemm_Q_K<Kernel_traits, false> : public Gemm_Q_K_base<Kernel_traits> {
 
     // Q | K/V + O + SOFTMAX
     static constexpr int SMEM_BYTES = Smem_tile_q::BYTES_PER_TILE
-                                    + (SHARE_SMEM_FOR_K_AND_V ? 1 : 2) * Smem_tile_k::BYTES_PER_TILE 
+                                    + (SHARE_SMEM_FOR_K_AND_V ? 1 : 2) * Smem_tile_k::BYTES_PER_TILE
                                     + Smem_tile_o::BYTES_PER_TILE + Base::SMEM_BYTES_SOFTMAX;
 
-    __device__ inline Gemm_Q_K(char * smem_, const int tidx) 
+    __device__ inline Gemm_Q_K(char * smem_, const int tidx)
       : Base(smem_, smem_ + Smem_tile_q::BYTES_PER_TILE, tidx) {
     }
 
@@ -258,7 +258,7 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
     Gmem_tile_v gmem_v(params, 2, binfo, tidx);
     // The base pointer of smem_v;
     char *smem_v_ = &smem_[Gemm1::SMEM_OFFSET_V];
-    
+
     // Allocate the shared memory tile loader for V. We use the same as K so be careful!!!
     Smem_tile_v smem_v(smem_v_, tidx);
 
@@ -313,7 +313,7 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         __syncthreads();
     }
 
-    // Load the fragments for K. 
+    // Load the fragments for K.
     gemm_q_k.load_k();
 
     // Create the object to do the softmax.
@@ -461,7 +461,7 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<typename Kernel_traits, bool Is_training, typename Params>
-inline __device__ void device_1xN(const Params &params, 
+inline __device__ void device_1xN(const Params &params,
                                   const int num_full_heads,
                                   const int num_main_groups,
                                   const int main_group_size,

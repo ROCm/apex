@@ -1,6 +1,6 @@
 /******************************************************************************
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -11,7 +11,7 @@
  *     * Neither the name of the NVIDIA CORPORATION nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -278,7 +278,7 @@ struct Softmax : public Softmax_base<Cta_tile, Kernel_traits> {
     template<typename Params>
     inline __device__ Softmax(const Params &params, void *smem, int bidb, int tidx)
         : Base(params, smem, bidb, tidx)
-        , params_scale_bmm1_(params.scale_bmm1) 
+        , params_scale_bmm1_(params.scale_bmm1)
         , smem_sum_(static_cast<float*>(smem), tidx)
         , smem_max_(static_cast<float*>(smem) + Smem_tile_red::ELTS_PER_TILE, tidx) {
     }
@@ -374,12 +374,12 @@ struct Softmax : public Softmax_base<Cta_tile, Kernel_traits> {
         quad_allreduce(frag, tmp, op);
     }
 
-    __device__ inline void reduce_max(float (&frag)[2 * MMAS_M]){ 
+    __device__ inline void reduce_max(float (&frag)[2 * MMAS_M]){
         MaxOp<float> max;
         reduce_(frag, max, smem_max_);
     }
 
-    __device__ inline void reduce_sum(float (&frag)[2 * MMAS_M]){ 
+    __device__ inline void reduce_sum(float (&frag)[2 * MMAS_M]){
         SumOp<float> sum;
         reduce_(frag, sum, smem_sum_);
     }

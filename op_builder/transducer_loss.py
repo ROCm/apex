@@ -19,13 +19,13 @@ class TransducerLossBuilder(CUDAOpBuilder):
 
     def include_paths(self):
         return ['contrib/csrc/' ]
-        
+
     def cxx_args(self):
         args = super().cxx_args()
         return args + self.version_dependent_macros()
 
     def nvcc_args(self):
-        nvcc_flags = ['-O3'] + self.version_dependent_macros() 
+        nvcc_flags = ['-O3'] + self.version_dependent_macros()
         if not self.is_rocm_pytorch():
             nvcc_flags += self.nvcc_threads_args()
         return nvcc_flags

@@ -59,7 +59,7 @@ class PeerHaloExchanger1d:
                 high_inp_halo = y[:,:,:,W+self.half_halo:W+2*self.half_halo]
         pm.push_pull_halos_1d(
                 diagnostics, explicit_nhwc, numSM,
-                self.low_zero, low_out_halo, low_tx[self.peer_rank], high_tx[self.low_neighbor], low_inp_halo, 
+                self.low_zero, low_out_halo, low_tx[self.peer_rank], high_tx[self.low_neighbor], low_inp_halo,
                 self.high_zero, high_out_halo, high_tx[self.peer_rank], low_tx[self.high_neighbor], high_inp_halo,
                 self.signals[self.low_neighbor], self.signals[self.high_neighbor], self.signals[self.peer_rank]
                 )

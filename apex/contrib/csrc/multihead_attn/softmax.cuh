@@ -18,7 +18,7 @@
 #include <cuda_fp16.h>
 #include <cmath>
 #include <ATen/cuda/CUDAContext.h>
- 
+
 #ifdef USE_ROCM
 #define APEX_WARP_SHFL_XOR(mask, value, offset, width) __shfl_xor(value, offset, width)
 #else

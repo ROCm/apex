@@ -46,7 +46,7 @@ class Model(torch.nn.Module):
         y = self.relu4(y)
         y = self.fc3(y)
         y = self.relu5(y)
-        return y 
+        return y
 
 
 @unittest.skipIf(not HAS_APEX, "`apex` is not found.")
@@ -83,7 +83,7 @@ class AdamTest(unittest.TestCase):
             scaler.scale(loss).backward()
             scaler.step(self.optimizer)
             scaler.update()
-            
+
             # DUT
             with torch.amp.autocast('cuda', enabled=True):
                 y = self.model_(x)
@@ -105,7 +105,7 @@ class AdamTest(unittest.TestCase):
             optimizer_.zero_grad()
 
             self.model_.load_state_dict(copy.deepcopy(self.model.state_dict()))
-    
+
     def testGradScalerCapturable(self):
         params_ = [p for p in self.model_.parameters() if p.requires_grad]
         optimizer_ = apex.optimizers.FusedAdam(params_, lr=self.lr, capturable=True)
@@ -126,7 +126,7 @@ class AdamTest(unittest.TestCase):
             scaler.scale(loss).backward()
             scaler.step(self.optimizer)
             scaler.update()
-            
+
             # DUT
             with torch.amp.autocast('cuda', enabled=True):
                 y = self.model_(x)
@@ -212,7 +212,7 @@ class AdamTest(unittest.TestCase):
 
             loss.backward()
             self.optimizer.step()
-            
+
             # DUT
             y = self.model_(x)
             loss_ = ((gt_ - y) ** 2).mean()
@@ -230,7 +230,7 @@ class AdamTest(unittest.TestCase):
             # Init for next iteration
             self.optimizer.zero_grad()
             optimizer_.zero_grad()
-            
+
             self.model_.load_state_dict(copy.deepcopy(self.model.state_dict()))
 
     @largeTensorTest('60GB', 'cuda')

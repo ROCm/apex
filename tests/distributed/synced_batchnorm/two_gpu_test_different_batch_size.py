@@ -74,7 +74,7 @@ else:
 data.requires_grad_()
 data.retain_grad = True
 
-weighted_gradient = True 
+weighted_gradient = True
 
 # DDP forward/backward
 output = model(data)

@@ -135,7 +135,7 @@ def prep_param_lists(model, flat_master=False):
 
 def model_grads_to_master_grads(model_params, master_params, flat_master=False):
     """
-    Copy model gradients to master gradients.  
+    Copy model gradients to master gradients.
 
     Args:
         model_params:  List of model parameters created by :func:`prep_param_lists`.
@@ -164,7 +164,7 @@ def master_params_to_model_params(model_params, master_params, flat_master=False
         master_params:  List of FP32 master parameters created by :func:`prep_param_lists`.  If ``master_params`` was created with ``flat_master=True``, ``flat_master=True`` should also be supplied to :func:`master_params_to_model_params`.
     """
     if flat_master:
-        for model, master in zip(model_params, 
+        for model, master in zip(model_params,
                                  _unflatten_dense_tensors(master_params[0].data, model_params)):
             model.data.copy_(master)
     else:
