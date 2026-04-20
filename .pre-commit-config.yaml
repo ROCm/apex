@@ -1,10 +1,10 @@
 # Commands to run below checks locally:
-# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks trailing-whitespace --all-files 
-# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-ast --all-files 
-# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-json --all-files 
-# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-merge-conflict --all-files 
-# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-toml --all-files 
-# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-yaml --all-files 
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks trailing-whitespace --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-ast --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-json --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-merge-conflict --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-toml --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-yaml --all-files
 fail_fast: false
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
