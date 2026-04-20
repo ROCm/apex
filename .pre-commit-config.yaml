@@ -1,0 +1,18 @@
+# Commands to run below checks locally:
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks trailing-whitespace --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-ast --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-json --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-merge-conflict --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-toml --all-files
+# pre-commit try-repo https://github.com/pre-commit/pre-commit-hooks check-yaml --all-files
+fail_fast: false
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0  # Use the ref you want to point at
+    hooks:
+    -   id: trailing-whitespace
+    -   id: check-ast
+    -   id: check-json
+    -   id: check-merge-conflict
+    -   id: check-toml
+    -   id: check-yaml
