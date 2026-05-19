@@ -1,0 +1,9 @@
+# Runner label → GPU hardware mapping
+# Used by frameworks-devops-dashboard to display GPU architecture
+runners:
+  linux-apex-mi325-8:
+    gpu_arch: MI325
+    gpu_count: 8
+  build-only-apex:
+    gpu_arch: "-"
+    gpu_count: "-"
