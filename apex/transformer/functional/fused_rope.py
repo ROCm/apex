@@ -111,6 +111,12 @@ class FusedRoPEFuncAiter(FusedRoPEFunc):
         freqs: torch.Tensor,
         transpose_output_memory: bool = False,
     ) -> torch.Tensor:
+        # The aiter kernel requires the head-dim (last) stride to be 1. The
+        # input may be non-contiguous (e.g. transposed layout), so enforce
+        # contiguity here.
+        if t.stride(-1) != 1: t = t.contiguous()
+        # t = t.contiguous()
+
         s = t.shape[0]
         b = t.shape[1]
         h = t.shape[2]
@@ -136,6 +142,11 @@ class FusedRoPEFuncAiter(FusedRoPEFunc):
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
         (freqs,) = ctx.saved_tensors   
+
+        # The aiter kernel requires the head-dim (last) stride to be 1. The
+        # incoming gradient may be non-contiguous (e.g. broadcast/expanded from
+        # a reduction such as `.sum()`), so enforce contiguity here.
+        if grad_output.stride(-1) != 1: grad_output = grad_output.contiguous()
 
         s = grad_output.shape[0]
         b = grad_output.shape[1]
@@ -238,6 +249,11 @@ class FusedRoPECachedFuncAiter(FusedRoPECachedFunc):
         sin_: torch.Tensor,
         transpose_output_memory: bool = False,
     ) -> torch.Tensor:
+        # The aiter kernel requires the head-dim (last) stride to be 1. The
+        # input may be non-contiguous (e.g. transposed layout), so enforce
+        # contiguity here.
+        if t.stride(-1) != 1: t = t.contiguous()
+
         s = t.shape[0]
         b = t.shape[1]
         h = t.shape[2]
@@ -262,6 +278,11 @@ class FusedRoPECachedFuncAiter(FusedRoPECachedFunc):
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
         cos_, sin_ = ctx.saved_tensors
+
+        # The aiter kernel requires the head-dim (last) stride to be 1. The
+        # incoming gradient may be non-contiguous (e.g. broadcast/expanded from
+        # a reduction such as `.sum()`), so enforce contiguity here.
+        if grad_output.stride(-1) != 1: grad_output = grad_output.contiguous()
 
         s = grad_output.shape[0]
         b = grad_output.shape[1]
@@ -360,6 +381,11 @@ class FusedRoPETHDFuncAiter(FusedRoPETHDFunc):
         cu_seqlens: torch.Tensor,
         freqs: torch.Tensor,
     ) -> torch.Tensor:
+        # The aiter kernel requires the head-dim (last) stride to be 1. The
+        # input may be non-contiguous (e.g. transposed layout), so enforce
+        # contiguity here.
+        if t.stride(-1) != 1: t = t.contiguous()
+
         t1 = t.shape[0]
         h = t.shape[1]
         d = t.shape[2]
@@ -378,6 +404,11 @@ class FusedRoPETHDFuncAiter(FusedRoPETHDFunc):
         ctx, grad_output: torch.Tensor
     ) -> Tuple[Union[torch.Tensor, None], ...]:
         cu_seqlens, freqs = ctx.saved_tensors
+
+        # The aiter kernel requires the head-dim (last) stride to be 1. The
+        # incoming gradient may be non-contiguous (e.g. broadcast/expanded from
+        # a reduction such as `.sum()`), so enforce contiguity here.
+        if grad_output.stride(-1) != 1: grad_output = grad_output.contiguous()
 
         t = grad_output.shape[0]
         h = grad_output.shape[1]
@@ -488,7 +519,12 @@ class FusedRoPE2DFuncAiter(FusedRoPE2DFunc):
         cos_w: torch.Tensor,
         sin_w: torch.Tensor,
     ) -> torch.Tensor:
-        
+
+        # The aiter kernel requires the head-dim (last) stride to be 1. The
+        # input may be non-contiguous (e.g. transposed layout), so enforce
+        # contiguity here.
+        if t.stride(-1) != 1: t = t.contiguous()
+
         s = t.shape[0]
         h = t.shape[2]
         d = t.shape[3]
@@ -509,7 +545,12 @@ class FusedRoPE2DFuncAiter(FusedRoPE2DFunc):
     ) -> Tuple[Union[torch.Tensor, None], ...]:
 
         cos_h, sin_h, cos_w, sin_w = ctx.saved_tensors
-       
+
+        # The aiter kernel requires the head-dim (last) stride to be 1. The
+        # incoming gradient may be non-contiguous (e.g. broadcast/expanded from
+        # a reduction such as `.sum()`), so enforce contiguity here.
+        if grad_output.stride(-1) != 1: grad_output = grad_output.contiguous()
+
         s = grad_output.shape[0]
         h = grad_output.shape[2]
         d = grad_output.shape[3]
