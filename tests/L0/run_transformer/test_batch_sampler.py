@@ -25,6 +25,24 @@ class MyIterableDataset(Dataset):
         return self.samples[index]
 
 
+class SplitBatchDataset(Dataset):
+    def __init__(self, start, end):
+        super().__init__()
+        assert end > start, "this example code only works with end >= start"
+        self.start = start
+        self.end = end
+        self.samples = list(range(self.start, self.end))
+
+    def __len__(self):
+        return self.end - self.start
+
+    def __iter__(self):
+        return iter(range(self.start, self.end))
+
+    def __getitem__(self, index):
+        return (torch.tensor([index, index]), torch.tensor([index // 2, index // 2]))
+
+
 class MegatronPretrainingRandomSampler:
 
     def __init__(self, total_samples, consumed_samples, micro_batch_size,
@@ -104,25 +122,7 @@ class TestBatchSamplerBehavior(common_utils.TestCase):
                 self.assertEqual(torch.cat(samples), torch.cat(samples2))
 
     def test_split_batch(self):
-
-        class MyIterableDataset(Dataset):
-            def __init__(self, start, end):
-                super().__init__()
-                assert end > start, "this example code only works with end >= start"
-                self.start = start
-                self.end = end
-                self.samples = list(range(self.start, self.end))
-
-            def __len__(self):
-                return self.end - self.start
-
-            def __iter__(self):
-                return iter(range(self.start, self.end))
-
-            def __getitem__(self, index):
-                return (torch.tensor([index, index]), torch.tensor([index // 2, index // 2]))
-
-        dataset = MyIterableDataset(0, 100)
+        dataset = SplitBatchDataset(0, 100)
         torch.manual_seed(42)
         global_batch_size = 16
         loader = DataLoader(dataset, batch_sampler=MegatronPretrainingRandomSampler(100, 0, global_batch_size, 0, 1), num_workers=2)
