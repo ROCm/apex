@@ -586,6 +586,7 @@ class OpBuilder(ABC):
 
         if self.is_rocm_pytorch():
             cxx_args.append("-D__HIP_PLATFORM_AMD__=1")
+            cxx_args.append("-DUSE_ROCM")
             os.environ["PYTORCH_ROCM_ARCH"] = self.get_rocm_gpu_arch()
             cxx_args.append('-DROCM_WAVEFRONT_SIZE=%s' % self.get_rocm_wavefront_size())
 
@@ -781,6 +782,7 @@ class CUDAOpBuilder(OpBuilder):
             args += [
                 '-std=c++17', '-U__HIP_NO_HALF_OPERATORS__', '-U__HIP_NO_HALF_CONVERSIONS__',
                 '-U__HIP_NO_HALF2_OPERATORS__',
+                '-DUSE_ROCM',
                 '-DROCM_VERSION_MAJOR=%s' % ROCM_MAJOR,
                 '-DROCM_VERSION_MINOR=%s' % ROCM_MINOR
             ]
