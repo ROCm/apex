@@ -52,7 +52,7 @@ class TensorParallelLayerTestBase:
                     tensor_model_parallel_size_=tensor_model_parallel_world_size,
                 )
                 tensor_model_parallel_rank = parallel_state.get_tensor_model_parallel_rank()
-                cur_tensor_model_device = torch.device(f"cuda:{tensor_model_parallel_rank}")
+                cur_tensor_model_device = torch.device("cuda", torch.cuda.current_device())
                 with torch.no_grad():
                     tensor = tensor_model_parallel_rank * torch.ones(
                         self.tensor_shape, dtype=torch.float32, device=cur_tensor_model_device)
@@ -100,7 +100,7 @@ class TensorParallelLayerTestBase:
                     tensor_model_parallel_size_=tensor_model_parallel_world_size,
                 )
                 tensor_model_parallel_rank = parallel_state.get_tensor_model_parallel_rank()
-                cur_tensor_model_device = torch.device(f"cuda:{tensor_model_parallel_rank}")
+                cur_tensor_model_device = torch.device("cuda", torch.cuda.current_device())
                 with torch.no_grad():
                     input = torch.cat([
                         i * torch.ones(self.tensor_shape, dtype=torch.float32, device=cur_tensor_model_device)
