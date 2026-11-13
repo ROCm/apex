@@ -141,9 +141,9 @@ int gemm_lt(
     bool use_gelu)
 {
 
-  hipStream_t stream;
-  hipblasHandle_t handle = at::cuda::getCurrentCUDABlasLtHandle();
-  hipblasGetStream(handle, &stream);
+  // hipBLASLt handles carry no stream; hipblasGetStream() expects a hipBLAS handle.
+  hipblasLtHandle_t handle = at::cuda::getCurrentCUDABlasLtHandle();
+  hipStream_t stream = at::cuda::getCurrentCUDAStream();
 
 #if DEBUG
   std::cout << "gemm_lt " << std::endl;
