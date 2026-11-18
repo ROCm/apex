@@ -2,12 +2,14 @@ name: Apex ROCm CI
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, synchronize, reopened]
     branches:
       - master
-      - release/1.8.0
-      - release/1.9.0
-      - release/1.10.0
+      - release/*
+  push:
+    branches:
+      - master
+      - release/*
   workflow_dispatch:
     inputs:
       apex_gitref:
