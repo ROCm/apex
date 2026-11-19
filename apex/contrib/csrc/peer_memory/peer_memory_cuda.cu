@@ -16,6 +16,14 @@
 
 namespace cg = cooperative_groups;
 
+#ifdef USE_ROCM
+// Signal flags are polled across devices: the accesses must not be cached, merged or hoisted out of
+// the spin loops. __builtin_nontemporal_load/store drop the volatile qualifier, which lets the
+// compiler turn the polling loops into a single read.
+#define FLAG_LOAD(ptr) __hip_atomic_load((ptr), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)
+#define FLAG_STORE(val, ptr) __hip_atomic_store((ptr), (val), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)
+#endif
+
 #define CUDACHECK(cmd) do {                         \
   cudaError_t err = cmd;                            \
   if( err != cudaSuccess ) {                        \
@@ -199,10 +207,10 @@ __device__ void checked_signal(
 		do {
 		    if (!top_zeroed) {
 #ifdef USE_ROCM
-                        r1 = __builtin_nontemporal_load(signal1_flag);
-                        r2 = __builtin_nontemporal_load(signal1_flag + 1);
-                        r3 = __builtin_nontemporal_load(signal1_flag + 2);
-                        r4 = __builtin_nontemporal_load(signal1_flag + 3);
+                        r1 = FLAG_LOAD(signal1_flag);
+                        r2 = FLAG_LOAD(signal1_flag + 1);
+                        r3 = FLAG_LOAD(signal1_flag + 2);
+                        r4 = FLAG_LOAD(signal1_flag + 3);
 #else
                         asm volatile("ld.volatile.global.v4.u32 {%0,%1,%2,%3}, [%4];" : "=r"(r1), "=r"(r2), "=r"(r3), "=r"(r4) : "l"(signal1_flag) : "memory");
 #endif
@@ -210,10 +218,10 @@ __device__ void checked_signal(
 		    }
 		    if (!btm_zeroed) {
 #ifdef USE_ROCM
-                        r1 = __builtin_nontemporal_load(signal2_flag);
-			r2 = __builtin_nontemporal_load(signal2_flag + 1);
-			r3 = __builtin_nontemporal_load(signal2_flag + 2);
-			r4 = __builtin_nontemporal_load(signal2_flag + 3);
+                        r1 = FLAG_LOAD(signal2_flag);
+			r2 = FLAG_LOAD(signal2_flag + 1);
+			r3 = FLAG_LOAD(signal2_flag + 2);
+			r4 = FLAG_LOAD(signal2_flag + 3);
 #else
                         asm volatile("ld.volatile.global.v4.u32 {%0,%1,%2,%3}, [%4];" : "=r"(r1), "=r"(r2), "=r"(r3), "=r"(r4) : "l"(signal2_flag) : "memory");
 #endif
@@ -223,10 +231,10 @@ __device__ void checked_signal(
 		if (!top_done && top_zeroed) {
 		    // signal to top neighbor my output is ready
 #ifdef USE_ROCM
-		    __builtin_nontemporal_store(v1, signal1_flag);
-		    __builtin_nontemporal_store(v2, signal1_flag + 1);
-		    __builtin_nontemporal_store(v3, signal1_flag + 2);
-		    __builtin_nontemporal_store(v4, signal1_flag + 3);
+		    FLAG_STORE(v1, signal1_flag);
+		    FLAG_STORE(v2, signal1_flag + 1);
+		    FLAG_STORE(v3, signal1_flag + 2);
+		    FLAG_STORE(v4, signal1_flag + 3);
 #else
 		    asm volatile("st.volatile.global.v4.u32 [%0], {%1,%2,%3,%4};" :: "l"(signal1_flag), "r"(v1), "r"(v2), "r"(v3), "r"(v4) : "memory");
 #endif
@@ -235,10 +243,10 @@ __device__ void checked_signal(
 		if (!btm_done && btm_zeroed) {
 		    // signal to bottom neighbor my output is ready
 #ifdef USE_ROCM
-		    __builtin_nontemporal_store(v1, signal2_flag);
-		    __builtin_nontemporal_store(v2, signal2_flag + 1);
-		    __builtin_nontemporal_store(v3, signal2_flag + 2);
-		    __builtin_nontemporal_store(v4, signal2_flag + 3);
+		    FLAG_STORE(v1, signal2_flag);
+		    FLAG_STORE(v2, signal2_flag + 1);
+		    FLAG_STORE(v3, signal2_flag + 2);
+		    FLAG_STORE(v4, signal2_flag + 3);
 #else
 		    asm volatile("st.volatile.global.v4.u32 [%0], {%1,%2,%3,%4};" :: "l"(signal2_flag), "r"(v1), "r"(v2), "r"(v3), "r"(v4) : "memory");
 #endif
@@ -251,10 +259,10 @@ __device__ void checked_signal(
 		do {
 		    if (!btm_zeroed) {
 #ifdef USE_ROCM
-                        r1 = __builtin_nontemporal_load(signal2_flag);
-			r2 = __builtin_nontemporal_load(signal2_flag + 1);
-			r3 = __builtin_nontemporal_load(signal2_flag + 2);
-			r4 = __builtin_nontemporal_load(signal2_flag + 3);
+                        r1 = FLAG_LOAD(signal2_flag);
+			r2 = FLAG_LOAD(signal2_flag + 1);
+			r3 = FLAG_LOAD(signal2_flag + 2);
+			r4 = FLAG_LOAD(signal2_flag + 3);
 #else
                         asm volatile("ld.volatile.global.v4.u32 {%0,%1,%2,%3}, [%4];" : "=r"(r1), "=r"(r2), "=r"(r3), "=r"(r4) : "l"(signal2_flag) : "memory");
 #endif
@@ -264,10 +272,10 @@ __device__ void checked_signal(
 		if (!btm_done && btm_zeroed) {
 		    // signal to bottom neighbor my output is ready
 #ifdef USE_ROCM
-		    __builtin_nontemporal_store(v1, signal2_flag);
-		    __builtin_nontemporal_store(v2, signal2_flag + 1);
-		    __builtin_nontemporal_store(v3, signal2_flag + 2);
-		    __builtin_nontemporal_store(v4, signal2_flag + 3);
+		    FLAG_STORE(v1, signal2_flag);
+		    FLAG_STORE(v2, signal2_flag + 1);
+		    FLAG_STORE(v3, signal2_flag + 2);
+		    FLAG_STORE(v4, signal2_flag + 3);
 #else
 		    asm volatile("st.volatile.global.v4.u32 [%0], {%1,%2,%3,%4};" :: "l"(signal2_flag), "r"(v1), "r"(v2), "r"(v3), "r"(v4) : "memory");
 #endif
@@ -281,10 +289,10 @@ __device__ void checked_signal(
 		do {
 		    if (!top_zeroed) {
 #ifdef USE_ROCM
-                        r1 = __builtin_nontemporal_load(signal1_flag);
-                        r2 = __builtin_nontemporal_load(signal1_flag + 1);
-			r3 = __builtin_nontemporal_load(signal1_flag + 2);
-			r4 = __builtin_nontemporal_load(signal1_flag + 3);
+                        r1 = FLAG_LOAD(signal1_flag);
+                        r2 = FLAG_LOAD(signal1_flag + 1);
+			r3 = FLAG_LOAD(signal1_flag + 2);
+			r4 = FLAG_LOAD(signal1_flag + 3);
 #else
                         asm volatile("ld.volatile.global.v4.u32 {%0,%1,%2,%3}, [%4];" : "=r"(r1), "=r"(r2), "=r"(r3), "=r"(r4) : "l"(signal1_flag) : "memory");
 #endif
@@ -294,10 +302,10 @@ __device__ void checked_signal(
 		if (!top_done && top_zeroed) {
 		    // signal to top neighbor my output is ready
 #ifdef USE_ROCM
-		    __builtin_nontemporal_store(v1, signal1_flag);
-		    __builtin_nontemporal_store(v2, signal1_flag + 1);
-		    __builtin_nontemporal_store(v3, signal1_flag + 2);
-		    __builtin_nontemporal_store(v4, signal1_flag + 3);
+		    FLAG_STORE(v1, signal1_flag);
+		    FLAG_STORE(v2, signal1_flag + 1);
+		    FLAG_STORE(v3, signal1_flag + 2);
+		    FLAG_STORE(v4, signal1_flag + 3);
 #else
 		    asm volatile("st.volatile.global.v4.u32 [%0], {%1,%2,%3,%4};" :: "l"(signal1_flag), "r"(v1), "r"(v2), "r"(v3), "r"(v4) : "memory");
 #endif
@@ -319,10 +327,10 @@ __device__ void wait_for(
 	// wait for senders to signal their output is read
 	do {
 #ifdef USE_ROCM
-	    r1 = __builtin_nontemporal_load(wait_flag);
-	    r2 = __builtin_nontemporal_load(wait_flag + 1);
-	    r3 = __builtin_nontemporal_load(wait_flag + 2);
-	    r4 = __builtin_nontemporal_load(wait_flag + 3);
+	    r1 = FLAG_LOAD(wait_flag);
+	    r2 = FLAG_LOAD(wait_flag + 1);
+	    r3 = FLAG_LOAD(wait_flag + 2);
+	    r4 = FLAG_LOAD(wait_flag + 3);
 #else
 	    asm volatile("ld.volatile.global.v4.u32 {%0,%1,%2,%3}, [%4];" : "=r"(r1), "=r"(r2), "=r"(r3), "=r"(r4) : "l"(wait_flag) : "memory");
 #endif
@@ -342,10 +350,10 @@ __device__ void clear_flag(
 	REGISTER int r1, r2, r3, r4;
 	r1 = 0;  r2 = 0;  r3 = 0;  r4 = 0;
 #ifdef USE_ROCM
-	__builtin_nontemporal_store(r1, wait_flag);
-	__builtin_nontemporal_store(r2, wait_flag + 1);
-	__builtin_nontemporal_store(r3, wait_flag + 2);
-	__builtin_nontemporal_store(r4, wait_flag + 3);
+	FLAG_STORE(r1, wait_flag);
+	FLAG_STORE(r2, wait_flag + 1);
+	FLAG_STORE(r3, wait_flag + 2);
+	FLAG_STORE(r4, wait_flag + 3);
 #else
 	asm volatile("st.volatile.global.v4.u32 [%0], {%1,%2,%3,%4};" :: "l"(wait_flag), "r"(r1), "r"(r2), "r"(r3), "r"(r4) : "memory");
 #endif
