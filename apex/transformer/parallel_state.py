@@ -640,11 +640,34 @@ def get_data_parallel_rank():
     return torch.distributed.get_rank(group=get_data_parallel_group())
 
 
+def _destroy_model_parallel_process_groups():
+    # Dropping the reference is not enough: each communicator keeps its device
+    # buffers until it is destroyed, so repeated initialize/destroy cycles run out of memory.
+    destroyed = []
+    for group in (
+        _MODEL_PARALLEL_GROUP,
+        _TENSOR_MODEL_PARALLEL_GROUP,
+        _PIPELINE_MODEL_PARALLEL_GROUP,
+        _DATA_PARALLEL_GROUP,
+        _EMBEDDING_GROUP,
+        _POSITION_EMBEDDING_GROUP,
+        _ENCODER_RELATIVE_POSITION_EMBEDDING_GROUP,
+        _DECODER_RELATIVE_POSITION_EMBEDDING_GROUP,
+    ):
+        if group is None or group is torch.distributed.GroupMember.NON_GROUP_MEMBER:
+            continue
+        if any(group is g for g in destroyed):
+            continue
+        torch.distributed.destroy_process_group(group)
+        destroyed.append(group)
+
+
 # note (mkozuki): `destroy_model_parallel` voids more global variables than Megatron-LM.
 # Otherwise pipeline parallel forward_backward functions test hangs possibly because
 # the clean-up of the original is NOT enough.
 def destroy_model_parallel():
-    """Set the groups to none."""
+    """Destroy the process groups and set them to None."""
+    _destroy_model_parallel_process_groups()
     global _MODEL_PARALLEL_GROUP
     _MODEL_PARALLEL_GROUP = None
     global _TENSOR_MODEL_PARALLEL_GROUP
