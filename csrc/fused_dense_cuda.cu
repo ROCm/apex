@@ -43,49 +43,6 @@
   }
 #endif
 
-#define DISPATCH_TYPES(TYPE, NAME, ...)             \
-  switch (TYPE)                                     \
-  {                                                 \
-  case at::ScalarType::Half:                        \
-  {                                                 \
-    constexpr auto compute_t = CUBLAS_COMPUTE_32F;  \
-    constexpr auto compute_datatype_t = CUDA_R_32F; \
-    constexpr auto datatype_t = CUDA_R_16F;         \
-    using scalar_t = at::Half;                      \
-    __VA_ARGS__();                                  \
-    break;                                          \
-  }                                                 \
-  case at::ScalarType::BFloat16:                    \
-  {                                                 \
-    constexpr auto compute_t = CUBLAS_COMPUTE_32F;  \
-    constexpr auto compute_datatype_t = CUDA_R_32F; \
-    constexpr auto datatype_t = CUDA_R_16BF;        \
-    using scalar_t = at::BFloat16;                  \
-    __VA_ARGS__();                                  \
-    break;                                          \
-  }                                                 \
-  case at::ScalarType::Float:                       \
-  {                                                 \
-    constexpr auto compute_t = CUBLAS_COMPUTE_32F;  \
-    constexpr auto compute_datatype_t = CUDA_R_32F; \
-    constexpr auto datatype_t = CUDA_R_32F;         \
-    using scalar_t = float;                         \
-    __VA_ARGS__();                                  \
-    break;                                          \
-  }                                                 \
-  case at::ScalarType::Double:                      \
-  {                                                 \
-    constexpr auto compute_t = CUBLAS_COMPUTE_64F;  \
-    constexpr auto compute_datatype_t = CUDA_R_64F; \
-    constexpr auto datatype_t = CUDA_R_64F;         \
-    using scalar_t = double;                        \
-    __VA_ARGS__();                                  \
-    break;                                          \
-  }                                                 \
-  default:                                          \
-    AT_ERROR(#NAME, " not implemented type ");      \
-  }
-
 
 hipDataType get_dtype(at::Tensor A)
 {
@@ -363,24 +320,6 @@ int gemm_lt(
 }
 
 
-template <hipblasComputeType_t ComputeType, typename TensorType, hipDataType DataType>
-hipblasStatus_t gemm_bias( hipblasOperation_t transa, hipblasOperation_t transb,
-                           int64_t m, int64_t n, int64_t k, const float *alpha, const float *beta,
-                           const TensorType *A, const TensorType *B, TensorType *C)
-{
-  hipblasHandle_t handle = at::cuda::getCurrentCUDABlasHandle();
-  int64_t lda = n;
-  int64_t ldb = k;
-  int64_t ldc = m;
-
-#if DEBUG
-  std::cout << "gemm_bias " << std::endl;
-#endif
-  return hipblasGemmEx(handle, transa, transb, m,  n,   k,  alpha,  A,  DataType,   lda,  B,  DataType,
-                       ldb,  beta,  C,  DataType,  ldc,  ComputeType,  CUBLAS_GEMM_DEFAULT);
-}
-
-
 /****************************************************************************
  * output[batch_size, out_features] = input[batch_size, in_features] * weight[out_features,in_features] + bias[out_features]
  ****************************************************************************/
@@ -404,12 +343,7 @@ at::Tensor linear_bias_forward(at::Tensor input, at::Tensor weight, at::Tensor b
   if (at::globalContext().blasPreferredBackend() == at::BlasBackend::Cublaslt) {
     CHECK_HIPBLASLT_ERROR(gemm_lt(HIPBLAS_OP_T, HIPBLAS_OP_N, &alpha, &beta, weight, input, output, bias, dummy_gelu, true, false, false));
   } else {
-    DISPATCH_TYPES(input.scalar_type(), "linear_bias_forward", [&] {
-    auto result = gemm_bias<compute_t, scalar_t, datatype_t>(
-                            HIPBLAS_OP_T, HIPBLAS_OP_N, out_features, batch_size, in_features,
-                            &alpha, &beta, weight.data_ptr<scalar_t>(), input.data_ptr<scalar_t>(), output.data_ptr<scalar_t>());
-    if (result != 0) { fprintf(stderr, "INVALID RESULT for linear_bias_forward\n"); }
-    });
+    output = at::addmm(bias, input, weight.t());
   }
 
   return {output};
@@ -457,19 +391,9 @@ std::vector<at::Tensor> linear_bias_backward(at::Tensor input, at::Tensor weight
   // **********************************************************************************
     grad_bias = output.sum(0, false);
   } else {
-    DISPATCH_TYPES(input.scalar_type(), "linear_bias_forward", [&] {
-    auto result = gemm_bias<compute_t, scalar_t, datatype_t>(
-                            HIPBLAS_OP_N, HIPBLAS_OP_T, in_features, out_features, batch_size,
-                            &alpha, &beta, input.data_ptr<scalar_t>(), output.data_ptr<scalar_t>(), grad_weight.data_ptr<scalar_t>());
-    if (result != 0) { fprintf(stderr, "INVALID RESULT for linear_bias_forward\n"); }
-    });
-
-    DISPATCH_TYPES(input.scalar_type(), "linear_bias_forward", [&] {
-    auto result = gemm_bias<compute_t, scalar_t, datatype_t>(
-                            HIPBLAS_OP_N, HIPBLAS_OP_N, in_features, batch_size, out_features,
-                            &alpha, &beta, weight.data_ptr<scalar_t>(), output.data_ptr<scalar_t>(), grad_input.data_ptr<scalar_t>());
-    if (result != 0) { fprintf(stderr, "INVALID RESULT for linear_bias_forward\n"); }
-    });
+    grad_input  = output.mm(weight);
+    grad_weight = output.t().mm(input);
+    grad_bias   = output.sum(0, false);
   }
   return {grad_input, grad_weight, grad_bias};
 }
@@ -528,7 +452,10 @@ std::vector<at::Tensor> linear_gelu_linear_forward(at::Tensor input,   at::Tenso
     CHECK_HIPBLASLT_ERROR(gemm_lt(HIPBLAS_OP_T, HIPBLAS_OP_N, &alpha, &beta, weight, input, output, bias, gelu, true, false, true));
     CHECK_HIPBLASLT_ERROR(gemm_lt(HIPBLAS_OP_T, HIPBLAS_OP_N, &alpha, &beta, weight2, output, output2, bias2, dummy_gelu, true, false, false));
   } else {
-    std::cout << "linear_gelu_linear_forward not implimented for non-MI300 GPU" << std::endl;
+    // tanh to match the hipBLASLt epilogue
+    gelu    = at::addmm(bias, input, weight.t());
+    output  = at::gelu(gelu, "tanh");
+    output2 = at::addmm(bias2, output, weight2.t());
   }
   return {output, output2, gelu};
 }
@@ -588,7 +515,13 @@ std::vector<at::Tensor> linear_gelu_linear_backward(at::Tensor input, at::Tensor
     CHECK_HIPBLASLT_ERROR(gemm_lt(HIPBLAS_OP_N, HIPBLAS_OP_T, &alpha, &beta, output, input, grad_weight, grad_bias2, dummy_gelu, true, false, false));
     grad_bias = output.sum(0, false);   // ToDo: Check why HipBLASLt fail to get bgrad above so this step is not needed.
   } else {
-    std::cout << "linear_gelu_linear_backward not implimented for non-MI300 GPU" << std::endl;
+    grad_weight2 = output2.t().mm(output);
+    grad_bias2   = output2.sum(0, false);
+    grad_output  = output2.mm(weight2);
+    at::Tensor grad_gelu = at::gelu_backward(grad_output, gelu, "tanh");
+    grad_weight  = grad_gelu.t().mm(input);
+    grad_bias    = grad_gelu.sum(0, false);
+    grad_input   = grad_gelu.mm(weight);
   }
   return {grad_input, grad_weight, grad_bias, grad_weight2, grad_bias2};
 }
