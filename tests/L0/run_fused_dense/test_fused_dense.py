@@ -5,8 +5,16 @@ from apex import fused_dense
 from torch import nn
 from apex import amp
 
-class FusedDenseTest(unittest.TestCase):
+class FusedDenseTestBase:
+    blas_library = None
+
     def setUp(self, seed=0):
+        self.prev_blas_library = torch.backends.cuda.preferred_blas_library()
+        torch.backends.cuda.preferred_blas_library(self.blas_library)
+        # GPUs without hipBLASLt silently stay on hipBLAS. Restore here: tearDown is skipped too.
+        if self.blas_library == "hipblaslt" and torch.backends.cuda.preferred_blas_library() != torch._C._BlasBackend.Cublaslt:
+            torch.backends.cuda.preferred_blas_library(self.prev_blas_library)
+            self.skipTest("hipBLASLt is not supported on this GPU")
         torch.manual_seed(seed)
         # torch.cuda.manual_seed_all(seed)
 
@@ -21,6 +29,9 @@ class FusedDenseTest(unittest.TestCase):
         self.dense = fused_dense.FusedDense(1024, 3072)
         self.dense.half()
         self.dense.cuda()
+
+    def tearDown(self):
+        torch.backends.cuda.preferred_blas_library(self.prev_blas_library)
 
 
     def test_fused_dense(self) :
@@ -37,6 +48,14 @@ class FusedDenseTest(unittest.TestCase):
         self.assertTrue(torch.allclose(dw_ref,           self.dense.weight.grad, atol=1e-3, rtol=1e-3, equal_nan=True))
         self.assertTrue(torch.allclose(dx_ref,           self.tst_inputs.grad,   atol=1e-3, rtol=1e-3, equal_nan=True))
         self.assertTrue(torch.allclose(db_ref,           self.dense.bias.grad,   atol=1e-3, rtol=1e-3, equal_nan=True))
+
+
+class FusedDenseHipblasTest(FusedDenseTestBase, unittest.TestCase):
+    blas_library = "hipblas"
+
+
+class FusedDenseHipblasltTest(FusedDenseTestBase, unittest.TestCase):
+    blas_library = "hipblaslt"
 
 
 if __name__ == '__main__':
