@@ -22,6 +22,13 @@ logging.getLogger("apex").setLevel(logging.WARNING)
 # can be less precise so that `self.assertEqual` raises.
 torch.backends.cuda.matmul.allow_tf32 = False
 
+# Fused wgrad uses hipBLASLt; the reference uses PyTorch's preferred backend, so `main_grad` can
+# differ by reduction order.
+WGRAD_FUSION_TOLS = {
+    torch.float32: dict(atol=1e-3, rtol=1.3e-6),
+    torch.float16: dict(atol=1e-3, rtol=1e-3),
+}
+
 
 class TensorParallelLayerTestBase:
 
@@ -390,6 +397,7 @@ class TensorParallelLayerTestBase:
                         )
 
                 grad_attr_name = "main_grad" if gradient_accumulation_fusion else "grad"
+                grad_tols = WGRAD_FUSION_TOLS[linear.weight.main_grad.dtype] if gradient_accumulation_fusion else dict(atol=1e-4, rtol=1e-3)
                 # NOTE(mkozuki): Numerical errors seems to be enlarged by tensor model parallel.
                 if tensor_model_parallel_world_size == 1:
                     self.assertEqual(
@@ -398,8 +406,7 @@ class TensorParallelLayerTestBase:
                             chunks=tensor_model_parallel_world_size,
                             dim=0,
                         )[parallel_state.get_tensor_model_parallel_rank()],
-                        atol=1e-4,
-                        rtol=1e-3
+                        **grad_tols,
                     )
 
                 parallel_state.destroy_model_parallel()
@@ -535,6 +542,7 @@ class TensorParallelLayerTestBase:
                 expected_loss = torch.mul(expected_output, dldy).sum()
                 expected_loss.backward()
                 grad_attr_name = "main_grad" if gradient_accumulation_fusion else "grad"
+                grad_tols = WGRAD_FUSION_TOLS[linear.weight.main_grad.dtype] if gradient_accumulation_fusion else {}
                 # NOTE(mkozuki): Numerical errors seems to be enlarged by tensor model parallel.
                 if tensor_model_parallel_world_size == 1:
                     self.assertEqual(
@@ -543,6 +551,7 @@ class TensorParallelLayerTestBase:
                             chunks=tensor_model_parallel_world_size,
                             dim=0,
                         )[parallel_state.get_tensor_model_parallel_rank()],
+                        **grad_tols,
                     )
 
                 parallel_state.destroy_model_parallel()
