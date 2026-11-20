@@ -54,6 +54,15 @@ jobs:
     name: Build Apex Wheel
     runs-on: build-only-apex
     steps:
+      # Runner git config may redirect github.com to an in-cluster cache that is not always reachable.
+      - name: Bypass git cache URL rewrites
+        run: |
+          git config --show-origin --get-regexp '^url\.' || true
+          for scope in --global --system; do
+            git config $scope --get-regexp '^url\..*\.insteadof$' 2>/dev/null | awk '{print $1}' | \
+              xargs -r -n1 git config $scope --unset-all 2>/dev/null || true
+          done
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -112,6 +121,15 @@ jobs:
     runs-on: linux-apex-mi325-8
     needs: build
     steps:
+      # Runner git config may redirect github.com to an in-cluster cache that is not always reachable.
+      - name: Bypass git cache URL rewrites
+        run: |
+          git config --show-origin --get-regexp '^url\.' || true
+          for scope in --global --system; do
+            git config $scope --get-regexp '^url\..*\.insteadof$' 2>/dev/null | awk '{print $1}' | \
+              xargs -r -n1 git config $scope --unset-all 2>/dev/null || true
+          done
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
