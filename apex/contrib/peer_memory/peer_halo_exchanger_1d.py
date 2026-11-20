@@ -15,6 +15,8 @@ class PeerHaloExchanger1d:
         self.peer_pool = peer_pool
         self.signals = peer_pool.allocate_peer_tensors([2,4], torch.int32, False, False)
         self.signals[self.peer_rank].zero_()
+        # Peers write into these signals; none may launch an exchange before every rank has cleared its own.
+        torch.distributed.barrier()
         self.half_halo = half_halo
 
     def __call__(self, y, H_split=True, explicit_nhwc=False, numSM=1, diagnostics=False):
