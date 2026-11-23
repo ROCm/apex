@@ -644,7 +644,8 @@ def get_data_parallel_rank():
 # Otherwise pipeline parallel forward_backward functions test hangs possibly because
 # the clean-up of the original is NOT enough.
 def destroy_model_parallel():
-    """Set the groups to none."""
+    """Destroy the model and data parallel process groups and set them to none."""
+    _destroy_model_parallel_groups()
     global _MODEL_PARALLEL_GROUP
     _MODEL_PARALLEL_GROUP = None
     global _TENSOR_MODEL_PARALLEL_GROUP
@@ -673,6 +674,28 @@ def destroy_model_parallel():
     _MPU_TENSOR_MODEL_PARALLEL_RANK = None
     global _MPU_PIPELINE_MODEL_PARALLEL_RANK
     _MPU_PIPELINE_MODEL_PARALLEL_RANK = None
+
+
+def _destroy_model_parallel_groups() -> None:
+    # Destroying the default process group already shuts down every subgroup.
+    if not torch.distributed.is_initialized():
+        return
+    groups = (
+        _MODEL_PARALLEL_GROUP,
+        _TENSOR_MODEL_PARALLEL_GROUP,
+        _PIPELINE_MODEL_PARALLEL_GROUP,
+        _DATA_PARALLEL_GROUP,
+        _EMBEDDING_GROUP,
+        _POSITION_EMBEDDING_GROUP,
+        _ENCODER_RELATIVE_POSITION_EMBEDDING_GROUP,
+        _DECODER_RELATIVE_POSITION_EMBEDDING_GROUP,
+    )
+    destroyed = set()
+    for group in groups:
+        if group is None or id(group) in destroyed:
+            continue
+        destroyed.add(id(group))
+        torch.distributed.destroy_process_group(group)
 
 
 # Used to warn when the UCC is specified.
