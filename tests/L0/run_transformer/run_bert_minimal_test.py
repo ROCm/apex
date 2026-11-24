@@ -1,4 +1,7 @@
+import os
 import random
+import sys
+import traceback
 import torch
 try:
     import torch_ucc
@@ -127,7 +130,9 @@ def fwd_step_func(batch, model):
         lm_loss = torch.sum(lm_loss_.view(-1) * loss_mask.reshape(-1)) / loss_mask.sum()
         averaged_loss = average_losses_across_data_parallel_group([lm_loss])
         if data_idx >= 1536:
-            assert averaged_loss < 4.8
+            assert averaged_loss < 4.8, (
+                f"averaged loss {averaged_loss.item():.4f} >= 4.8 at data_idx {data_idx}"
+            )
             if not ONCE:
                 print("LOSS OK")
                 ONCE = True
@@ -187,6 +192,9 @@ if __name__ == "__main__":
     init = True
     try:
         virtual_pipeline_model_parallel_sizes = (None, 2,)
+        if global_vars.get_args().pipeline_model_parallel_size <= 2:
+            # The interleaved schedule needs a pipeline-model-parallel size greater than 2.
+            virtual_pipeline_model_parallel_sizes = (None,)
         if HAS_TORCH_UCC:
             # Deliberately skipping test with interleaved schedule for BERT model.
             # It deadlocks on hybrid UCC/NCCL backend.
@@ -223,6 +231,9 @@ if __name__ == "__main__":
                 parallel_state.get_pipeline_model_parallel_world_size()
             )
 
+            # Non-parallel layers (e.g. position embeddings) are initialized on
+            # the CPU, so the CPU RNG must be seeded as well.
+            torch.manual_seed(0)
             tensor_parallel.random.model_parallel_cuda_manual_seed(0)
             model = build_model(
                 bert_model_provider,
@@ -247,14 +258,17 @@ if __name__ == "__main__":
                 args.pipeline_model_parallel_size,
                 async_comm,
             )
-    except Exception as e:
-        failure = str(e)
-    finally:
-        parallel_state.destroy_model_parallel()
+    except Exception:
+        failure = traceback.format_exc()
     if failure is not None:
         warnings.warn(
             f"Minimal BERT Pipeline Parallel Failed with: {failure}", DebugWarning
         )
-        print(f"Minimal BERT Pipeline Parallel Failed with: {failure}")
+        print(f"Minimal BERT Pipeline Parallel Failed with: {failure}", flush=True)
+        # The other pipeline stages may still be blocked in P2P communication with
+        # this rank, so destroying the process groups or entering a barrier hangs.
+        sys.stderr.flush()
+        os._exit(1)
+    parallel_state.destroy_model_parallel()
     torch.distributed.barrier()
     print(TEST_SUCCESS_MESSAGE)
