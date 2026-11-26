@@ -30,6 +30,17 @@ WGRAD_FUSION_TOLS = {
 }
 
 
+def _reference_wgrad_fp16(dldy: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    """Weight grad of ``y = x @ w.t()`` for fp16 ``dldy``/``x``, accumulated in fp32 and cast to fp16.
+
+    An autograd fp16 reference is not used because on gfx90a PyTorch routes fp16 backward GEMMs to
+    rocBLAS with ``fp16_alt_impl``, which truncates the inputs to bf16.
+    """
+    dldy = dldy.half().flatten(0, -2).float()
+    x = x.half().flatten(0, -2).float()
+    return (dldy.t() @ x).half()
+
+
 class TensorParallelLayerTestBase:
 
     BATCH_SIZE: int = 8
@@ -397,11 +408,12 @@ class TensorParallelLayerTestBase:
 
                 grad_attr_name = "main_grad" if gradient_accumulation_fusion else "grad"
                 grad_tols = WGRAD_FUSION_TOLS[linear.weight.main_grad.dtype] if gradient_accumulation_fusion else dict(atol=1e-4, rtol=1e-3)
+                expected_wgrad = _reference_wgrad_fp16(dldy, x) if accumulation_in_fp16 else ref_linear.weight.grad
                 # NOTE(mkozuki): Numerical errors seems to be enlarged by tensor model parallel.
                 if tensor_model_parallel_world_size == 1:
                     self.assertEqual(
                         x=getattr(linear.weight, grad_attr_name),
-                        y=ref_linear.weight.grad.chunk(
+                        y=expected_wgrad.chunk(
                             chunks=tensor_model_parallel_world_size,
                             dim=0,
                         )[parallel_state.get_tensor_model_parallel_rank()],
@@ -542,11 +554,12 @@ class TensorParallelLayerTestBase:
                 expected_loss.backward()
                 grad_attr_name = "main_grad" if gradient_accumulation_fusion else "grad"
                 grad_tols = WGRAD_FUSION_TOLS[linear.weight.main_grad.dtype] if gradient_accumulation_fusion else {}
+                expected_wgrad = _reference_wgrad_fp16(dldy, x) if accumulation_in_fp16 else ref_linear.weight.grad
                 # NOTE(mkozuki): Numerical errors seems to be enlarged by tensor model parallel.
                 if tensor_model_parallel_world_size == 1:
                     self.assertEqual(
                         x=getattr(linear.weight, grad_attr_name),
-                        y=ref_linear.weight.grad.chunk(
+                        y=expected_wgrad.chunk(
                             chunks=tensor_model_parallel_world_size,
                             dim=0,
                         )[parallel_state.get_tensor_model_parallel_rank()],
