@@ -261,12 +261,14 @@ int gemm_lt(
 
   const int request_solutions = 1;
   int       returnedAlgoCount = 0;
-  uint64_t     workspace_size = 0;
-  void             *workspace = nullptr;
+  void *workspace = at::cuda::getCUDABlasLtWorkspace();
+  const uint64_t workspace_size = at::cuda::getCUDABlasLtWorkspaceSize();
 
   hipblasLtMatmulHeuristicResult_t heuristicResult[request_solutions];
 
   CHECK_HIPBLASLT_ERROR(hipblasLtMatmulPreferenceCreate(&pref));
+  CHECK_HIPBLASLT_ERROR(hipblasLtMatmulPreferenceSetAttribute(pref, HIPBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
+                                                              &workspace_size, sizeof(workspace_size)));
   CHECK_HIPBLASLT_ERROR(hipblasLtMatmulAlgoGetHeuristic(handle, matmulDesc, matA, matB, matC, matC,
                                                         pref, request_solutions, heuristicResult,
                                                         &returnedAlgoCount));
@@ -276,15 +278,6 @@ int gemm_lt(
     std::cerr << "No valid solution found!" << std::endl;
     return HIPBLAS_STATUS_NOT_SUPPORTED;
   }
-
-  for (int i = 0; i < returnedAlgoCount; i++)
-  {
-    workspace_size = max(workspace_size, heuristicResult[i].workspaceSize);
-  }
-
-  hipMalloc(&workspace, workspace_size);
-  CHECK_HIPBLASLT_ERROR(hipblasLtMatmulPreferenceSetAttribute(pref, HIPBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
-                                                              &workspace, sizeof(workspace_size)));
 
   /* ============================================================================================
    * Matmul
